@@ -3,33 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CV Builder — Lunatech</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<title>Lunatech CV Builder</title>
+<link rel="icon" type="image/png" href="/assets/lunatech-logo-alone.png">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  /* ── UI theme vars — updated by setTheme() ── */
+  /* ── UI theme vars — Lunatech (rouge / noir) ── */
   --ui-bg:      #0f0f10;
-  --ui-surface: #1a1a1c;
+  --ui-surface: #1a1a1a;
   --ui-border:  #2e2e32;
-  --ui-accent:  #c8b89a;
-  --ui-text:    #e8e4de;
-  --ui-muted:   #6b6860;
-  --ui-tab-active: #cba6f7;
+  --ui-accent:  #c8102e;
+  --ui-accent-deep: #7c1818;
+  --ui-text:    #ece8e4;
+  --ui-muted:   #8a8580;
+  --ui-tab-active: #c8102e;
 }
 body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(--ui-text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background .3s, color .3s; }
-.app-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 52px; border-bottom: 1px solid var(--ui-border); flex-shrink: 0; background: var(--ui-surface); transition: background .3s, border-color .3s; }
-.app-logo { font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ui-accent); transition: color .3s; }
-.app-logo span { color: var(--ui-muted); font-weight: 300; font-style: italic; font-size: 13px; margin-left: 8px; }
+.app-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; border-bottom: 1px solid var(--ui-border); flex-shrink: 0; background: var(--ui-surface); transition: background .3s, border-color .3s; }
+.app-logo { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ui-text); transition: color .3s; }
+.app-logo-mark { width: 32px; height: 32px; border-radius: 6px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.app-logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+.app-logo-brand { font-size: 14px; font-weight: 600; letter-spacing: .08em; color: var(--ui-accent); text-transform: uppercase; }
+.app-logo-product { font-size: 11px; font-weight: 300; color: var(--ui-muted); letter-spacing: .04em; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
 .btn { font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 500; padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer; transition: all .2s; letter-spacing: .04em; }
 .btn-ghost { background: transparent; color: var(--ui-muted); border: 1px solid var(--ui-border); }
 .btn-ghost:hover { color: var(--ui-text); border-color: var(--ui-accent); }
-.btn-primary { background: var(--ui-accent); color: #0a0a0a; font-weight: 600; }
+.btn-primary { background: var(--ui-accent); color: #fff; font-weight: 600; }
 .btn-primary:hover { filter: brightness(1.1); }
 .btn-export-bundle { background: transparent; color: var(--ui-accent); border: 1px solid var(--ui-accent); font-weight: 600; }
-.btn-export-bundle:hover { background: var(--ui-accent); color: #0a0a0a; }
+.btn-export-bundle:hover { background: var(--ui-accent); color: #fff; }
 
 /* Persistence UI */
 .cv-status { font-size: 11px; color: var(--ui-muted); padding: 0 6px; white-space: nowrap; font-style: italic; }
@@ -66,7 +71,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   transition: transform .2s, background .2s;
 }
 .toggle-switch input:checked + .toggle-track { background: #313244; }
-.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: #cba6f7; }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: var(--ui-accent); }
 .tab-bar { display: flex; gap: 2px; padding: 0 24px; background: var(--ui-surface); border-bottom: 1px solid var(--ui-border); flex-shrink: 0; }
 .tab { font-size: 11px; font-weight: 400; padding: 10px 16px; color: var(--ui-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; letter-spacing: .06em; text-transform: uppercase; }
 .tab:hover { color: var(--ui-text); }
@@ -170,119 +175,240 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 #cv-frame-wrapper { background: white; box-shadow: 0 8px 48px rgba(0,0,0,.5); transform-origin: top center; overflow: hidden; }
 
 /* ══════════════════════════════════════════════════════════
-   CV TEMPLATE
+   CV TEMPLATE — layout cv-example.pdf (4 thèmes, mêmes styles)
    ══════════════════════════════════════════════════════════ */
 #cv-root {
-  --cv-accent:       #1a2744;
-  --cv-accent-light: #e8edf5;
-  --cv-key-bg:       #2e4a7a;
-  --cv-bar-fill:     #1a2744;
-  --cv-bar-empty:    #e2e6ee;
-  --cv-text:         #1c1c1e;
-  --cv-muted:        #595959;
-  --cv-body-text:    #282828;
-  --cv-border:       #dde0e8;
-  --cv-tag-bg:       #e8edf5;
-  --cv-tag-text:     #1a2744;
+  /* base = thème lunatech */
+  --cv-accent:       #7c1818;
+  --cv-accent-light: #f4e9e9;
+  --cv-header-bg:    #1a1a1a;
+  --cv-bar-fill:     #7c1818;
+  --cv-bar-empty:    #f0d8d8;
+  --cv-text:         #1a1a1a;
+  --cv-muted:        #6b6b6b;
+  --cv-body:         #2a2a2a;
+  --cv-border:       #d8d4d0;
+  --cv-bullet:       #7c1818;
   width: 794px; height: 1123px; overflow: visible;
-  font-family: 'Poppins', sans-serif; font-size: 13px; line-height: 1.6;
+  font-family: 'Poppins', sans-serif; font-size: 12.5px; line-height: 1.55;
   color: var(--cv-text); background: white; position: relative;
   display: flex; flex-direction: column;
 }
-
-/* ── THEME: LUXE (noir / or) ── */
+#cv-root[data-theme="lunatech"] {
+  --cv-accent: #7c1818; --cv-accent-light: #f4e9e9;
+  --cv-header-bg: #1a1a1a; --cv-bar-fill: #7c1818; --cv-bar-empty: #f0d8d8;
+  --cv-bullet: #7c1818;
+}
 #cv-root[data-theme="luxe"] {
-  --cv-accent:       #0B0B0B;
-  --cv-accent-light: #f5f0e8;
-  --cv-key-bg:       #0B0B0B;
-  --cv-bar-fill:     #c8a24a;
-  --cv-bar-empty:    #e8e2d4;
-  --cv-border:       #e8e2d4;
-  --cv-tag-bg:       #f5f0e8;
-  --cv-tag-text:     #0B0B0B;
+  --cv-accent: #0B0B0B; --cv-accent-light: #f5f0e8;
+  --cv-header-bg: #0B0B0B; --cv-bar-fill: #c8a24a; --cv-bar-empty: #e8e2d4;
+  --cv-bullet: #c8a24a; --cv-border: #e8e2d4;
 }
-
-/* ── THEME: COSMIC (bleu / rose fluo) ── */
 #cv-root[data-theme="cosmic"] {
-  --cv-accent:       #0a1e50;
-  --cv-accent-light: #f0e8f4;
-  --cv-key-bg:       #0a1e50;
-  --cv-bar-fill:     #DB2777;
-  --cv-bar-empty:    #f0d8e8;
-  --cv-border:       #dde0e8;
-  --cv-tag-bg:       #fce7f3;
-  --cv-tag-text:     #9d174d;
+  --cv-accent: #0a1e50; --cv-accent-light: #fce7f3;
+  --cv-header-bg: #0a1e50; --cv-bar-fill: #DB2777; --cv-bar-empty: #f0d8e8;
+  --cv-bullet: #DB2777;
+}
+#cv-root[data-theme="opera"] {
+  --cv-accent: #9b0f17; --cv-accent-light: #fdf2f2;
+  --cv-header-bg: #9b0f17; --cv-bar-fill: #ea212e; --cv-bar-empty: #f5dede;
+  --cv-bullet: #ea212e; --cv-border: #e8d8d8;
 }
 
-/* ── THEME: OPERA (rouge / tons chauds) ── */
-#cv-root[data-theme="opera"] {
-  --cv-accent:       #9b0f17;
-  --cv-accent-light: #fdf2f2;
-  --cv-key-bg:       #9b0f17;
-  --cv-bar-fill:     #ea212e;
-  --cv-bar-empty:    #f5dede;
-  --cv-border:       #e8d8d8;
-  --cv-tag-bg:       #f5dede;
-  --cv-tag-text:     #7a0c13;
+/* ── HEADER ── */
+.cv-header {
+  background: var(--cv-header-bg);
+  color: #fff;
+  padding: 38px 48px 28px;
+  flex-shrink: 0;
+  position: relative;
 }
-.cv-header { color: #fff; padding: 30px 48px 52px; position: relative; background: transparent; flex-shrink: 0; }
-.cv-header-bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
-.cv-header-content { position: relative; z-index: 1; }
-.cv-name { font-size: 30px; line-height: 1.15; font-weight: 600; letter-spacing: -.01em; margin-bottom: 3px; }
-.cv-title { font-size: 11px; font-weight: 300; letter-spacing: .12em; text-transform: uppercase; opacity: .75; margin-bottom: 14px; }
-.cv-contacts { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 11px; font-weight: 300; opacity: .9; }
-.cv-contact-item { display: flex; align-items: center; gap: 5px; }
-.cv-contact-item::before { opacity: .65; font-size: 10px; }
-.cv-contact-item.email::before { content: '✉'; }
-.cv-contact-item.since::before { content: '◈'; }
-.cv-body { display: flex; flex: 1; overflow: hidden; min-height: 0; position: relative; }
-.cv-col-main { width: 62%; padding: 20px 22px 0 48px; overflow: hidden; border-right: 1px solid var(--cv-border); display: flex; flex-direction: column; }
-.cv-col-side { width: 38%; padding: 16px 24px 0 18px; overflow: hidden; display: flex; flex-direction: column; }
-.cv-photo-wrap { position: absolute; top: 30px; left: 558px; z-index: 20; cursor: pointer; }
-.cv-photo-circle { width: 170px; height: 170px; border-radius: 50%; border: 3px solid white; background: #b8c8de; overflow: hidden; box-shadow: none; display: flex; align-items: center; justify-content: center; transition: opacity .15s; }
+.cv-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+.cv-header-left { flex: 1; min-width: 0; }
+.cv-name {
+  font-family: 'EB Garamond', 'Garamond', serif;
+  font-size: 38px; font-weight: 700;
+  line-height: 1.1; letter-spacing: 0;
+  margin-bottom: 8px;
+}
+.cv-subline { font-size: 11.5px; font-weight: 300; color: rgba(255,255,255,.78); letter-spacing: .01em; line-height: 1.5; }
+.cv-subline-sep { color: rgba(255,255,255,.4); margin: 0 .55em; }
+.cv-since { font-style: italic; font-size: 11px; color: rgba(255,255,255,.6); margin-top: 1px; }
+.cv-header-right {
+  text-align: right;
+  font-size: 11px; font-weight: 300;
+  color: rgba(255,255,255,.85);
+  white-space: nowrap;
+  line-height: 1.55;
+  flex-shrink: 0;
+}
+.cv-contact { display: block; }
+.cv-contact-icon { display: inline-block; opacity: .65; margin-right: 5px; font-style: normal; }
+.cv-contact.strong { font-weight: 600; color: #fff; }
+
+/* ── PHOTO (optionnel) ── */
+.cv-photo-wrap {
+  position: absolute;
+  top: 28px; right: 48px;
+  z-index: 20; cursor: pointer;
+}
+.cv-photo-circle {
+  width: 96px; height: 96px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.85);
+  background: rgba(255,255,255,.12);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .15s;
+}
 .cv-photo-circle:hover { opacity: .85; }
 .cv-photo-circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cv-photo-placeholder { width: 80px; height: 80px; opacity: .38; fill: #1a2744; }
+.cv-photo-placeholder { width: 48px; height: 48px; opacity: .55; fill: #fff; }
 .cv-photo-wrap:hover .cv-photo-hint { opacity: 1; }
-.cv-photo-hint { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 7px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--cv-muted); white-space: nowrap; opacity: 0; transition: opacity .15s; pointer-events: none; }
-.cv-key-assets { background: var(--cv-key-bg); border-radius: 8px; padding: 11px 14px; margin-bottom: 13px; flex-shrink: 0; }
-.cv-key-assets-label { font-size: 7.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: 1px; }
-.cv-key-assets-client { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.95); margin-bottom: 8px; }
-.cv-key-assets-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px; }
-.cv-key-assets-list li { font-size: 10px; font-weight: 400; color: rgba(255,255,255,.85); line-height: 1.35; padding-left: 12px; position: relative; }
-.cv-key-assets-list li::before { content: '—'; position: absolute; left: 0; color: rgba(255,255,255,.35); font-size: 9px; top: 1px; }
-.cv-skills-block { flex-shrink: 0; }
-.cv-skill-group-bars { margin-bottom: 0; }
-.cv-skill-bar-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
-.cv-skill-bar-name { font-size: 9.5px; font-weight: 400; color: var(--cv-text); width: 82px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cv-skill-bar-track { display: flex; gap: 2px; flex: 1; }
-.cv-skill-bar-seg { height: 4px; flex: 1; border-radius: 2px; background: var(--cv-bar-empty); }
-.cv-skill-bar-seg.filled { background: var(--cv-bar-fill); }
-.cv-skill-group-sep { height: 7px; }
-.cv-section { margin-bottom: 12px; flex-shrink: 0; }
-.cv-section-title { font-size: 7.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--cv-muted); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--cv-border); }
-.cv-exp { margin-bottom: 11px; }
-.cv-exp-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.cv-exp-company { font-weight: 600; font-size: 11.5px; }
-.cv-exp-period { font-size: 9px; font-weight: 300; color: var(--cv-muted); white-space: nowrap; margin-left: 8px; padding-top: 2px; }
-.cv-exp-role { font-size: 10px; font-weight: 400; color: var(--cv-accent); margin-bottom: 3px; }
-.cv-exp-desc { font-size: 10px; font-weight: 300; color: var(--cv-body-text); line-height: 1.55; }
-.cv-exp-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
-.cv-tag { font-size: 8px; font-weight: 500; letter-spacing: .04em; padding: 1px 6px; border-radius: 3px; background: var(--cv-tag-bg); color: var(--cv-tag-text); }
-.cv-cert { margin-bottom: 7px; display: flex; align-items: flex-start; gap: 6px; }
-.cv-cert-badge { font-size: 8px; font-weight: 600; letter-spacing: .04em; padding: 2px 6px; border-radius: 3px; background: var(--cv-tag-bg); color: var(--cv-tag-text); flex-shrink: 0; margin-top: 1px; }
-.cv-cert-name { font-size: 10px; font-weight: 400; color: var(--cv-text); }
-.cv-cert-issuer { font-size: 9px; font-weight: 300; color: var(--cv-body-text); }
-.cv-project { margin-bottom: 10px; }
-.cv-project-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1px; }
-.cv-project-name { font-weight: 600; font-size: 11px; }
-.cv-project-link { font-size: 9px; font-weight: 300; color: var(--cv-accent); text-decoration: none; }
-.cv-project-desc { font-size: 10px; font-weight: 300; color: var(--cv-body-text); line-height: 1.55; }
-.cv-project-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
-.cv-lang-item { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px; color: var(--cv-body-text); }
-.cv-lang-level { color: var(--cv-body-text); font-size: 9px; font-weight: 300; }
-.cv-summary { font-size: 10.5px; font-weight: 300; line-height: 1.65; color: var(--cv-body-text); font-style: italic; margin-bottom: 13px; flex-shrink: 0; }
-.cv-footer-safe { flex-shrink: 0; padding: 0 40px; }
+.cv-photo-hint {
+  position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+  font-size: 7px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(255,255,255,.7); white-space: nowrap; opacity: 0; transition: opacity .15s;
+  pointer-events: none;
+}
+
+/* ── BODY ── */
+.cv-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+.cv-col-main { width: 60%; padding: 22px 26px 0 48px; overflow: hidden; display: flex; flex-direction: column; }
+.cv-col-side { width: 40%; padding: 22px 48px 0 22px; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ── SECTIONS ── */
+.cv-section { margin-bottom: 14px; flex-shrink: 0; }
+.cv-section-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 9.5px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--cv-text);
+  padding-bottom: 4px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--cv-accent);
+}
+.cv-section-title::before {
+  content: '◆';
+  color: var(--cv-bullet);
+  font-size: 9px;
+  letter-spacing: 0;
+}
+.cv-section-title.bullet-diamond::before { content: '◇'; }
+.cv-section-title.bullet-spark::before { content: '★'; font-size: 8.5px; }
+.cv-section-title.bullet-arrow::before { content: '▸'; }
+
+/* ── PROFILE / SUMMARY ── */
+.cv-summary {
+  font-family: 'EB Garamond', 'Garamond', serif;
+  font-size: 13px; font-style: italic; font-weight: 400;
+  line-height: 1.45; color: var(--cv-body);
+  margin-bottom: 12px;
+}
+
+/* ── EXPERIENCE — timeline marker on the left ── */
+.cv-exp {
+  display: grid;
+  grid-template-columns: 38px 14px 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cv-exp-period {
+  text-align: center;
+  font-size: 8.5px; font-style: italic;
+  color: var(--cv-muted);
+  line-height: 1.3;
+  padding-top: 3px;
+  white-space: pre-line;
+}
+.cv-exp-marker {
+  color: var(--cv-bullet);
+  font-size: 9px;
+  text-align: center;
+  padding-top: 2px;
+}
+.cv-exp-content { min-width: 0; }
+.cv-exp-headline {
+  font-family: 'EB Garamond', 'Garamond', serif;
+  font-size: 13px; font-weight: 700;
+  line-height: 1.25; margin-bottom: 1px;
+}
+.cv-exp-headline .cv-exp-role { font-style: italic; font-weight: 500; }
+.cv-exp-headline .cv-exp-sep { color: var(--cv-muted); font-weight: 400; margin: 0 .35em; }
+.cv-exp-desc {
+  font-family: 'EB Garamond', 'Garamond', serif;
+  font-style: italic; font-size: 11px;
+  color: var(--cv-body); line-height: 1.45;
+  margin-bottom: 4px;
+}
+.cv-tags {
+  font-size: 9.5px; font-weight: 600;
+  color: var(--cv-text);
+  letter-spacing: .01em;
+  line-height: 1.4;
+}
+.cv-tag-sep { color: var(--cv-bullet); margin: 0 .35em; }
+
+/* ── SKILLS ── */
+.cv-skill-row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 12px; align-items: center;
+  margin-bottom: 8px;
+}
+.cv-skill-name { font-size: 10px; color: var(--cv-text); }
+.cv-skill-bar {
+  position: relative; height: 5px;
+  background: var(--cv-bar-empty);
+  border-radius: 0;
+}
+.cv-skill-bar-fill {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  background: var(--cv-bar-fill);
+}
+.cv-skill-group-sep { height: 6px; }
+
+/* ── PROJECTS / CERTS / EDUCATION ── */
+.cv-block { margin-bottom: 10px; }
+.cv-block-title {
+  font-family: 'EB Garamond', 'Garamond', serif;
+  font-size: 12px; font-weight: 700;
+  line-height: 1.25; margin-bottom: 1px;
+}
+.cv-block-title .cv-block-sub { font-style: italic; font-weight: 500; }
+.cv-block-title .cv-block-sep { color: var(--cv-muted); font-weight: 400; margin: 0 .35em; }
+.cv-block-meta {
+  font-family: 'EB Garamond', 'Garamond', serif;
+  font-style: italic; font-size: 10.5px;
+  color: var(--cv-body);
+  margin-bottom: 2px;
+}
+.cv-block-desc {
+  font-family: 'EB Garamond', 'Garamond', serif;
+  font-style: italic; font-size: 11px;
+  color: var(--cv-body); line-height: 1.45;
+  margin-bottom: 3px;
+}
+
+/* ── KEY ASSETS — plain bullet list ── */
+.cv-key-assets-list { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.cv-key-assets-list li {
+  font-size: 10px; color: var(--cv-body);
+  padding-left: 14px; position: relative;
+  line-height: 1.4;
+}
+.cv-key-assets-list li::before {
+  content: '◆';
+  position: absolute; left: 0; top: 0;
+  color: var(--cv-bullet);
+  font-size: 7.5px;
+}
+.cv-key-assets-client { font-size: 9.5px; font-weight: 400; color: var(--cv-muted); margin-top: -2px; font-style: italic; }
+
+/* ── LANGUAGES ── */
+.cv-lang-item { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10px; }
+.cv-lang-level { color: var(--cv-muted); font-style: italic; }
+
+/* ── FOOTER ── */
+.cv-footer-safe { flex-shrink: 0; padding: 0 48px; margin-top: auto; }
 .cv-footer-line { border-top: 1px solid var(--cv-border); }
 .cv-footer-text { padding: 6px 8px 8px; font-size: 7.5px; font-weight: 400; letter-spacing: .05em; color: var(--cv-muted); text-align: center; white-space: nowrap; }
 
@@ -293,7 +419,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .toggle-track { position: absolute; inset: 0; background: #313244; border-radius: 18px; cursor: pointer; transition: background .2s; }
 .toggle-track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: #6c7086; transition: transform .2s, background .2s; }
-.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: #cba6f7; }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: var(--ui-accent); }
 
 /* ── THEME SWITCHER ── */
 .theme-switcher { display: flex; align-items: center; gap: 6px; }
@@ -304,9 +430,10 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 }
 .theme-btn:hover { transform: scale(1.15); }
 .theme-btn.active { border-color: white; box-shadow: 0 0 0 1px rgba(255,255,255,.4); }
-.theme-btn-luxe  { background: linear-gradient(135deg, #0B0B0B 50%, #c8a24a 50%); }
-.theme-btn-cosmic { background: linear-gradient(135deg, #0a1e50 50%, #DB2777 50%); }
-.theme-btn-opera  { background: linear-gradient(135deg, #9b0f17 50%, #ea212e 50%); }
+.theme-btn-lunatech { background: linear-gradient(135deg, #1a1a1a 50%, #7c1818 50%); }
+.theme-btn-luxe     { background: linear-gradient(135deg, #0B0B0B 50%, #c8a24a 50%); }
+.theme-btn-cosmic   { background: linear-gradient(135deg, #0a1e50 50%, #DB2777 50%); }
+.theme-btn-opera    { background: linear-gradient(135deg, #9b0f17 50%, #ea212e 50%); }
 
 @page { size: A4; margin: 0; }
 @media print {
@@ -321,18 +448,25 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 <body>
 
 <header class="app-header">
-  <div class="app-logo">CV Builder <span>— Lunatech</span></div>
+  <div class="app-logo">
+    <img class="app-logo-mark" src="/assets/lunatech-logo-alone.png" alt="Lunatech">
+    <div class="app-logo-text">
+      <span class="app-logo-brand">Lunatech</span>
+      <span class="app-logo-product">CV Builder</span>
+    </div>
+  </div>
   <div class="header-actions">
     <div class="theme-switcher">
       <span class="theme-label">Theme</span>
-      <button class="theme-btn theme-btn-luxe"   title="Luxe"   onclick="setTheme('luxe',   '#0B0B0B')"></button>
-      <button class="theme-btn theme-btn-cosmic active" title="Cosmic" onclick="setTheme('cosmic', '#0a1e50')"></button>
-      <button class="theme-btn theme-btn-opera"  title="Opera"  onclick="setTheme('opera',  '#9b0f17')"></button>
+      <button class="theme-btn theme-btn-lunatech active" title="Lunatech" onclick="setTheme('lunatech')"></button>
+      <button class="theme-btn theme-btn-luxe"            title="Luxe"     onclick="setTheme('luxe')"></button>
+      <button class="theme-btn theme-btn-cosmic"          title="Cosmic"   onclick="setTheme('cosmic')"></button>
+      <button class="theme-btn theme-btn-opera"           title="Opera"    onclick="setTheme('opera')"></button>
     </div>
     <div class="toggle-wrap">
       <span class="toggle-label">Profile photo</span>
       <label class="toggle-switch">
-        <input type="checkbox" id="toggle-photo" checked onchange="togglePhoto()">
+        <input type="checkbox" id="toggle-photo" onchange="togglePhoto()">
         <span class="toggle-track"></span>
       </label>
     </div>
@@ -394,8 +528,14 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 var YAML_DEFAULT = [
 '# ── NAME LASTNAME ROLE ───────────────────────',
 'name: Michaël Strauss',
-'title: Senior Software Engineer',
+'title: Senior Software Engineer · Scala & Blockchain',
 'lunatech_since: "2008"',
+'years_experience: "20"',
+'',
+'# ── HEADER CONTACTS (right side) ─────────────',
+'email: info@lunatech.fr',
+'availability: "Available now"',
+'location: Île-de-France',
 '',
 '# ── KEY ASSETS CAPSULE ───────────────────────',
 'client_name: Client',
@@ -530,19 +670,19 @@ var YAML_DEFAULT = [
 
 var CSS_DEFAULT = [
 '/* ============================',
-'   TEMPLATE VARIABLES',
+'   TEMPLATE VARIABLES (lunatech)',
 '   ============================ */',
 '#cv-root {',
-'  --cv-accent:       #1a2744;',
-'  --cv-accent-light: #e8edf5;',
-'  --cv-key-bg:       #2e4a7a;',
-'  --cv-bar-fill:     #1a2744;',
-'  --cv-bar-empty:    #e2e6ee;',
-'  --cv-text:         #1c1c1e;',
-'  --cv-muted:        #6b6b72;',
-'  --cv-border:       #dde0e8;',
-'  --cv-tag-bg:       #e8edf5;',
-'  --cv-tag-text:     #1a2744;',
+'  --cv-accent:       #7c1818;',
+'  --cv-accent-light: #f4e9e9;',
+'  --cv-header-bg:    #1a1a1a;',
+'  --cv-bar-fill:     #7c1818;',
+'  --cv-bar-empty:    #f0d8d8;',
+'  --cv-text:         #1a1a1a;',
+'  --cv-muted:        #6b6b6b;',
+'  --cv-body:         #2a2a2a;',
+'  --cv-border:       #d8d4d0;',
+'  --cv-bullet:       #7c1818;',
 '}',
 '',
 '/* ============================',
@@ -670,82 +810,141 @@ function attachEditor(textareaId, highlightId, gutterId, wrapId, highlightFn, on
 }
 
 // ══════════════════════════════════════════════════════════
-// SKILL BARS
-// ══════════════════════════════════════════════════════════
-var TOTAL_SEGS = 5;
-function makeBarRow(name, level) {
-  var segs = '';
-  for (var i = 1; i <= TOTAL_SEGS; i++)
-    segs += '<div class="cv-skill-bar-seg' + (i <= level ? ' filled' : '') + '"></div>';
-  return '<div class="cv-skill-bar-row"><div class="cv-skill-bar-name">' + name + '</div><div class="cv-skill-bar-track">' + segs + '</div></div>';
-}
-
-// ══════════════════════════════════════════════════════════
 // RENDER CV
 // ══════════════════════════════════════════════════════════
 function renderCV(data) {
   var root = document.getElementById('cv-root');
-  var mailtoSubject = encodeURIComponent('Hi Lunatech - we are interested in ' + (data.name || 'this') + ' profile');
-  var contactItems = [
-    '<a class="cv-contact-item email" href="mailto:info@lunatech.com?subject=' + mailtoSubject + '" style="color:inherit;text-decoration:none;">info@lunatech.com</a>',
-    data.lunatech_since ? '<span class="cv-contact-item since">Lunatech since ' + data.lunatech_since + '</span>' : ''
+
+  // ── Header (left) ──
+  var subline = data.title || '';
+  var sinceLine = '';
+  if (data.lunatech_since) {
+    sinceLine = (data.years_experience ? data.years_experience + ' years of experience · ' : '') +
+                'Lunatech — since ' + data.lunatech_since;
+  }
+
+  // ── Header (right contacts) ──
+  var email = data.email || 'info@lunatech.fr';
+  var headerContacts = [
+    '<span class="cv-contact"><i class="cv-contact-icon">✉</i>' + email + '</span>',
+    data.availability ? '<span class="cv-contact strong"><i class="cv-contact-icon">◎</i>Available : ' + data.availability + '</span>' : '',
+    data.location    ? '<span class="cv-contact"><i class="cv-contact-icon">⌖</i>' + data.location + '</span>' : ''
   ].filter(Boolean).join('');
 
-  var assets = data.key_assets || [];
-  var clientName = data.client_name || 'Client';
-  var keyAssetsBlock = assets.length ? (
-    '<div class="cv-key-assets"><div class="cv-key-assets-label">Key Assets for</div><div class="cv-key-assets-client">' + clientName + '</div><ul class="cv-key-assets-list">' +
-    assets.map(function(a){return '<li>'+a+'</li>';}).join('') + '</ul></div>') : '';
-
-  var experiences = (data.experiences||[]).map(function(exp){
-    return '<div class="cv-exp"><div class="cv-exp-header"><span class="cv-exp-company">'+(exp.company||'')+'</span><span class="cv-exp-period">'+(exp.period||'')+'</span></div><div class="cv-exp-role">'+(exp.role||'')+'</div><div class="cv-exp-desc">'+(exp.description||'')+'</div>'+(exp.tags?'<div class="cv-exp-tags">'+exp.tags.map(function(t){return '<span class="cv-tag">'+t+'</span>';}).join('')+'</div>':'')+'</div>';
+  // ── Experience timeline ──
+  function tagsHtml(tags) {
+    if (!tags || !tags.length) return '';
+    return '<div class="cv-tags">' +
+      tags.map(esc).join('<span class="cv-tag-sep">·</span>') +
+    '</div>';
+  }
+  var experiences = (data.experiences||[]).map(function(exp) {
+    var headline = '<span>' + (exp.company||'') + '</span>' +
+                   (exp.role ? '<span class="cv-exp-sep">·</span><span class="cv-exp-role">' + exp.role + '</span>' : '');
+    return '<div class="cv-exp">' +
+             '<div class="cv-exp-period">' + (exp.period || '') + '</div>' +
+             '<div class="cv-exp-marker">◆</div>' +
+             '<div class="cv-exp-content">' +
+               '<div class="cv-exp-headline">' + headline + '</div>' +
+               (exp.description ? '<div class="cv-exp-desc">' + exp.description + '</div>' : '') +
+               tagsHtml(exp.tags) +
+             '</div>' +
+           '</div>';
   }).join('');
 
+  // ── Skills (single-bar) ──
   var skillsHtml = '';
-  (data.skills||[]).forEach(function(g,gi){
-    var rows = (g.items||[]).map(function(item){
-      return makeBarRow(typeof item==='string'?item:item.name, typeof item==='string'?3:(item.level||3));
-    }).join('');
-    skillsHtml += '<div class="cv-skill-group-bars">'+rows+'</div>';
-    if (gi < (data.skills||[]).length-1) skillsHtml += '<div class="cv-skill-group-sep"></div>';
+  (data.skills||[]).forEach(function(g, gi) {
+    (g.items||[]).forEach(function(item) {
+      var name  = typeof item === 'string' ? item : item.name;
+      var level = typeof item === 'string' ? 3 : (item.level || 3);
+      var pct = Math.max(0, Math.min(5, level)) / 5 * 100;
+      skillsHtml += '<div class="cv-skill-row">' +
+                      '<div class="cv-skill-name">' + name + '</div>' +
+                      '<div class="cv-skill-bar"><div class="cv-skill-bar-fill" style="width:' + pct + '%"></div></div>' +
+                    '</div>';
+    });
+    if (gi < (data.skills||[]).length - 1) skillsHtml += '<div class="cv-skill-group-sep"></div>';
   });
 
-  var education = (data.education||[]).map(function(e){
-    return '<div class="cv-cert"><div class="cv-cert-badge">'+(e.year||'')+'</div><div><div class="cv-cert-name">'+(e.school||'')+'</div><div class="cv-cert-issuer">'+(e.degree||'')+'</div></div></div>';
+  // ── Personal projects ──
+  var projects = (data.projects||[]).map(function(p) {
+    var headline = '<span>' + (p.name||'') + '</span>' +
+                   (p.subtitle ? '<span class="cv-block-sep">—</span><span class="cv-block-sub">' + p.subtitle + '</span>' : '');
+    return '<div class="cv-block">' +
+             '<div class="cv-block-title">' + headline + '</div>' +
+             (p.description ? '<div class="cv-block-desc">' + p.description + '</div>' : '') +
+             tagsHtml(p.tags) +
+           '</div>';
   }).join('');
 
-  var certifications = (data.certifications||[]).map(function(c){
-    return '<div class="cv-cert"><div class="cv-cert-badge">'+(c.year||'')+'</div><div><div class="cv-cert-name">'+(c.name||'')+'</div><div class="cv-cert-issuer">'+(c.issuer||'')+'</div></div></div>';
+  // ── Certifications ──
+  var certifications = (data.certifications||[]).map(function(c) {
+    var meta = [c.subtitle, c.issuer, c.year].filter(Boolean).join(' · ');
+    return '<div class="cv-block">' +
+             '<div class="cv-block-title">' + (c.name||'') + '</div>' +
+             (meta ? '<div class="cv-block-meta">' + meta + '</div>' : '') +
+           '</div>';
   }).join('');
 
-  var projects = (data.projects||[]).map(function(p){
-    return '<div class="cv-project"><div class="cv-project-header"><span class="cv-project-name">'+(p.name||'')+'</span>'+(p.link?'<a class="cv-project-link" href="https://'+p.link+'">'+p.link+'</a>':'')+'</div><div class="cv-project-desc">'+(p.description||'')+'</div>'+(p.tags?'<div class="cv-project-tags">'+p.tags.map(function(t){return '<span class="cv-tag">'+t+'</span>';}).join('')+'</div>':'')+'</div>';
+  // ── Education ──
+  var education = (data.education||[]).map(function(e) {
+    var title = e.degree || e.school || '';
+    var metaParts = [];
+    if (e.school && e.school !== title) metaParts.push(e.school);
+    if (e.year) metaParts.push(e.year);
+    var meta = metaParts.join(' · ');
+    return '<div class="cv-block">' +
+             '<div class="cv-block-title">' + title + '</div>' +
+             (meta ? '<div class="cv-block-meta">' + meta + '</div>' : '') +
+           '</div>';
   }).join('');
 
-  var languages = (data.languages||[]).map(function(l){
-    return '<div class="cv-lang-item"><span>'+l.language+'</span><span class="cv-lang-level">'+l.level+'</span></div>';
+  // ── Key assets ──
+  var assets = data.key_assets || [];
+  var keyAssetsHtml = assets.length
+    ? '<ul class="cv-key-assets-list">' + assets.map(function(a){return '<li>' + a + '</li>';}).join('') + '</ul>'
+    : '';
+
+  // ── Languages ──
+  var languages = (data.languages||[]).map(function(l) {
+    return '<div class="cv-lang-item"><span>' + (l.language||'') + '</span><span class="cv-lang-level">' + (l.level||'') + '</span></div>';
   }).join('');
 
   var footer = 'Lunatech France &nbsp;&nbsp;&#124;&nbsp;&nbsp; 3 rue de la Galmy 77700 Chessy, France &nbsp;&nbsp;&#124;&nbsp;&nbsp; +33 1 82 88 56 64 &nbsp;&nbsp;&#124;&nbsp;&nbsp; info@lunatech.fr';
 
   root.innerHTML =
-    '<div class="cv-photo-wrap" id="cv-photo-wrap" title="Click to change photo"><div class="cv-photo-circle" id="cv-photo-circle"><svg class="cv-photo-placeholder" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div><span class="cv-photo-hint">Change photo</span></div>' +
-    '<div class="cv-header"><svg class="cv-header-bg" viewBox="0 0 794 155" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">' +
-      '<polygon id="cv-header-polygon-shadow" points="0,20 794,20 794,135 0,175" fill="#c8a24a" opacity="0.85"/>' +
-      '<polygon id="cv-header-polygon" points="0,0 794,0 794,105 0,155" fill="#0a1e50"/>' +
-    '</svg><div class="cv-header-content"><div class="cv-name">'+(data.name||'First Last')+'</div><div class="cv-title">'+(data.title||'')+'</div><div class="cv-contacts">'+contactItems+'</div></div></div>' +
-    '<div class="cv-body"><div class="cv-col-main">' +
-      (data.summary?'<div class="cv-summary">'+data.summary+'</div>':'') +
-      '<div class="cv-section"><div class="cv-section-title">Professional Experience</div>'+experiences+'</div>' +
-      (projects?'<div class="cv-section"><div class="cv-section-title">Personal Projects &amp; Interests</div>'+projects+'</div>':'') +
-    '</div><div class="cv-col-side">' +
-      '<div style="height:82px;flex-shrink:0;" id="cv-side-spacer"></div>' +
-      keyAssetsBlock +
-      (skillsHtml?'<div class="cv-section"><div class="cv-section-title">Skills</div><div class="cv-skills-block">'+skillsHtml+'</div></div>':'') +
-      ((education||certifications)?'<div class="cv-section"><div class="cv-section-title">Education &amp; Certifications</div>'+education+certifications+'</div>':'') +
-      (languages?'<div class="cv-section"><div class="cv-section-title">Languages</div>'+languages+'</div>':'') +
-    '</div></div>' +
-    '<div class="cv-footer-safe"><div class="cv-footer-line"></div><div class="cv-footer-text">'+footer+'</div></div>';
+    '<div class="cv-header">' +
+      '<div class="cv-header-row">' +
+        '<div class="cv-header-left">' +
+          '<div class="cv-name">' + (data.name||'First Last') + '</div>' +
+          (subline   ? '<div class="cv-subline">' + subline + '</div>' : '') +
+          (sinceLine ? '<div class="cv-since">' + sinceLine + '</div>' : '') +
+        '</div>' +
+        '<div class="cv-header-right">' + headerContacts + '</div>' +
+      '</div>' +
+      '<div class="cv-photo-wrap" id="cv-photo-wrap" title="Click to change photo">' +
+        '<div class="cv-photo-circle" id="cv-photo-circle">' +
+          '<svg class="cv-photo-placeholder" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>' +
+        '</div>' +
+        '<span class="cv-photo-hint">Change photo</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="cv-body">' +
+      '<div class="cv-col-main">' +
+        (data.summary ? '<div class="cv-section"><div class="cv-section-title">Profile</div><div class="cv-summary">' + data.summary + '</div></div>' : '') +
+        (experiences ? '<div class="cv-section"><div class="cv-section-title">Experience</div>' + experiences + '</div>' : '') +
+      '</div>' +
+      '<div class="cv-col-side">' +
+        (skillsHtml ? '<div class="cv-section"><div class="cv-section-title">Skills</div>' + skillsHtml + '</div>' : '') +
+        (projects ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Personal Project</div>' + projects + '</div>' : '') +
+        (certifications ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Certifications</div>' + certifications + '</div>' : '') +
+        (education ? '<div class="cv-section"><div class="cv-section-title bullet-diamond">Education</div>' + education + '</div>' : '') +
+        (keyAssetsHtml ? '<div class="cv-section"><div class="cv-section-title bullet-arrow">Key Assets' + (data.client_name ? ' for ' + data.client_name : '') + '</div>' + keyAssetsHtml + '</div>' : '') +
+        (languages ? '<div class="cv-section"><div class="cv-section-title">Languages</div>' + languages + '</div>' : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="cv-footer-safe"><div class="cv-footer-line"></div><div class="cv-footer-text">' + footer + '</div></div>';
 
   if (currentPhotoDataUrl) applyPhoto(currentPhotoDataUrl);
   togglePhoto();
@@ -754,57 +953,45 @@ function renderCV(data) {
 // ══════════════════════════════════════════════════════════
 // THEME SWITCHER
 // ══════════════════════════════════════════════════════════
-var THEME_SHADOW_COLORS = {
-  luxe:   '#c8a24a',
-  cosmic: '#DB2777',
-  opera:  '#ea212e'
-};
-
-// UI palette per theme
+// UI palette per CV theme — drives the builder chrome
 var THEME_UI = {
+  lunatech: {
+    bg: '#0f0f10', surface: '#1a1a1a', border: '#2e2e32',
+    accent: '#c8102e', text: '#ece8e4', muted: '#8a8580', tab: '#c8102e'
+  },
   luxe: {
     bg: '#0a0905', surface: '#16130c', border: '#2e2a1e',
     accent: '#c8a24a', text: '#f0ead8', muted: '#7a7060', tab: '#c8a24a'
   },
   cosmic: {
-    bg: '#0f0f10', surface: '#1a1a1c', border: '#2e2e32',
-    accent: '#c8b89a', text: '#e8e4de', muted: '#6b6860', tab: '#cba6f7'
+    bg: '#0a0a14', surface: '#13131e', border: '#22223a',
+    accent: '#DB2777', text: '#e8e4f0', muted: '#7a7592', tab: '#DB2777'
   },
   opera: {
     bg: '#100808', surface: '#1c1010', border: '#321818',
-    accent: '#b0a29c', text: '#ede8e6', muted: '#7a6a68', tab: '#ea212e'
+    accent: '#ea212e', text: '#ede8e6', muted: '#7a6a68', tab: '#ea212e'
   }
 };
 
-var currentTheme = 'cosmic';
+var currentTheme = 'lunatech';
 
-function setTheme(theme, headerColor) {
+function setTheme(theme) {
   currentTheme = theme;
 
   // ── CV template theme ──
   var root = document.getElementById('cv-root');
   if (root) root.setAttribute('data-theme', theme);
 
-  var poly = document.getElementById('cv-header-polygon');
-  if (poly) poly.setAttribute('fill', headerColor);
-
-  var shadow = document.getElementById('cv-header-polygon-shadow');
-  if (shadow) shadow.setAttribute('fill', THEME_SHADOW_COLORS[theme]);
-
-  var photoBg = { luxe: '#d4c9a8', cosmic: '#b8c8de', opera: '#d4b0b0' };
-  var circle = document.querySelector('.cv-photo-circle');
-  if (circle && !circle.querySelector('img')) circle.style.background = photoBg[theme];
-
   // ── UI palette ──
-  var ui = THEME_UI[theme];
+  var ui = THEME_UI[theme] || THEME_UI.lunatech;
   var docRoot = document.documentElement;
   docRoot.style.setProperty('--ui-bg',         ui.bg);
-  docRoot.style.setProperty('--ui-surface',     ui.surface);
-  docRoot.style.setProperty('--ui-border',      ui.border);
-  docRoot.style.setProperty('--ui-accent',      ui.accent);
-  docRoot.style.setProperty('--ui-text',        ui.text);
-  docRoot.style.setProperty('--ui-muted',       ui.muted);
-  docRoot.style.setProperty('--ui-tab-active',  ui.tab);
+  docRoot.style.setProperty('--ui-surface',    ui.surface);
+  docRoot.style.setProperty('--ui-border',     ui.border);
+  docRoot.style.setProperty('--ui-accent',     ui.accent);
+  docRoot.style.setProperty('--ui-text',       ui.text);
+  docRoot.style.setProperty('--ui-muted',      ui.muted);
+  docRoot.style.setProperty('--ui-tab-active', ui.tab);
 
   // ── Active dot ──
   document.querySelectorAll('.theme-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -815,14 +1002,12 @@ function setTheme(theme, headerColor) {
 // ══════════════════════════════════════════════════════════
 // PHOTO TOGGLE
 // ══════════════════════════════════════════════════════════
-var photoVisible = true;
+var photoVisible = false;
 
 function togglePhoto() {
   photoVisible = document.getElementById('toggle-photo').checked;
   var wrap = document.getElementById('cv-photo-wrap');
-  var spacer = document.getElementById('cv-side-spacer');
   if (wrap) wrap.style.display = photoVisible ? '' : 'none';
-  if (spacer) spacer.style.height = photoVisible ? '82px' : '16px';
 }
 var currentPhotoDataUrl = null;
 var photoInput = document.createElement('input');
@@ -1050,7 +1235,7 @@ window.addEventListener('resize', scalePreview);
 // ══════════════════════════════════════════════════════════
 attachEditor('yaml-editor', 'hl-yaml', 'gutter-yaml', 'wrap-yaml', highlightYaml, updateCV);
 attachEditor('css-editor',  'hl-css',  'gutter-css',  'wrap-css',  highlightCss,  updateCSS);
-setTheme('cosmic', '#0a1e50');
+setTheme('lunatech');
 scalePreview();
 refreshStatus();
 refreshCvList();

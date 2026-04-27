@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn render_works_for_all_themes() {
         let yaml = "name: Test\ntitle: Engineer\nlunatech_since: \"2020\"";
-        for theme in ["cosmic", "luxe", "opera"] {
+        for theme in ["lunatech", "cosmic", "luxe", "opera"] {
             let bytes = render(yaml, theme).unwrap_or_else(|e| panic!("theme {theme}: {e}"));
             assert!(bytes.starts_with(b"%PDF-"), "theme {theme} did not produce a PDF");
         }

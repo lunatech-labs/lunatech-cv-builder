@@ -1,0 +1,192 @@
+# ── NAME LASTNAME ROLE ───────────────────────
+name: Camille Dubois
+title: Cloud & DevOps Engineer
+lunatech_since: "2022"
+
+# ── KEY ASSETS CAPSULE ───────────────────────
+client_name: Client
+key_assets:
+  - Cloud-native architectures on AWS and GCP
+  - Kubernetes platform engineering and FinOps
+  - CI/CD pipelines, GitOps and developer experience
+  - Site Reliability Engineering on production-critical workloads
+
+# ── SUMMARY ──────────────────────────────────
+summary: >
+  Camille is a Cloud & DevOps Engineer specializing in
+  Kubernetes platform engineering, CI/CD modernization and
+  cost optimization. She has delivered cloud migrations,
+  GitOps rollouts and SRE practices across the banking,
+  retail and SaaS industries. She combines a strong infra
+  background with a developer-experience mindset and uses
+  AI tooling to accelerate platform documentation and
+  toil reduction.
+
+# ── PROFESSIONAL EXPERIENCE ──────────────────
+experiences:
+  - company: NeoBank Solutions
+    role: Lead DevOps Engineer
+    period: "Sep 2025 - present"
+    description: >
+      Context: NeoBank Solutions is a French neobank operating
+      a microservices banking core on AWS EKS, serving 1.2M
+      retail customers under PSD2 and DORA constraints.
+
+      Responsibilities: technical lead of a 4-engineer platform
+      squad, owning the internal developer platform, the GitOps
+      delivery chain and the on-call rotation handoffs with the
+      client SRE team. Direct interaction with the Head of
+      Platform and the security officer on compliance topics.
+
+      Key contributions: migrated 60+ services from Jenkins to
+      ArgoCD with progressive delivery via Argo Rollouts, cutting
+      mean deploy lead time from 45 minutes to 6 minutes; rolled
+      out a Backstage portal that became the single entry point
+      for service ownership and runbooks; introduced Karpenter
+      on EKS, reducing monthly compute spend by 28% with no SLO
+      regression.
+
+      Source of pride: the Karpenter rollout, which closed a
+      year-long FinOps gap that two previous teams had attempted.
+    tags: [AWS, EKS, ArgoCD, Terraform, Backstage, Karpenter, Go]
+
+  - company: Maison Lefèvre Retail
+    role: Cloud Engineer
+    period: "Mar 2024 - Aug 2025"
+    description: >
+      Context: Maison Lefèvre is a French retail group with a
+      300-store network, modernizing its e-commerce stack for
+      peak Black Friday traffic.
+
+      Responsibilities: cloud architect and hands-on engineer
+      inside a 6-person delivery team, working closely with the
+      e-commerce product owner and the in-house network team.
+
+      Key contributions: designed and implemented the multi-region
+      GCP landing zone (Terraform, IAM, VPC service controls);
+      built the autoscaling strategy on GKE that absorbed a 7x
+      traffic peak on Black Friday with zero customer-visible
+      incidents; co-led the cutover weekend from on-prem to GCP
+      for the catalogue service.
+
+      Source of pride: standing in the war room on Black Friday
+      and watching dashboards stay green under the highest load
+      the platform had ever served.
+    tags: [GCP, GKE, Terraform, Cloud Run, Pub/Sub, Python]
+
+  - company: Helios SaaS Platform
+    role: Site Reliability Engineer
+    period: "Jan 2023 - Feb 2024"
+    description: >
+      Context: Helios is a B2B SaaS platform for HR analytics
+      with a multi-tenant Kubernetes architecture on AWS,
+      serving 80 enterprise customers under strict SLA contracts.
+
+      Responsibilities: SRE rotation on a 5-engineer team,
+      ownership of the observability stack and of the post-incident
+      review process, regular sync with the customer success team
+      on customer-impacting incidents.
+
+      Key contributions: rebuilt the Prometheus / Grafana / Loki
+      stack to support 4x the previous metric volume without
+      cost increase; introduced SLO-based alerting that reduced
+      pager noise by 65%; ran 12 blameless postmortems and turned
+      recurring patterns into a hardening backlog adopted by
+      the product team.
+
+      Source of pride: turning the on-call rotation from a feared
+      shift into a routine one, with measurable drops in alert
+      fatigue.
+    tags: [AWS, Kubernetes, Prometheus, Grafana, Loki, Python]
+
+  - company: Freelance - Atelier Verre & Lumière
+    role: DevOps Consultant
+    period: "Jun 2022 - Dec 2022"
+    description: >
+      Context: short freelance mission with a small art studio
+      that needed a reliable hosting setup for its online shop
+      and booking system.
+
+      Responsibilities: sole engineer, direct contact with the
+      studio owner, covering needs gathering, build and handover.
+
+      Key contributions: containerized the legacy PHP shop and
+      deployed it on a managed Kubernetes cluster with automated
+      backups and TLS; documented the operations playbook so the
+      owner could perform routine restarts and updates without
+      external help.
+
+      Source of pride: leaving the client fully autonomous on
+      day-to-day operations, with a runbook they still use today.
+    tags: [Docker, Kubernetes, NGINX, Let's Encrypt, Bash]
+
+# ── PERSONAL PROJECTS & INTERESTS ────────────
+projects:
+  - name: HomeOps Lab
+    description: >
+      Self-hosted Kubernetes lab on a 3-node cluster used as a
+      personal sandbox for GitOps experiments, eBPF observability
+      and AI-assisted infrastructure documentation. Source of
+      ideas later applied on client missions.
+    tags: [k3s, FluxCD, Cilium, Tailscale]
+
+  - name: SLO Recipes
+    description: >
+      Open source repository of reusable SLO templates and
+      Grafana dashboards for common SaaS workloads. Used as
+      a reference on several client missions.
+    tags: [Prometheus, Grafana, YAML]
+
+# ── SKILLS ───────────────────────────────────
+skills:
+  - group: Cloud Platforms
+    items:
+      - { name: AWS,        level: 5 }
+      - { name: GCP,        level: 4 }
+      - { name: Azure,      level: 2 }
+  - group: Platform & Orchestration
+    items:
+      - { name: Kubernetes, level: 5 }
+      - { name: Terraform,  level: 5 }
+      - { name: ArgoCD,     level: 4 }
+      - { name: Helm,       level: 4 }
+  - group: Languages
+    items:
+      - { name: Go,         level: 3 }
+      - { name: Python,     level: 4 }
+      - { name: Bash,       level: 4 }
+  - group: Observability
+    items:
+      - { name: Prometheus, level: 5 }
+      - { name: Grafana,    level: 5 }
+      - { name: Loki,       level: 4 }
+      - { name: OpenTelemetry, level: 3 }
+
+# ── EDUCATION & CERTIFICATIONS ───────────────
+education:
+  - school: INSA Lyon
+    degree: "Diplôme d'ingénieur, Informatique et Réseaux"
+    year: "2022"
+  - school: Université de Montréal (semestre d'échange)
+    degree: "Distributed Systems"
+    year: "2021"
+
+certifications:
+  - name: Certified Kubernetes Administrator (CKA)
+    issuer: CNCF / Linux Foundation
+    year: "2023"
+  - name: AWS Certified Solutions Architect - Professional
+    issuer: Amazon Web Services
+    year: "2024"
+  - name: HashiCorp Certified Terraform Associate
+    issuer: HashiCorp
+    year: "2023"
+
+# ── LANGUAGES ────────────────────────────────
+languages:
+  - language: French
+    level: Native
+  - language: English
+    level: Fluent / Professional (C1)
+  - language: Spanish
+    level: Conversational (B1)

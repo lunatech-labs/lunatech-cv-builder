@@ -355,7 +355,7 @@ async fn pdf_renders_each_theme(pool: PgPool) {
     let app = router_with(pool);
     let id = create(&app, SAMPLE_YAML).await;
 
-    for theme in ["cosmic", "luxe", "opera"] {
+    for theme in ["lunatech", "cosmic", "luxe", "opera"] {
         let uri = format!("/cvs/{id}/pdf?theme={theme}");
         let resp = app.clone().oneshot(empty_request("GET", &uri)).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK, "theme {theme} failed");

@@ -25,6 +25,7 @@ pub fn api_router(db: Db) -> Router {
 pub fn app(db: Db, frontend_dir: &str) -> Router {
     Router::new()
         .nest("/api", api_router(db))
+        .nest_service("/assets", ServeDir::new("assets"))
         .fallback_service(
             ServeDir::new(frontend_dir)
                 .not_found_service(ServeFile::new(format!("{frontend_dir}/index.html"))),

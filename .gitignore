@@ -1,0 +1,30 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Local secrets / env overrides
+.env
+.env.local
+
+# SQLite leftover from the earlier prototype (project now uses Postgres)
+*.db
+*.db-shm
+*.db-wal
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Debug dumps from CV_DEBUG_TYPST
+/tmp/cv-builder-debug.typ
+
+# Postgres backups / dumps
+*.dump
+*.sql.gz

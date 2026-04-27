@@ -1,0 +1,5 @@
+# Defaults applied to every `cargo` invocation in this workspace.
+# - DATABASE_URL feeds both the runtime app and `#[sqlx::test]` tests
+#   (the latter creates its own scratch databases on the same cluster).
+[env]
+DATABASE_URL = "postgres://cvbuilder:cvbuilder@localhost:5433/cvbuilder"

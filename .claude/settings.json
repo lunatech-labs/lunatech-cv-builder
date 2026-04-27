@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build *)",
+      "Bash(pg_isready -h localhost -p 5433 -U cvbuilder)",
+      "Bash(docker exec *)",
+      "Bash(CV_DEBUG_TYPST=1 cargo run)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)",
+      "Bash(curl -sI http://127.0.0.1:3000/assets/lunatech-logo-alone.png)",
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)",
+      "Bash(cargo run *)",
+      "Bash(curl -s \"http://127.0.0.1:3000/api/cvs/f24b678a-a87e-4331-ac54-5d8bb352461e/pdf?theme=lunatech\" -o /tmp/cv-lunatech-v2.pdf)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

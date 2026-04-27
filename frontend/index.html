@@ -525,148 +525,8 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 // ══════════════════════════════════════════════════════════
 // DEFAULT CONTENT
 // ══════════════════════════════════════════════════════════
-var YAML_DEFAULT = [
-'# ── NAME LASTNAME ROLE ───────────────────────',
-'name: Michaël Strauss',
-'title: Senior Software Engineer · Scala & Blockchain',
-'lunatech_since: "2008"',
-'years_experience: "20"',
-'',
-'# ── HEADER CONTACTS (right side) ─────────────',
-'email: info@lunatech.fr',
-'availability: "Available now"',
-'location: Île-de-France',
-'',
-'# ── KEY ASSETS CAPSULE ───────────────────────',
-'client_name: Client',
-'key_assets:',
-'  - 20+ years in software engineering & consulting',
-'  - Full-stack from backend (Scala/Java) to React',
-'  - Blockchain & distributed systems expertise',
-'  - AI-augmented development (Copilot, Claude, Cline)',
-'  - Conference speaker (Devoxx, Riviera Dev, LunaConf)',
-'',
-'# ── SUMMARY ──────────────────────────────────',
-'summary: >',
-'  Michaël has over 20 years of experience as a software engineer',
-'  and consultant, working on evolutionary maintenance, production',
-'  and technical migration across finance, insurance and',
-'  cryptocurrency. Speaker at Devoxx, Riviera Dev and LunaConf.',
-'',
-'# ── PROFESSIONAL EXPERIENCE ──────────────────',
-'experiences:',
-'  - company: DARVA - Sinapps IRD',
-'    role: Senior Software Engineer',
-'    period: "Sep 2023 — present"',
-'    description: >',
-'      Home insurance claims management. New features, technical',
-'      evolutions & legacy refactoring. Intensive use of AI for',
-'      design, refactoring and code review.',
-'    tags: [Scala, Play Framework, MongoDB, React, SAFe, Scrum, Claude, Copilot]',
-'',
-'  - company: IOG - Client Blockchain',
-'    role: Software Engineer',
-'    period: "May 2021 — Sep 2023"',
-'    description: >',
-'      Blockchain project evolving from an Ethereum client',
-'      (London hardfork) to Proof-of-Stake, with a sidechain',
-'      mechanism for the Cardano blockchain.',
-'    tags: [Scala, Cats Effects, fs2, Akka, SAFe, Scrum]',
-'',
-'  - company: Horizon Software',
-'    role: Senior Software Engineer',
-'    period: "May 2013 — May 2021"',
-'    description: >',
-'      Algo Trader framework support. Implementation of custom',
-'      strategies including warrant arbitrage, order batching',
-'      and hedging.',
-'    tags: [Java, Scala, Scrum]',
-'',
-'  - company: SGCIB (Société Générale)',
-'    role: Software Engineer',
-'    period: "Oct 2009 — Apr 2013"',
-'    description: >',
-'      Architectural evolution of the data access layer to unify',
-'      workflows and integrate dividend options products.',
-'    tags: [Java, EJB, Scrum]',
-'',
-'  - company: Millennium Capital Partners',
-'    role: Software Engineer',
-'    period: "Jan 2009 — Sep 2009"',
-'    description: >',
-'      Retrieval, transformation and aggregation of market data',
-'      for arbitrage algorithms.',
-'    tags: [C++, Matlab, Shell]',
-'',
-'# ── PERSONAL PROJECTS & INTERESTS ────────────',
-'projects:',
-'  - name: IA / Vibe Coding',
-'    description: >',
-'      Local deployment of LLMs (Qwen, Gemma) for architectural',
-'      choices and refactoring. Image generation (SDXL, Flux).',
-'    tags: [Mistral Vibe, Cline, ComfyUI, Qwen3, llama.cpp, vLLM]',
-'  - name: Homelab / NAS',
-'    description: >',
-'      Management of a TrueNAS server (ZFS) and',
-'      Proxmox/Opnsense lab.',
-'    tags: [TrueNAS, ZFS, Proxmox, Opnsense, Gitea, Nginx]',
-'  - name: Web Dev & Hobbies',
-'    description: >',
-'      Static site generator (Hugo) for photo galleries and an',
-'      imageboard in Rust. Passionate photographer & speedcubing.',
-'    tags: [Hugo, Rust]',
-'',
-'# ── SKILLS ───────────────────────────────────',
-'skills:',
-'  - group: Languages',
-'    items:',
-'      - { name: Scala,  level: 5 }',
-'      - { name: Java,   level: 5 }',
-'      - { name: Rust,   level: 3 }',
-'      - { name: C++,    level: 3 }',
-'  - group: Frameworks',
-'    items:',
-'      - { name: Akka,         level: 5 }',
-'      - { name: Cats Effects, level: 4 }',
-'      - { name: fs2,          level: 4 }',
-'      - { name: Play,         level: 4 }',
-'  - group: Infrastructure',
-'    items:',
-'      - { name: Docker,   level: 4 }',
-'      - { name: CI/CD,    level: 4 }',
-'      - { name: Nix,      level: 3 }',
-'      - { name: Linux,    level: 5 }',
-'  - group: AI Tools',
-'    items:',
-'      - { name: Copilot, level: 5 }',
-'      - { name: Claude,  level: 5 }',
-'      - { name: Cline,   level: 4 }',
-'      - { name: Gemini,  level: 3 }',
-'',
-'# ── EDUCATION & CERTIFICATIONS ───────────────',
-'education:',
-'  - school: EPITA, le Kremlin-Bicêtre',
-'    degree: Engineering Degree, SCIA Spec',
-'    year: "2001"',
-'',
-'certifications:',
-'  - name: Professional Scrum Master 1 (PSM 1)',
-'    issuer: scrum.org',
-'    year: "2021"',
-'  - name: Professional Scrum Product Owner 1 (PSPO 1)',
-'    issuer: scrum.org',
-'    year: "2020"',
-'  - name: Functional Programming in Scala',
-'    issuer: Coursera',
-'    year: "2013"',
-'',
-'# ── LANGUAGES ────────────────────────────────',
-'languages:',
-'  - language: French',
-'    level: Native',
-'  - language: English',
-'    level: Fluent / Professional'
-].join('\n');
+// Loaded from /assets/cv-empty.yaml at init.
+var YAML_DEFAULT = '';
 
 var CSS_DEFAULT = [
 '/* ============================',
@@ -1233,12 +1093,18 @@ window.addEventListener('resize', scalePreview);
 // ══════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════
-attachEditor('yaml-editor', 'hl-yaml', 'gutter-yaml', 'wrap-yaml', highlightYaml, updateCV);
-attachEditor('css-editor',  'hl-css',  'gutter-css',  'wrap-css',  highlightCss,  updateCSS);
-setTheme('lunatech');
-scalePreview();
-refreshStatus();
-refreshCvList();
+(async function init() {
+  try {
+    var res = await fetch('/assets/cv-empty.yaml');
+    if (res.ok) YAML_DEFAULT = await res.text();
+  } catch (_) {}
+  attachEditor('yaml-editor', 'hl-yaml', 'gutter-yaml', 'wrap-yaml', highlightYaml, updateCV);
+  attachEditor('css-editor',  'hl-css',  'gutter-css',  'wrap-css',  highlightCss,  updateCSS);
+  setTheme('lunatech');
+  scalePreview();
+  refreshStatus();
+  refreshCvList();
+})();
 </script>
 </body>
 </html>

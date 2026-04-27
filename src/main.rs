@@ -15,7 +15,11 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|_| "postgres://cvbuilder:cvbuilder@localhost:5433/cvbuilder".into());
     let db = Db::connect(&db_url).await?;
 
-    let addr: SocketAddr = "127.0.0.1:3000".parse()?;
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(3000);
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("listening on http://{}", addr);
     axum::serve(listener, app(db, "frontend")).await?;

@@ -40,6 +40,7 @@ cargo run                              # app on :3000
 
 Optional env vars:
 - `DATABASE_URL` — defaults to `postgres://cvbuilder:cvbuilder@localhost:5433/cvbuilder`
+- `PORT` — defaults to `3000` (bind host stays `127.0.0.1`)
 - `CV_DEBUG_TYPST=1` — writes the generated Typst source to `/tmp/cv-builder-debug.typ` for each PDF render
 
 ## API

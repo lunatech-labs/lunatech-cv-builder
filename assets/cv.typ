@@ -66,7 +66,18 @@
 #let sans  = ("Poppins", "Inter", "Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans", "Liberation Sans", ..symbols)
 
 #set document(title: cv-data.name + " — CV")
-#set page(paper: "a4", margin: 0pt)
+#set page(
+  paper: "a4",
+  margin: (top: 0pt, bottom: 16mm, x: 0pt),
+  footer-descent: 6mm,
+  footer: align(center, block(width: 100% - 25.4mm)[
+    #line(length: 100%, stroke: 0.4pt + p.border)
+    #v(1mm)
+    #align(center, text(size: 6.5pt, fill: p.muted, tracking: 0.5pt)[
+      Lunatech France #h(2mm) | #h(2mm) 3 rue de la Galmy 77700 Chessy, France #h(2mm) | #h(2mm) +33 1 82 88 56 64 #h(2mm) | #h(2mm) info\@lunatech.fr
+    ])
+  ]),
+)
 #set text(font: sans, size: 9pt, fill: p.text, hyphenate: false)
 #set par(leading: 0.55em, justify: false)
 
@@ -123,7 +134,7 @@
 
 // ─────────── BODY HELPERS ───────────
 
-#let section-title(name, bullet: "◆") = block(below: 2.5mm, [
+#let section-title(name, bullet: "◆") = block(below: 2.5mm, sticky: true, [
   #grid(columns: (auto, 1fr), column-gutter: 2mm, align: (left + horizon, left + horizon),
     text(size: 8pt, weight: 600, fill: p.bullet)[#bullet],
     text(size: 7.5pt, weight: 600, fill: p.text, tracking: 0.6pt)[#upper(name)]
@@ -145,7 +156,7 @@
   parts.join()
 }
 
-#let exp-block(exp) = block(below: 3mm, [
+#let exp-block(exp) = block(below: 3mm, breakable: false, [
   #grid(
     columns: (10mm, 4mm, 1fr),
     column-gutter: 2mm,
@@ -173,7 +184,7 @@
   )
 ])
 
-#let block-entry(title-body, meta: "", desc: "", tag-arr: ()) = block(below: 2.5mm, [
+#let block-entry(title-body, meta: "", desc: "", tag-arr: ()) = block(below: 2.5mm, breakable: false, [
   #text(font: serif, size: 9.5pt, weight: 700)[#title-body]
   #if meta != "" [
     #v(-1.2mm)
@@ -324,11 +335,3 @@
   )
 )
 
-// ─────────── FOOTER ───────────
-#place(bottom + center, dy: -6mm, block(width: 100% - 25.4mm)[
-  #line(length: 100%, stroke: 0.4pt + p.border)
-  #v(1mm)
-  #align(center, text(size: 6.5pt, fill: p.muted, tracking: 0.5pt)[
-    Lunatech France #h(2mm) | #h(2mm) 3 rue de la Galmy 77700 Chessy, France #h(2mm) | #h(2mm) +33 1 82 88 56 64 #h(2mm) | #h(2mm) info\@lunatech.fr
-  ])
-])

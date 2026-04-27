@@ -11,7 +11,11 @@
       "Read(//private/tmp/**)",
       "Bash(cargo run *)",
       "Bash(curl -s \"http://127.0.0.1:3000/api/cvs/f24b678a-a87e-4331-ac54-5d8bb352461e/pdf?theme=lunatech\" -o /tmp/cv-lunatech-v2.pdf)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs -r ps -o pid,command -p)",
+      "Bash(kill 76373)",
+      "Bash(curl -sf -o /dev/null http://127.0.0.1:3000/)"
     ]
   }
 }

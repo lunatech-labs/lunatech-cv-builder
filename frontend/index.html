@@ -475,7 +475,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
     </select>
     <button class="btn btn-ghost" onclick="newCv()">+ New</button>
     <button class="btn btn-ghost" onclick="saveCv()">Save</button>
-    <button class="btn btn-ghost" onclick="saveAsCv()" title="Save a copy as a new CV">Save as</button>
     <button class="btn btn-ghost" onclick="deleteCv()" title="Delete the currently loaded CV">Delete</button>
     <span class="cv-status" id="cv-status">Unsaved</span>
     <button class="btn btn-ghost" onclick="copyYaml()">Copy YAML</button>
@@ -1010,25 +1009,6 @@ async function saveCv() {
   } catch (e) {
     alert('Save failed: ' + e.message);
     return false;
-  }
-}
-
-async function saveAsCv() {
-  var yaml = document.getElementById('yaml-editor').value;
-  try {
-    var res = await fetch('/api/cvs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ yaml: yaml })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    var data = await res.json();
-    currentCvId = data.id;
-    savedYaml = yaml;
-    await refreshCvList();
-    refreshStatus();
-  } catch (e) {
-    alert('Save as failed: ' + e.message);
   }
 }
 

@@ -19,6 +19,8 @@ pub struct CvSummary {
     pub id: Uuid,
     pub name: String,
     pub updated_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -99,28 +101,41 @@ impl Db {
     // — we never leak it via cross-user lookups.
 
     pub async fn list(&self, user_id: Uuid) -> Result<Vec<CvSummary>> {
-        let rows = sqlx::query_as::<_, (Uuid, String, DateTime<Utc>)>(
-            "SELECT id, name, updated_at FROM cvs WHERE user_id = $1 ORDER BY updated_at DESC",
+        let rows = sqlx::query_as::<_, (Uuid, String, DateTime<Utc>, Option<String>)>(
+            "SELECT id, name, updated_at, label
+             FROM cvs WHERE user_id = $1 ORDER BY updated_at DESC",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
         .await?;
         Ok(rows
             .into_iter()
-            .map(|(id, name, updated_at)| CvSummary { id, name, updated_at })
+            .map(|(id, name, updated_at, label)| CvSummary {
+                id,
+                name,
+                updated_at,
+                label,
+            })
             .collect())
     }
 
-    pub async fn create(&self, user_id: Uuid, yaml: &str, name: &str) -> Result<Uuid> {
+    pub async fn create(
+        &self,
+        user_id: Uuid,
+        yaml: &str,
+        name: &str,
+        label: Option<&str>,
+    ) -> Result<Uuid> {
         let report = seniority::score_yaml(yaml);
         let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
         let row: (Uuid,) = sqlx::query_as(
-            "INSERT INTO cvs (user_id, name, yaml, seniority, seniority_score, seniority_level)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+            "INSERT INTO cvs (user_id, name, yaml, label, seniority, seniority_score, seniority_level)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
         )
         .bind(user_id)
         .bind(name)
         .bind(yaml)
+        .bind(label)
         .bind(payload)
         .bind(report.score as i16)
         .bind(&report.level)
@@ -145,55 +160,31 @@ impl Db {
         }))
     }
 
-    pub async fn update(&self, user_id: Uuid, id: Uuid, yaml: &str, name: &str) -> Result<bool> {
-        let report = seniority::score_yaml(yaml);
-        let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
-        let result = sqlx::query(
-            "UPDATE cvs
-             SET yaml = $1, name = $2,
-                 seniority = $3, seniority_score = $4, seniority_level = $5,
-                 updated_at = NOW()
-             WHERE id = $6 AND user_id = $7",
-        )
-        .bind(yaml)
-        .bind(name)
-        .bind(payload)
-        .bind(report.score as i16)
-        .bind(&report.level)
-        .bind(id)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await?;
-        Ok(result.rows_affected() > 0)
-    }
-
-    pub async fn delete(&self, user_id: Uuid, id: Uuid) -> Result<bool> {
-        let result = sqlx::query("DELETE FROM cvs WHERE id = $1 AND user_id = $2")
-            .bind(id)
-            .bind(user_id)
-            .execute(&self.pool)
-            .await?;
-        Ok(result.rows_affected() > 0)
-    }
-
-    // ────────── Admin variants — bypass the user_id filter ──────────
+    // ────────── Mutating ops — must run after a handler-level guard ──────
     //
-    // Used after a handler-level ownership-or-admin check; the SQL itself is
-    // unscoped. Callers must NOT call these without first verifying the
-    // caller is allowed to mutate the row.
+    // The SQL is unscoped: callers must NOT invoke these without first
+    // verifying that the caller is the owner or an admin (see
+    // `require_write_access` in handlers.rs).
 
-    pub async fn update_any(&self, id: Uuid, yaml: &str, name: &str) -> Result<bool> {
+    pub async fn update_any(
+        &self,
+        id: Uuid,
+        yaml: &str,
+        name: &str,
+        label: Option<&str>,
+    ) -> Result<bool> {
         let report = seniority::score_yaml(yaml);
         let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
         let result = sqlx::query(
             "UPDATE cvs
-             SET yaml = $1, name = $2,
-                 seniority = $3, seniority_score = $4, seniority_level = $5,
+             SET yaml = $1, name = $2, label = $3,
+                 seniority = $4, seniority_score = $5, seniority_level = $6,
                  updated_at = NOW()
-             WHERE id = $6",
+             WHERE id = $7",
         )
         .bind(yaml)
         .bind(name)
+        .bind(label)
         .bind(payload)
         .bind(report.score as i16)
         .bind(&report.level)
@@ -277,12 +268,13 @@ impl Db {
             String,
             String,
             DateTime<Utc>,
+            Option<String>,
             Uuid,
             Option<String>,
             Option<String>,
             Option<Json>,
         )> = sqlx::query_as(
-            "SELECT c.id, c.name, c.yaml, c.updated_at,
+            "SELECT c.id, c.name, c.yaml, c.updated_at, c.label,
                     u.id, u.name, u.email,
                     c.seniority
              FROM cvs c JOIN users u ON u.id = c.user_id
@@ -291,25 +283,23 @@ impl Db {
         .bind(id)
         .fetch_optional(&self.pool)
         .await?;
-        Ok(
-            row.map(
-                |(id, name, yaml, updated_at, owner_id, owner_name, owner_email, seniority)| {
-                    CvWithOwner {
-                        id,
-                        name,
-                        yaml,
-                        updated_at,
-                        owner: Owner {
-                            id: owner_id,
-                            name: owner_name,
-                            email: owner_email,
-                        },
-                        seniority: seniority
-                            .and_then(|v| serde_json::from_value(v).ok()),
-                    }
-                },
-            ),
-        )
+        Ok(row.map(
+            |(id, name, yaml, updated_at, label, owner_id, owner_name, owner_email, seniority)| {
+                CvWithOwner {
+                    id,
+                    name,
+                    yaml,
+                    updated_at,
+                    owner: Owner {
+                        id: owner_id,
+                        name: owner_name,
+                        email: owner_email,
+                    },
+                    label,
+                    seniority: seniority.and_then(|v| serde_json::from_value(v).ok()),
+                }
+            },
+        ))
     }
 
     /// Computes the same 4-tuple of stats both for the calling user (`mine`)
@@ -374,6 +364,7 @@ impl Db {
                 c.id, c.name, c.updated_at,
                 u.id   AS owner_id,
                 u.name AS owner_name,
+                c.label,
                 r.overall_score AS latest_score,
                 r.verdict       AS latest_verdict,
                 r.created_at    AS latest_review_at,
@@ -406,6 +397,7 @@ impl Db {
                 c.id, c.name, c.updated_at,
                 u.id   AS owner_id,
                 u.name AS owner_name,
+                c.label,
                 r.overall_score AS latest_score,
                 r.verdict       AS latest_verdict,
                 r.created_at    AS latest_review_at,
@@ -436,6 +428,7 @@ impl Db {
                 c.id, c.name, c.updated_at,
                 u.id   AS owner_id,
                 u.name AS owner_name,
+                c.label,
                 r.overall_score AS latest_score,
                 r.verdict       AS latest_verdict,
                 r.created_at    AS latest_review_at,
@@ -475,6 +468,8 @@ pub struct CvWithOwner {
     pub updated_at: DateTime<Utc>,
     pub owner: Owner,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub seniority: Option<seniority::Report>,
 }
 
@@ -499,6 +494,7 @@ pub struct CvOverviewItem {
     pub updated_at: DateTime<Utc>,
     pub owner_id: Uuid,
     pub owner_name: Option<String>,
+    pub label: Option<String>,
     pub latest_score: Option<i16>,
     pub latest_verdict: Option<String>,
     pub latest_review_at: Option<DateTime<Utc>>,

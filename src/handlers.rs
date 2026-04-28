@@ -41,6 +41,17 @@ fn extract_name(yaml: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Optional `label:` field on the YAML — the client this version of the CV
+/// is tailored for (e.g., "Disney"). Whitespace-only values are coerced to
+/// `None` so the dashboard chip doesn't render an empty pill.
+fn extract_label(yaml: &str) -> Option<String> {
+    let parsed: serde_yaml::Result<serde_yaml::Value> = serde_yaml::from_str(yaml);
+    parsed
+        .ok()
+        .and_then(|v| v.get("label").and_then(|n| n.as_str()).map(|s| s.trim().to_string()))
+        .filter(|s| !s.is_empty())
+}
+
 pub async fn list_cvs(
     State(db): State<Db>,
     Extension(user): Extension<User>,
@@ -58,7 +69,11 @@ pub async fn create_cv(
         return Err(err400("yaml is empty"));
     }
     let name = extract_name(&body.yaml);
-    let id = db.create(user.id, &body.yaml, &name).await.map_err(err500)?;
+    let label = extract_label(&body.yaml);
+    let id = db
+        .create(user.id, &body.yaml, &name, label.as_deref())
+        .await
+        .map_err(err500)?;
     Ok(Json(CreateResponse { id }))
 }
 
@@ -127,8 +142,9 @@ pub async fn update_cv(
     }
     require_write_access(&db, &user, id).await?;
     let name = extract_name(&body.yaml);
+    let label = extract_label(&body.yaml);
     let updated = db
-        .update_any(id, &body.yaml, &name)
+        .update_any(id, &body.yaml, &name, label.as_deref())
         .await
         .map_err(err500)?;
     if updated {

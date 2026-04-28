@@ -667,6 +667,18 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .sen-chip.sen-principal { color: #ef4444; border-color: #b91c1c; background: rgba(239,68,68,.08); }
 .sen-chip-detail { font-size: 11px; padding: 3px 10px; cursor: help; }
 
+/* Client label chip — neutral pill that travels with the CV name */
+.cv-label-chip {
+  display: inline-flex; align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ui-accent); background: rgba(200, 16, 46, .08);
+  border: 1px solid var(--ui-accent-deep);
+  white-space: nowrap;
+}
+
 /* My CVs grid */
 .ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
 .ov-cv-card {
@@ -1312,10 +1324,12 @@ async function refreshCvList() {
     var sel = document.getElementById('cv-list');
     var opts = ['<option value="">Open saved CV…</option>'];
     list.forEach(function(cv) {
-      var date = new Date(cv.updated_at).toLocaleDateString();
-      var label = (cv.name || '(unnamed)') + ' — ' + date;
+      // Show only the consultant's name in the dropdown — append the label
+      // (the client this version targets, e.g. "Disney") when present, so
+      // a recruiter can pick the right tailored copy at a glance.
+      var labelText = (cv.name || '(unnamed)') + (cv.label ? ' — ' + cv.label : '');
       var sel = cv.id === currentCvId ? ' selected' : '';
-      opts.push('<option value="' + cv.id + '"' + sel + '>' + escapeHtml(label) + '</option>');
+      opts.push('<option value="' + cv.id + '"' + sel + '>' + escapeHtml(labelText) + '</option>');
     });
     sel = document.getElementById('cv-list');
     sel.innerHTML = opts.join('');
@@ -1548,6 +1562,11 @@ function senChipClass(level) {
 
 // Compact chip used in dashboard rows / cards. Pass `detailed` to also
 // include the score (e.g. "Senior · 67"); default is just the level.
+function labelChipHtml(label) {
+  if (!label) return '';
+  return '<span class="cv-label-chip">' + escHtml(label) + '</span>';
+}
+
 function senChipHtml(level, score, opts) {
   if (!level) return '<span class="sen-chip sen-junior" style="opacity:.4">— </span>';
   opts = opts || {};
@@ -1574,7 +1593,7 @@ function rankRowHtml(c, opts) {
     ' onclick="event.preventDefault(); navigateTo(this.getAttribute(\'href\'))">' +
     rankCell +
     scoreCell +
-    '<span class="ov-rank-name">' + escHtml(c.name || 'Untitled CV') + '</span>' +
+    '<span class="ov-rank-name">' + escHtml(c.name || 'Untitled CV') + labelChipHtml(c.label) + '</span>' +
     '<span class="ov-rank-owner">' + escHtml(c.owner_name || '—') + '</span>' +
     senChipHtml(c.seniority_level, c.seniority_score) +
     '<span class="ov-rank-verdict">' + escHtml(verdict) + '</span>' +
@@ -1687,7 +1706,7 @@ function renderMyGrid(items) {
     }
     return '<a class="ov-cv-card" href="/?id=' + encodeURIComponent(c.id) + '" onclick="event.preventDefault(); navigateTo(this.getAttribute(\'href\'))">' +
       '<div class="ov-cv-card-row">' +
-        '<span class="ov-cv-card-name">' + escHtml(c.name || 'Untitled CV') + '</span>' +
+        '<span class="ov-cv-card-name">' + escHtml(c.name || 'Untitled CV') + labelChipHtml(c.label) + '</span>' +
         scoreCol +
       '</div>' +
       '<span class="ov-cv-card-meta">Updated ' + relativeDate(c.updated_at) + '</span>' +

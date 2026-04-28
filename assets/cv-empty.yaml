@@ -3,6 +3,11 @@ name: Camille Dubois
 title: Cloud & DevOps Engineer
 lunatech_since: "2022"
 
+# Optional client label — set when this version is tailored for a specific
+# client (e.g. "Disney"). Shown as a chip on the dashboard. Remove the line
+# (or leave empty) for a generic CV.
+# label: Disney
+
 # ── KEY ASSETS CAPSULE ───────────────────────
 client_name: Client
 key_assets:

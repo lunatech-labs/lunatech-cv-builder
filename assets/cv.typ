@@ -4,51 +4,55 @@
 #let theme = if "theme" in cv-data { cv-data.theme } else { "lunatech" }
 
 #let palette-lunatech = (
-  accent:     rgb("#7c1818"),
-  header-bg:  rgb("#1a1a1a"),
-  bar-fill:   rgb("#7c1818"),
-  bar-empty:  rgb("#f0d8d8"),
-  bullet:     rgb("#7c1818"),
-  text:       rgb("#1a1a1a"),
-  body:       rgb("#2a2a2a"),
-  muted:      rgb("#6b6b6b"),
-  border:     rgb("#d8d4d0"),
+  accent:      rgb("#7c1818"),
+  capsule-bg:  rgb("#f4e9e9"),
+  header-bg:   rgb("#1a1a1a"),
+  bar-fill:    rgb("#7c1818"),
+  bar-empty:   rgb("#f0d8d8"),
+  bullet:      rgb("#7c1818"),
+  text:        rgb("#1a1a1a"),
+  body:        rgb("#2a2a2a"),
+  muted:       rgb("#6b6b6b"),
+  border:      rgb("#d8d4d0"),
 )
 
 #let palette-luxe = (
-  accent:     rgb("#0B0B0B"),
-  header-bg:  rgb("#0B0B0B"),
-  bar-fill:   rgb("#c8a24a"),
-  bar-empty:  rgb("#e8e2d4"),
-  bullet:     rgb("#c8a24a"),
-  text:       rgb("#1a1a1a"),
-  body:       rgb("#2a2a2a"),
-  muted:      rgb("#6b6b6b"),
-  border:     rgb("#e8e2d4"),
+  accent:      rgb("#0B0B0B"),
+  capsule-bg:  rgb("#f5f0e8"),
+  header-bg:   rgb("#0B0B0B"),
+  bar-fill:    rgb("#c8a24a"),
+  bar-empty:   rgb("#e8e2d4"),
+  bullet:      rgb("#c8a24a"),
+  text:        rgb("#1a1a1a"),
+  body:        rgb("#2a2a2a"),
+  muted:       rgb("#6b6b6b"),
+  border:      rgb("#e8e2d4"),
 )
 
 #let palette-cosmic = (
-  accent:     rgb("#0a1e50"),
-  header-bg:  rgb("#0a1e50"),
-  bar-fill:   rgb("#DB2777"),
-  bar-empty:  rgb("#f0d8e8"),
-  bullet:     rgb("#DB2777"),
-  text:       rgb("#1a1a1a"),
-  body:       rgb("#2a2a2a"),
-  muted:      rgb("#6b6b6b"),
-  border:     rgb("#dde0e8"),
+  accent:      rgb("#0a1e50"),
+  capsule-bg:  rgb("#fce7f3"),
+  header-bg:   rgb("#0a1e50"),
+  bar-fill:    rgb("#DB2777"),
+  bar-empty:   rgb("#f0d8e8"),
+  bullet:      rgb("#DB2777"),
+  text:        rgb("#1a1a1a"),
+  body:        rgb("#2a2a2a"),
+  muted:       rgb("#6b6b6b"),
+  border:      rgb("#dde0e8"),
 )
 
 #let palette-opera = (
-  accent:     rgb("#9b0f17"),
-  header-bg:  rgb("#9b0f17"),
-  bar-fill:   rgb("#ea212e"),
-  bar-empty:  rgb("#f5dede"),
-  bullet:     rgb("#ea212e"),
-  text:       rgb("#1a1a1a"),
-  body:       rgb("#2a2a2a"),
-  muted:      rgb("#6b6b6b"),
-  border:     rgb("#e8d8d8"),
+  accent:      rgb("#9b0f17"),
+  capsule-bg:  rgb("#fdf2f2"),
+  header-bg:   rgb("#9b0f17"),
+  bar-fill:    rgb("#ea212e"),
+  bar-empty:   rgb("#f5dede"),
+  bullet:      rgb("#ea212e"),
+  text:        rgb("#1a1a1a"),
+  body:        rgb("#2a2a2a"),
+  muted:       rgb("#6b6b6b"),
+  border:      rgb("#e8d8d8"),
 )
 
 #let palettes = (
@@ -131,6 +135,36 @@
     )
   ],
 )
+
+// ─────────── KEY ASSETS CAPSULE ───────────
+
+#if opt-arr(cv-data, "key_assets").len() > 0 {
+  let title = if opt(cv-data, "client_name") != "" {
+    "Key Assets for " + cv-data.client_name
+  } else { "Key Assets" }
+  let asset-cell(a) = grid(
+    columns: (4mm, 1fr),
+    column-gutter: 1mm,
+    align: (left + top, left + top),
+    text(size: 7.5pt, fill: p.bullet)[◆],
+    text(size: 9pt, weight: 500, fill: p.text)[#a],
+  )
+  block(
+    fill: p.capsule-bg,
+    width: 100%,
+    inset: (left: 12.7mm, right: 12.7mm, top: 4mm, bottom: 4.5mm),
+    [
+      #text(size: 8pt, weight: 600, fill: p.accent, tracking: 0.8pt)[#upper(title)]
+      #v(2mm)
+      #grid(
+        columns: (1fr, 1fr),
+        column-gutter: 6mm,
+        row-gutter: 2mm,
+        ..cv-data.key_assets.map(asset-cell),
+      )
+    ],
+  )
+}
 
 // ─────────── BODY HELPERS ───────────
 
@@ -303,21 +337,6 @@
       if opt-arr(cv-data, "education").len() > 0 {
         section-title("Education", bullet: "◇")
         for e in cv-data.education { edu-block(e) }
-        v(2mm)
-      }
-
-      if opt-arr(cv-data, "key_assets").len() > 0 {
-        let title = if opt(cv-data, "client_name") != "" {
-          "Key Assets for " + cv-data.client_name
-        } else { "Key Assets" }
-        section-title(title, bullet: "▸")
-        for a in cv-data.key_assets [
-          #grid(columns: (4mm, 1fr), column-gutter: 1mm, align: (left + top, left + top),
-            text(size: 6pt, fill: p.bullet)[◆],
-            text(size: 7.5pt, fill: p.body)[#a],
-          )
-          #v(0.5mm)
-        ]
         v(2mm)
       }
 

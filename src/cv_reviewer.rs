@@ -64,7 +64,7 @@ fn output_schema() -> Value {
         "properties": {
             "overall_score": {
                 "type": "integer",
-                "description": "Score from 1 (unusable) to 10 (perfect) — how client-ready the CV is."
+                "description": "Score from 0 (unusable) to 100 (perfect) — use the full range so two similarly-good CVs can still be told apart by 5-10 points."
             },
             "verdict": {
                 "type": "string",

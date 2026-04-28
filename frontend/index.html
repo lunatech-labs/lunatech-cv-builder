@@ -828,7 +828,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
     <button class="btn btn-ghost" onclick="copyYaml()">Copy YAML</button>
     <span class="review-score-badge" id="review-score-badge" onclick="openReviewModalFromCache()" title="Open the latest Claude review">
       <span class="score-num" id="review-score-num">—</span>
-      <span>/ 10</span>
+      <span>/ 100</span>
     </span>
     <button class="btn btn-review" id="btn-review" data-owner-only onclick="runReview()" title="Save the CV, then ask Claude to review it">Save &amp; Review with Claude</button>
     <button class="btn btn-primary" onclick="exportPDF()">&#8595; Export PDF</button>
@@ -1566,7 +1566,7 @@ function rankRowHtml(c, opts) {
     '<span class="ov-rank-num ' + rankClass(opts.rank) + '">#' + (opts.rank + 1) + '</span>';
   var scoreCell = c.latest_score == null
     ? '<span class="ov-rank-verdict">—</span>'
-    : '<span class="ov-rank-score ' + scoreClass(c.latest_score) + '">' + c.latest_score + '/10</span>';
+    : '<span class="ov-rank-score ' + scoreClass(c.latest_score) + '">' + c.latest_score + '/100</span>';
   var verdict = c.latest_verdict ? c.latest_verdict.replace(/_/g, ' ') : '';
   var dateText = c.latest_review_at ? relativeDate(c.latest_review_at) : relativeDate(c.updated_at);
   var rowClass = 'ov-rank-row' + (opts.rank == null ? ' no-rank-num' : '');
@@ -1680,7 +1680,7 @@ function renderMyGrid(items) {
       var cls = scoreClass(c.latest_score);
       scoreCol =
         '<div class="ov-cv-card-score-col">' +
-          '<span class="ov-rank-score ' + cls + '">' + c.latest_score + '/10</span>' +
+          '<span class="ov-rank-score ' + cls + '">' + c.latest_score + '/100</span>' +
           '<span class="ov-cv-card-verdict ' + cls + '">' + escHtml(verdictLabel(c.latest_verdict)) + '</span>' +
           senChipHtml(c.seniority_level, c.seniority_score) +
         '</div>';
@@ -1913,8 +1913,8 @@ var cachedReview = null;       // last review object (from server) for the loade
 var cachedReviewAt = null;     // ISO timestamp from the server, when known
 
 function scoreClass(score) {
-  if (score >= 8) return 'score-high';
-  if (score >= 5) return 'score-mid';
+  if (score >= 80) return 'score-high';
+  if (score >= 50) return 'score-mid';
   return 'score-low';
 }
 
@@ -1941,7 +1941,7 @@ function clearReviewState() {
 }
 
 function openReviewModal(review, ts) {
-  document.getElementById('review-modal-score').textContent = review.overall_score + ' / 10';
+  document.getElementById('review-modal-score').textContent = review.overall_score + ' / 100';
   document.getElementById('review-modal-score').className = 'review-score-pill ' + scoreClass(review.overall_score);
   document.getElementById('review-modal-verdict').textContent = verdictLabel(review.verdict);
   document.getElementById('review-modal-body').innerHTML = marked.parse(review.report_markdown || '');

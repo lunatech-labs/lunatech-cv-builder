@@ -26,8 +26,8 @@ pub fn render(review: &Review, cv_name: Option<&str>) -> Result<Vec<u8>> {
 fn build_template(review: &Review, cv_name: Option<&str>, body: &str) -> String {
     // Score → color matches the frontend modal pill (low / mid / high).
     let (score_color, _score_label) = match review.overall_score {
-        8..=10 => ("rgb(\"#10b981\")", "high"),
-        5..=7 => ("rgb(\"#f59e0b\")", "mid"),
+        80.. => ("rgb(\"#10b981\")", "high"),
+        50..=79 => ("rgb(\"#f59e0b\")", "mid"),
         _ => ("rgb(\"#ef4444\")", "low"),
     };
     let verdict = match review.verdict.as_str() {
@@ -82,7 +82,7 @@ fn build_template(review: &Review, cv_name: Option<&str>, body: &str) -> String 
       ],
       [
         #box(fill: {score_color}, inset: (x: 5mm, y: 3mm), radius: 2mm)[
-          #text(size: 18pt, weight: 700, fill: white)[{score} / 10]
+          #text(size: 18pt, weight: 700, fill: white)[{score} / 100]
         ]
       ],
     )

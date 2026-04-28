@@ -597,7 +597,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
       <span class="score-num" id="review-score-num">—</span>
       <span>/ 10</span>
     </span>
-    <button class="btn btn-review" id="btn-review" onclick="runReview()" title="Ask Claude to review this CV">Review with Claude</button>
+    <button class="btn btn-review" id="btn-review" onclick="runReview()" title="Save the CV, then ask Claude to review it">Save &amp; Review with Claude</button>
     <button class="btn btn-primary" onclick="exportPDF()">&#8595; Export PDF</button>
     <span class="user-info" id="user-info">
       <span class="user-name" id="user-name"></span>
@@ -1102,8 +1102,15 @@ async function loadCv(id) {
     ta.value = cv.yaml;
     currentCvId = cv.id;
     savedYaml = cv.yaml;
-    // Reviews are session-only, so a freshly loaded CV starts with none.
-    clearReviewState();
+    // Backend includes the latest persisted review on the CV response so
+    // the score badge is filled in on first load — no extra round-trip.
+    if (cv.latest_review) {
+      cachedReview = cv.latest_review;
+      cachedReviewAt = cv.latest_review_at || null;
+      refreshReviewBadge();
+    } else {
+      clearReviewState();
+    }
     ta.dispatchEvent(new Event('input'));
     refreshStatus();
   } catch (e) {
@@ -1401,20 +1408,19 @@ function closeReviewModal() {
 }
 
 async function runReview() {
-  // Stateless — sends the editor's YAML directly to the backend, no DB write.
-  // The user can iterate on a draft without committing it.
-  var yaml = document.getElementById('yaml-editor').value;
-  if (!yaml.trim()) { alert('The editor is empty — nothing to review.'); return; }
+  // Reviews are now persisted server-side and tied to a saved CV, so we
+  // implicitly Save first — the editor's content lands in the DB, the
+  // backend reads from the DB, calls Claude, and stores the resulting
+  // review in the `reviews` table for later display + aggregates.
+  var ok = await saveCv();
+  if (!ok || !currentCvId) return;
+
   var btn = document.getElementById('btn-review');
-  var originalText = btn.textContent;
+  var originalLabel = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="review-spinner"></span>Reviewing…';
   try {
-    var res = await fetch('/api/review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ yaml: yaml })
-    });
+    var res = await fetch('/api/cvs/' + currentCvId + '/reviews', { method: 'POST' });
     if (res.status === 503) {
       alert('Review unavailable: ANTHROPIC_API_KEY is not set on the server.');
       return;
@@ -1428,7 +1434,7 @@ async function runReview() {
     alert('Review failed: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = originalText;
+    btn.innerHTML = originalLabel;
   }
 }
 

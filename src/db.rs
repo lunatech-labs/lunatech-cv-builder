@@ -1,5 +1,6 @@
+use crate::cv_reviewer::Review;
 use crate::users::User;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -121,5 +122,61 @@ impl Db {
             .execute(&self.pool)
             .await?;
         Ok(result.rows_affected() > 0)
+    }
+
+    // ────────── Reviews ──────────
+
+    /// Records a fresh review for a CV alongside the YAML it was run against.
+    /// Caller is responsible for verifying the CV belongs to `user_id` first
+    /// (typically by having just called `get(user_id, cv_id)`).
+    pub async fn save_review(
+        &self,
+        cv_id: Uuid,
+        user_id: Uuid,
+        review: &Review,
+        yaml_snapshot: &str,
+    ) -> Result<Uuid> {
+        let payload = serde_json::to_value(review).context("serialising Review for storage")?;
+        let row: (Uuid,) = sqlx::query_as(
+            "INSERT INTO reviews (cv_id, user_id, overall_score, verdict, language, payload, yaml_snapshot)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+        )
+        .bind(cv_id)
+        .bind(user_id)
+        .bind(i16::from(review.overall_score))
+        .bind(&review.verdict)
+        .bind(&review.language)
+        .bind(payload)
+        .bind(yaml_snapshot)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(row.0)
+    }
+
+    /// Returns the most recent review for a CV (scoped to the calling user
+    /// so we never expose another user's review even if the cv_id leaks),
+    /// alongside the timestamp the review was run.
+    pub async fn latest_review(
+        &self,
+        cv_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<(Review, DateTime<Utc>)>> {
+        let row: Option<(serde_json::Value, DateTime<Utc>)> = sqlx::query_as(
+            "SELECT payload, created_at FROM reviews
+             WHERE cv_id = $1 AND user_id = $2
+             ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(cv_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+        match row {
+            Some((payload, ts)) => {
+                let review: Review = serde_json::from_value(payload)
+                    .context("deserialising stored Review payload")?;
+                Ok(Some((review, ts)))
+            }
+            None => Ok(None),
+        }
     }
 }

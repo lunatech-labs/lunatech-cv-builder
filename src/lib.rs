@@ -52,7 +52,7 @@ pub fn api_router(state: AppState, authorizer: Option<auth::Authorizer>) -> Rout
                 .delete(handlers::delete_cv),
         )
         .route("/cvs/{id}/pdf", get(handlers::pdf_cv))
-        .route("/review", post(handlers::review_yaml))
+        .route("/cvs/{id}/reviews", post(handlers::review_cv))
         .route("/review/pdf", post(handlers::review_pdf_handler))
         .with_state(state.clone());
 

@@ -17,9 +17,11 @@ async fn main() -> Result<()> {
 
     let anthropic = AnthropicConfig::from_env_and_skill()?;
     if anthropic.is_some() {
-        tracing::info!("ANTHROPIC_API_KEY found — POST /api/review enabled");
+        tracing::info!("ANTHROPIC_API_KEY found — POST /api/cvs/{{id}}/reviews enabled");
     } else {
-        tracing::info!("ANTHROPIC_API_KEY not set — POST /api/review will return 503");
+        tracing::info!(
+            "ANTHROPIC_API_KEY not set — POST /api/cvs/{{id}}/reviews will return 503"
+        );
     }
 
     let keycloak = KeycloakConfig::from_env();

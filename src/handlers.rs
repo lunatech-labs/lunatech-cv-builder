@@ -62,17 +62,42 @@ pub async fn create_cv(
     Ok(Json(CreateResponse { id }))
 }
 
+/// `GET /api/cvs/{id}` enriched with the latest persisted review (if any)
+/// so the frontend's score badge is populated on first load — saves a
+/// second round-trip.
+#[derive(Serialize)]
+pub struct CvWithReview {
+    #[serde(flatten)]
+    pub cv: CvRecord,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_review: Option<cv_reviewer::Review>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_review_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 pub async fn get_cv(
     State(db): State<Db>,
     Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
-) -> Result<Json<CvRecord>, ApiError> {
+) -> Result<Json<CvWithReview>, ApiError> {
     let rec = db
         .get(user.id, id)
         .await
         .map_err(err500)?
         .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;
-    Ok(Json(rec))
+    let (latest_review, latest_review_at) = match db
+        .latest_review(id, user.id)
+        .await
+        .map_err(err500)?
+    {
+        Some((r, ts)) => (Some(r), Some(ts)),
+        None => (None, None),
+    };
+    Ok(Json(CvWithReview {
+        cv: rec,
+        latest_review,
+        latest_review_at,
+    }))
 }
 
 pub async fn update_cv(
@@ -214,21 +239,32 @@ pub async fn review_pdf_handler(
         .into_response())
 }
 
-/// Calls Claude with the cv-reviewer skill on the YAML supplied in the body.
-/// Stateless — does NOT touch the database, so reviewers can iterate on a
-/// draft without committing it. Returns 503 if the API key isn't configured.
-pub async fn review_yaml(
+/// Runs Claude with the cv-reviewer skill on a saved CV, persists the
+/// resulting review, and returns it. The CV must belong to the calling
+/// user — anything else returns 404 (we never leak other users' CVs).
+/// Returns 503 if `ANTHROPIC_API_KEY` isn't set.
+pub async fn review_cv(
     State(state): State<AppState>,
-    Json(body): Json<YamlBody>,
+    Extension(user): Extension<User>,
+    Path(cv_id): Path<Uuid>,
 ) -> Result<Json<cv_reviewer::Review>, ApiError> {
-    if body.yaml.trim().is_empty() {
-        return Err(err400("yaml is empty"));
-    }
     let cfg = state.anthropic.as_ref().ok_or((
         StatusCode::SERVICE_UNAVAILABLE,
         "ANTHROPIC_API_KEY is not set on the server".to_string(),
     ))?;
-    let review = cv_reviewer::review(cfg, &body.yaml)
+
+    let rec = state
+        .db
+        .get(user.id, cv_id)
+        .await
+        .map_err(err500)?
+        .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;
+
+    let review = cv_reviewer::review(cfg, &rec.yaml).await.map_err(err500)?;
+
+    state
+        .db
+        .save_review(cv_id, user.id, &review, &rec.yaml)
         .await
         .map_err(err500)?;
     Ok(Json(review))

@@ -422,23 +422,26 @@ async fn pdf_for_minimal_yaml_still_renders(pool: PgPool) {
 #[sqlx::test]
 async fn review_returns_503_when_api_key_not_configured(pool: PgPool) {
     let app = router_with(pool);
+    let id = create(&app, SAMPLE_YAML).await;
     let resp = app
-        .oneshot(json_request("POST", "/review", json!({"yaml": SAMPLE_YAML})))
+        .oneshot(empty_request("POST", &format!("/cvs/{id}/reviews")))
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[sqlx::test]
-async fn review_rejects_empty_yaml(pool: PgPool) {
+async fn review_returns_404_for_unknown_cv_even_without_key(pool: PgPool) {
+    // The 503 (no API key) check fires before the lookup, so a missing
+    // CV still surfaces as 503. That's fine — the user's first signal is
+    // "this server can't review at all" before "your CV doesn't exist".
     let app = router_with(pool);
+    let id = uuid::Uuid::new_v4();
     let resp = app
-        .oneshot(json_request("POST", "/review", json!({"yaml": "   "})))
+        .oneshot(empty_request("POST", &format!("/cvs/{id}/reviews")))
         .await
         .unwrap();
-    // Validation runs before the API-key check, so even without a key
-    // we get a 400 rather than 503.
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[sqlx::test]

@@ -43,6 +43,7 @@ Optional env vars:
 - `BIND_ADDR` — defaults to `0.0.0.0:3000` (e.g. `BIND_ADDR=127.0.0.1:8080`)
 - `ANTHROPIC_API_KEY` — enables `POST /api/review`. Without it, the route returns 503 and the rest of the API is unaffected.
 - `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` — together gate `/api/*` (except `/api/config`) behind a Bearer JWT validated against Keycloak. When **any** of the three is missing the app runs unauthenticated (dev mode, with a warning log) so contributors without Keycloak access can still work.
+- `ADMIN_EMAILS` — comma-separated allow-list (case-insensitive) of Keycloak emails who get the admin flag and can write to any CV. Empty / missing = no admins.
 - `CV_DEBUG_TYPST=1` — writes the generated Typst source to `/tmp/cv-builder-debug.typ` for each PDF render
 
 ## API
@@ -77,7 +78,7 @@ In dev mode (no Keycloak configured) all requests resolve to a fixed **dev user*
 
 The user resolution lives in [`src/users.rs`](src/users.rs) as a Tower middleware that always runs on `/api/cvs/*` and `/api/review*`. It reads the `Claims` extension that the auth layer set (when present), parses the `sub` as a UUID, upserts the row, and stashes the `User` as a request extension. Handlers extract via `Extension<User>` and pass `user.id` into the `db.rs` calls.
 
-**Admin role.** A hardcoded allow-list of emails in `users.rs` (`ADMIN_EMAILS`) gives the corresponding users an `is_admin: true` flag on their resolved `User`. Admins can update, delete, and trigger reviews on any CV regardless of ownership — the write handlers (`update_cv` / `delete_cv` / `review_cv`) all run a `require_write_access` check that succeeds when `user.is_admin` *or* `cv.owner.id == user.id`, and dispatch to the unscoped `db.update_any` / `db.delete_any` variants. Reviews persisted by an admin are still attributed to the admin's `user_id`, not the owner's, so provenance stays accurate. The dev user is intentionally not admin — any privilege escalation has to go through Keycloak.
+**Admin role.** The `ADMIN_EMAILS` env var (comma-separated, case-insensitive) controls who gets the `is_admin: true` flag on their resolved `User`. Admins can update, delete, and trigger reviews on any CV regardless of ownership — the write handlers (`update_cv` / `delete_cv` / `review_cv`) all run a `require_write_access` check that succeeds when `user.is_admin` *or* `cv.owner.id == user.id`, and dispatch to the unscoped `db.update_any` / `db.delete_any` variants. Reviews persisted by an admin are still attributed to the admin's `user_id`, not the owner's, so provenance stays accurate. The dev user is intentionally not admin — any privilege escalation has to go through Keycloak.
 
 ## Overview / landing page
 

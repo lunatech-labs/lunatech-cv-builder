@@ -27,19 +27,24 @@ use uuid::Uuid;
 /// migration `0004_users.sql`.
 pub const DEV_USER_ID: Uuid = Uuid::nil();
 
-/// Hardcoded admin allow-list. Anyone whose Keycloak email matches (case-
-/// insensitive) gets the `is_admin` flag and can edit / delete / review any
-/// CV regardless of ownership. Extend this list when the admin set grows;
-/// promote to a config value if it ever does.
-const ADMIN_EMAILS: &[&str] = &[
-    "nicolas.leroux@lunatech.com",
-    "willem.jan.glerum@lunatech.nl",
-];
-
+/// Admin allow-list, read from the `ADMIN_EMAILS` env var (comma-separated,
+/// case-insensitive). Any user whose Keycloak email matches gets the
+/// `is_admin` flag and can edit / delete / review any CV regardless of
+/// ownership. Empty / missing env var = no admins.
+///
+/// We re-parse the env on every call rather than caching: the cost is
+/// negligible (a short CSV split) and it lets `cargo test` toggle the
+/// allow-list per test without a global cache to invalidate.
 fn is_admin_email(email: &str) -> bool {
-    ADMIN_EMAILS
-        .iter()
-        .any(|a| a.eq_ignore_ascii_case(email.trim()))
+    let needle = email.trim().to_lowercase();
+    if needle.is_empty() {
+        return false;
+    }
+    std::env::var("ADMIN_EMAILS")
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .any(|a| !a.is_empty() && a == needle)
 }
 
 #[derive(Clone, Debug, Serialize)]

@@ -1725,6 +1725,7 @@ function openBlankEditor() {
   savedYaml = null;
   clearReviewState();
   setEditorSeniority(null);
+  document.getElementById('cv-list').value = '';
   ta.dispatchEvent(new Event('input'));
   refreshStatus();
 }
@@ -1748,6 +1749,7 @@ async function openCvInEditor(id) {
       clearReviewState();
     }
     setEditorSeniority(cv.seniority);
+    document.getElementById('cv-list').value = cv.id;
     ta.dispatchEvent(new Event('input'));
     refreshStatus();
   } catch (e) {
@@ -1819,7 +1821,9 @@ function setReadonly(yes, owner) {
   attachEditor('css-editor',  'hl-css',  'gutter-css',  'wrap-css',  highlightCss,  updateCSS);
   setTheme('lunatech');
   refreshStatus();
-  refreshCvList();
+  // Await — routeView runs openCvInEditor which sets cv-list.value, and that
+  // silently no-ops if the <option>s haven't been inserted yet.
+  await refreshCvList();
   // Decide which view to show based on the URL — overview is the default
   // landing post-login; the editor opens with ?id=xxx or ?new=1.
   await routeView();

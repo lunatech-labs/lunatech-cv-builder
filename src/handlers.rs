@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::auth::KeycloakConfig;
 use crate::cv_reviewer;
-use crate::db::{CvRecord, CvSummary, Db};
+use crate::db::{CvOverviewItem, CvSummary, CvWithOwner, Db, OverviewStats};
 use crate::pdf;
 use crate::review_pdf;
 use crate::users::User;
@@ -62,13 +62,15 @@ pub async fn create_cv(
     Ok(Json(CreateResponse { id }))
 }
 
-/// `GET /api/cvs/{id}` enriched with the latest persisted review (if any)
-/// so the frontend's score badge is populated on first load — saves a
-/// second round-trip.
+/// `GET /api/cvs/{id}` — readable by any authenticated user (Lunatech-internal
+/// trust model: every Lunatech recruiter can browse every consultant's CV).
+/// The `owner` field lets the frontend detect non-owned CVs and switch the
+/// editor into a read-only mode. Write operations (PUT / DELETE / reviews)
+/// stay strictly owner-scoped at the DB level.
 #[derive(Serialize)]
-pub struct CvWithReview {
+pub struct CvDetail {
     #[serde(flatten)]
-    pub cv: CvRecord,
+    pub cv: CvWithOwner,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latest_review: Option<cv_reviewer::Review>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -77,24 +79,19 @@ pub struct CvWithReview {
 
 pub async fn get_cv(
     State(db): State<Db>,
-    Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
-) -> Result<Json<CvWithReview>, ApiError> {
-    let rec = db
-        .get(user.id, id)
+) -> Result<Json<CvDetail>, ApiError> {
+    let cv = db
+        .get_any(id)
         .await
         .map_err(err500)?
         .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;
-    let (latest_review, latest_review_at) = match db
-        .latest_review(id, user.id)
-        .await
-        .map_err(err500)?
-    {
+    let (latest_review, latest_review_at) = match db.latest_review(id).await.map_err(err500)? {
         Some((r, ts)) => (Some(r), Some(ts)),
         None => (None, None),
     };
-    Ok(Json(CvWithReview {
-        cv: rec,
+    Ok(Json(CvDetail {
+        cv,
         latest_review,
         latest_review_at,
     }))
@@ -141,12 +138,11 @@ pub struct PdfQuery {
 
 pub async fn pdf_cv(
     State(db): State<Db>,
-    Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
     Query(q): Query<PdfQuery>,
 ) -> Result<Response, ApiError> {
     let rec = db
-        .get(user.id, id)
+        .get_any(id)
         .await
         .map_err(err500)?
         .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;
@@ -191,6 +187,39 @@ pub async fn get_config(State(state): State<AppState>) -> Json<PublicConfig> {
         keycloak: state.keycloak.clone(),
         anthropic_enabled: state.anthropic.is_some(),
     })
+}
+
+/// Landing-page payload — bundles everything the Overview view needs in one
+/// round-trip: the caller's identity, platform-wide stats, the caller's CVs
+/// (for the editing entry points), the cross-user ranking, and the flat
+/// catalog of every CV (so recruiters can browse + download from anyone).
+#[derive(Serialize)]
+pub struct OverviewPayload {
+    pub me: User,
+    pub stats: OverviewStats,
+    pub my_cvs: Vec<CvOverviewItem>,
+    pub top_cvs: Vec<CvOverviewItem>,
+    pub all_cvs: Vec<CvOverviewItem>,
+}
+
+const TOP_CVS_LIMIT: i64 = 10;
+
+pub async fn get_overview(
+    State(db): State<Db>,
+    Extension(user): Extension<User>,
+) -> Result<Json<OverviewPayload>, ApiError> {
+    let stats = db.overview_stats(user.id).await.map_err(err500)?;
+    let my_cvs = db.my_cvs_with_review(user.id).await.map_err(err500)?;
+    let top_cvs = db.top_cvs(TOP_CVS_LIMIT).await.map_err(err500)?;
+    let all_cvs = db.all_cvs_with_review().await.map_err(err500)?;
+
+    Ok(Json(OverviewPayload {
+        me: user,
+        stats,
+        my_cvs,
+        top_cvs,
+        all_cvs,
+    }))
 }
 
 /// Body for `POST /api/review/pdf` — the review object the frontend already

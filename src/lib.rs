@@ -44,6 +44,7 @@ pub fn api_router(state: AppState, authorizer: Option<auth::Authorizer>) -> Rout
         .with_state(state.clone());
 
     let mut protected = Router::new()
+        .route("/overview", get(handlers::get_overview))
         .route("/cvs", get(handlers::list_cvs).post(handlers::create_cv))
         .route(
             "/cvs/{id}",

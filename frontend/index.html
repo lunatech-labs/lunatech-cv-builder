@@ -558,10 +558,209 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   margin-right: 6px; vertical-align: -2px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── VIEWS ── */
+.view { display: none; }
+.view-editor.active { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.view-overview.active { display: block; min-height: 100vh; overflow-y: auto; background: var(--ui-bg); }
+
+/* ── OVERVIEW ── */
+.ov-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 32px; height: 60px;
+  background: var(--ui-surface); border-bottom: 1px solid var(--ui-border);
+  position: sticky; top: 0; z-index: 10;
+}
+.ov-main { padding: 32px 40px 60px; max-width: 1280px; margin: 0 auto; }
+
+.ov-greeting { font-size: 22px; font-weight: 600; color: var(--ui-text); margin-bottom: 4px; }
+.ov-greeting strong { color: var(--ui-accent); font-weight: 700; }
+.ov-tagline { font-size: 12px; color: var(--ui-muted); margin-bottom: 24px; letter-spacing: .04em; }
+
+.ov-stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  margin-bottom: 32px;
+}
+.ov-stat {
+  background: var(--ui-surface); border: 1px solid var(--ui-border);
+  border-radius: 8px; padding: 18px 20px;
+}
+.ov-stat-num { font-size: 28px; font-weight: 700; color: var(--ui-text); line-height: 1.1; }
+.ov-stat-num.accent { color: var(--ui-accent); }
+.ov-stat-label { font-size: 10.5px; font-weight: 500; color: var(--ui-muted); letter-spacing: .12em; text-transform: uppercase; margin-top: 6px; }
+
+.ov-section-title {
+  font-size: 13px; font-weight: 600; color: var(--ui-text); letter-spacing: .12em;
+  text-transform: uppercase; margin: 0 0 14px; display: flex; align-items: center; gap: 10px;
+}
+.ov-section-title .icon { font-size: 16px; }
+.ov-section { margin-bottom: 36px; }
+.ov-subsection-title {
+  font-size: 11px; font-weight: 600; color: var(--ui-muted); letter-spacing: .14em;
+  text-transform: uppercase; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px;
+}
+.ov-subsection-title .icon { font-size: 14px; }
+
+/* Top ranking — list rows */
+.ov-rank-list { display: flex; flex-direction: column; gap: 6px; }
+.ov-rank-row {
+  display: grid; grid-template-columns: 36px 64px 1fr auto auto auto auto;
+  gap: 14px; align-items: center;
+  padding: 12px 16px; background: var(--ui-surface); border: 1px solid var(--ui-border);
+  border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s;
+  text-decoration: none; color: inherit;
+}
+.ov-rank-row.no-rank-num { grid-template-columns: 64px 1fr auto auto auto auto; }
+.ov-rank-dl {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid var(--ui-border); color: var(--ui-muted);
+  background: transparent; cursor: pointer; font-size: 14px; line-height: 1;
+  transition: all .15s;
+}
+.ov-rank-dl:hover { color: var(--ui-accent); border-color: var(--ui-accent); }
+.ov-rank-dl:disabled { opacity: 0.4; cursor: wait; }
+.ov-rank-row:hover { border-color: var(--ui-accent); background: rgba(255,255,255,.03); }
+.ov-rank-num { font-size: 13px; font-weight: 700; color: var(--ui-muted); text-align: center; }
+.ov-rank-num.gold   { color: #f5b400; }
+.ov-rank-num.silver { color: #b8c1cc; }
+.ov-rank-num.bronze { color: #c98246; }
+.ov-rank-score {
+  font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 4px;
+  text-align: center; border: 1px solid;
+}
+.ov-rank-score.score-low  { color: #ef4444; border-color: #ef4444; }
+.ov-rank-score.score-mid  { color: #f59e0b; border-color: #f59e0b; }
+.ov-rank-score.score-high { color: #10b981; border-color: #10b981; }
+.ov-rank-name { font-size: 13.5px; font-weight: 500; color: var(--ui-text); }
+.ov-rank-owner { font-size: 11px; color: var(--ui-muted); white-space: nowrap; }
+.ov-rank-verdict { font-size: 10px; color: var(--ui-muted); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+.ov-rank-date { font-size: 11px; color: var(--ui-muted); font-style: italic; white-space: nowrap; }
+.ov-rank-empty { padding: 20px; background: var(--ui-surface); border: 1px dashed var(--ui-border); border-radius: 8px; color: var(--ui-muted); font-size: 12px; text-align: center; font-style: italic; }
+
+/* My CVs grid */
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.ov-cv-card {
+  background: var(--ui-surface); border: 1px solid var(--ui-border);
+  border-radius: 8px; padding: 16px 18px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+  display: flex; flex-direction: column; gap: 8px;
+  text-decoration: none; color: inherit;
+}
+.ov-cv-card:hover { border-color: var(--ui-accent); background: rgba(255,255,255,.03); }
+.ov-cv-card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ov-cv-card-name { font-size: 14px; font-weight: 600; color: var(--ui-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-top: 4px; }
+.ov-cv-card-score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.ov-cv-card-verdict {
+  font-size: 10px; font-weight: 500; letter-spacing: .04em;
+  color: var(--ui-muted); white-space: nowrap;
+}
+.ov-cv-card-verdict.score-low  { color: #ef4444; }
+.ov-cv-card-verdict.score-mid  { color: #f59e0b; }
+.ov-cv-card-verdict.score-high { color: #10b981; }
+.ov-cv-card-meta { font-size: 11px; color: var(--ui-muted); font-style: italic; }
+.ov-cv-card-add {
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px dashed var(--ui-border);
+  color: var(--ui-muted); font-weight: 500;
+}
+.ov-cv-card-add:hover { color: var(--ui-accent); border-color: var(--ui-accent); border-style: solid; background: rgba(255,255,255,.02); }
+
+/* Read-only banner in editor when viewing someone else's CV */
+.readonly-banner {
+  display: none; align-items: center; gap: 10px;
+  padding: 8px 16px; font-size: 12px; color: #f59e0b;
+  background: rgba(245, 158, 11, .08); border-bottom: 1px solid rgba(245, 158, 11, .25);
+}
+.readonly-banner.visible { display: flex; }
+.readonly-banner .icon { font-size: 14px; }
+.btn-back-overview { background: transparent; color: var(--ui-muted); border: 1px solid var(--ui-border); }
+.btn-back-overview:hover { color: var(--ui-text); border-color: var(--ui-accent); }
 </style>
 </head>
 <body>
 
+<!-- ══════════════════════════════════════════════════════════
+     OVERVIEW VIEW — landing page after login
+     ══════════════════════════════════════════════════════════ -->
+<div class="view view-overview" id="view-overview">
+  <header class="ov-header">
+    <div class="app-logo">
+      <img class="app-logo-mark" src="/assets/lunatech-logo-alone.png" alt="Lunatech">
+      <div class="app-logo-text">
+        <span class="app-logo-brand">Lunatech</span>
+        <span class="app-logo-product">CV Builder</span>
+      </div>
+    </div>
+    <span class="user-info" id="ov-user-info">
+      <span class="user-name" id="ov-user-name"></span>
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </span>
+  </header>
+
+  <main class="ov-main">
+    <div class="ov-greeting">Welcome back, <strong id="ov-me-name">there</strong></div>
+    <div class="ov-tagline">Lunatech CV builder — write, review with Claude, ship.</div>
+
+    <section class="ov-section">
+      <h2 class="ov-section-title"><span class="icon">&#128100;</span> My CVs</h2>
+      <div class="ov-stats-row">
+        <div class="ov-stat">
+          <div class="ov-stat-num" id="ov-mine-total">—</div>
+          <div class="ov-stat-label">My CVs</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-stat-num" id="ov-mine-reviewed">—</div>
+          <div class="ov-stat-label">Reviewed</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-stat-num accent" id="ov-mine-avg">—</div>
+          <div class="ov-stat-label">Avg score</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-stat-num" id="ov-mine-ready">—</div>
+          <div class="ov-stat-label" title="CVs whose latest Claude review verdict is 'client ready' — sendable as-is. CVs with a high score but a 'minor improvements' verdict are not counted.">Client-ready</div>
+        </div>
+      </div>
+      <div id="ov-my-grid" class="ov-grid"></div>
+    </section>
+
+    <section class="ov-section">
+      <h2 class="ov-section-title"><span class="icon">&#127970;</span> Lunatech CVs</h2>
+      <div class="ov-stats-row">
+        <div class="ov-stat">
+          <div class="ov-stat-num" id="ov-co-total">—</div>
+          <div class="ov-stat-label">Total CVs</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-stat-num" id="ov-co-reviewed">—</div>
+          <div class="ov-stat-label">Reviewed</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-stat-num accent" id="ov-co-avg">—</div>
+          <div class="ov-stat-label">Avg score</div>
+        </div>
+        <div class="ov-stat">
+          <div class="ov-stat-num" id="ov-co-ready">—</div>
+          <div class="ov-stat-label" title="CVs whose latest Claude review verdict is 'client ready' — sendable as-is. CVs with a high score but a 'minor improvements' verdict are not counted.">Client-ready</div>
+        </div>
+      </div>
+      <h3 class="ov-subsection-title"><span class="icon">&#127942;</span> Top CVs</h3>
+      <div id="ov-top-list" class="ov-rank-list"></div>
+      <h3 class="ov-subsection-title"><span class="icon">&#128203;</span> All CVs</h3>
+      <div id="ov-all-list" class="ov-rank-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     EDITOR VIEW — opens with ?id=xxx (load) or ?new=1 (blank)
+     ══════════════════════════════════════════════════════════ -->
+<div class="view view-editor" id="view-editor">
+<div class="readonly-banner" id="readonly-banner">
+  <span class="icon">&#128274;</span>
+  <span>Read-only — this CV belongs to <strong id="readonly-owner">someone else</strong>. Editing is disabled.</span>
+</div>
 <header class="app-header">
   <div class="app-logo">
     <img class="app-logo-mark" src="/assets/lunatech-logo-alone.png" alt="Lunatech">
@@ -571,6 +770,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
     </div>
   </div>
   <div class="header-actions">
+    <button class="btn btn-back-overview" onclick="navigateTo('/')" title="Back to overview">&#8592; Overview</button>
     <div class="theme-switcher">
       <span class="theme-label">Theme</span>
       <button class="theme-btn theme-btn-lunatech active" title="Lunatech" onclick="setTheme('lunatech')"></button>
@@ -589,15 +789,14 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
       <option value="">Open saved CV…</option>
     </select>
     <button class="btn btn-ghost" onclick="newCv()">+ New</button>
-    <button class="btn btn-ghost" onclick="saveCv()">Save</button>
-    <button class="btn btn-ghost" onclick="deleteCv()" title="Delete the currently loaded CV">Delete</button>
-    <span class="cv-status" id="cv-status">Unsaved</span>
+    <button class="btn btn-ghost" data-owner-only onclick="deleteCv()" title="Delete the currently loaded CV">Delete</button>
+    <span class="cv-status" id="cv-status" data-owner-only>Unsaved</span>
     <button class="btn btn-ghost" onclick="copyYaml()">Copy YAML</button>
     <span class="review-score-badge" id="review-score-badge" onclick="openReviewModalFromCache()" title="Open the latest Claude review">
       <span class="score-num" id="review-score-num">—</span>
       <span>/ 10</span>
     </span>
-    <button class="btn btn-review" id="btn-review" onclick="runReview()" title="Save the CV, then ask Claude to review it">Save &amp; Review with Claude</button>
+    <button class="btn btn-review" id="btn-review" data-owner-only onclick="runReview()" title="Save the CV, then ask Claude to review it">Save &amp; Review with Claude</button>
     <button class="btn btn-primary" onclick="exportPDF()">&#8595; Export PDF</button>
     <span class="user-info" id="user-info">
       <span class="user-name" id="user-name"></span>
@@ -1092,30 +1291,9 @@ async function refreshCvList() {
   }
 }
 
-async function loadCv(id) {
-  if (!id) return;
-  try {
-    var res = await fetch('/api/cvs/' + id);
-    if (!res.ok) { alert('Load failed'); return; }
-    var cv = await res.json();
-    var ta = document.getElementById('yaml-editor');
-    ta.value = cv.yaml;
-    currentCvId = cv.id;
-    savedYaml = cv.yaml;
-    // Backend includes the latest persisted review on the CV response so
-    // the score badge is filled in on first load — no extra round-trip.
-    if (cv.latest_review) {
-      cachedReview = cv.latest_review;
-      cachedReviewAt = cv.latest_review_at || null;
-      refreshReviewBadge();
-    } else {
-      clearReviewState();
-    }
-    ta.dispatchEvent(new Event('input'));
-    refreshStatus();
-  } catch (e) {
-    alert('Load failed: ' + e.message);
-  }
+// Thin wrapper — the dropdown calls this; we let the URL drive everything.
+function loadCv(id) {
+  if (id) navigateTo('/?id=' + encodeURIComponent(id));
 }
 
 async function saveCv() {
@@ -1137,6 +1315,12 @@ async function saveCv() {
       if (!res.ok) throw new Error(await res.text());
       var data = await res.json();
       currentCvId = data.id;
+      // We were on /?new=1; pin the URL to /?id=xxx so a refresh reloads
+      // the freshly-created CV instead of starting blank again.
+      var params = new URLSearchParams(location.search);
+      if (!params.get('id')) {
+        history.replaceState({}, '', '/?id=' + currentCvId);
+      }
     }
     savedYaml = yaml;
     await refreshCvList();
@@ -1149,16 +1333,9 @@ async function saveCv() {
 }
 
 function newCv() {
-  clearReviewState();
   var current = document.getElementById('yaml-editor').value;
   if (savedYaml !== current && !confirm('Discard unsaved changes and start a new CV?')) return;
-  var ta = document.getElementById('yaml-editor');
-  ta.value = YAML_DEFAULT;
-  currentCvId = null;
-  savedYaml = null;
-  ta.dispatchEvent(new Event('input'));
-  document.getElementById('cv-list').value = '';
-  refreshStatus();
+  navigateTo('/?new=1');
 }
 
 async function deleteCv() {
@@ -1170,22 +1347,32 @@ async function deleteCv() {
     currentCvId = null;
     savedYaml = null;
     clearReviewState();
-    var ta = document.getElementById('yaml-editor');
-    ta.value = YAML_DEFAULT;
-    ta.dispatchEvent(new Event('input'));
     await refreshCvList();
-    refreshStatus();
+    // Back to the overview — the deleted CV obviously doesn't make sense
+    // to keep editing, and the user gets the refreshed listings.
+    navigateTo('/');
   } catch (e) {
     alert('Delete failed: ' + e.message);
   }
 }
 
 async function exportPDF() {
-  // Persist before exporting so the server has the latest YAML
-  var ok = await saveCv();
-  if (!ok || !currentCvId) return;
-  var url = '/api/cvs/' + currentCvId + '/pdf?theme=' + encodeURIComponent(currentTheme);
-  window.open(url, '_blank');
+  // Save first only if I own the CV (or it's a draft I'm about to create) —
+  // a non-owner viewing someone else's CV gets the saved version straight
+  // through, since their PUT would 404 anyway.
+  var iOwnIt = currentCvId == null || currentOwnerId == null || currentOwnerId === meId;
+  if (iOwnIt) {
+    var ok = await saveCv();
+    if (!ok || !currentCvId) return;
+  } else if (!currentCvId) {
+    return;
+  }
+  var name = '';
+  try {
+    var data = jsyaml.load(document.getElementById('yaml-editor').value) || {};
+    if (typeof data.name === 'string') name = data.name;
+  } catch (_) {}
+  await downloadCvPdf(currentCvId, name, null, currentTheme);
 }
 
 function copyYaml() {
@@ -1220,6 +1407,254 @@ if (typeof ResizeObserver !== 'undefined') {
 }
 
 // ══════════════════════════════════════════════════════════
+// VIEW ROUTING + OVERVIEW
+// ══════════════════════════════════════════════════════════
+// One static page hosting two views:
+//   /              → overview (landing after login)
+//   /?id=xxx       → editor for the given CV (read-only if not owned)
+//   /?new=1        → editor with a blank YAML default
+// We swap views by toggling the .active class; pushState handles back/forward.
+
+var meId = null;            // resolved Keycloak `sub` UUID, set after /api/overview
+var currentOwnerId = null;  // owner of the CV currently loaded in the editor
+
+function navigateTo(url) {
+  history.pushState({}, '', url);
+  routeView();
+}
+
+window.addEventListener('popstate', routeView);
+
+function showView(name) {
+  document.getElementById('view-overview').classList.toggle('active', name === 'overview');
+  document.getElementById('view-editor').classList.toggle('active', name === 'editor');
+}
+
+async function routeView() {
+  var params = new URLSearchParams(location.search);
+  if (params.get('id')) {
+    showView('editor');
+    await openCvInEditor(params.get('id'));
+    setTimeout(scalePreview, 0);
+  } else if (params.get('new') === '1') {
+    showView('editor');
+    openBlankEditor();
+    setTimeout(scalePreview, 0);
+  } else {
+    showView('overview');
+    await renderOverview();
+  }
+}
+
+async function renderOverview() {
+  var data;
+  try {
+    data = await fetch('/api/overview').then(function(r) { return r.json(); });
+  } catch (e) {
+    alert('Could not load the overview: ' + e.message);
+    return;
+  }
+  meId = data.me && data.me.id;
+  var displayName = (data.me && (data.me.name || data.me.email)) || 'there';
+  document.getElementById('ov-me-name').textContent = displayName;
+  document.getElementById('ov-user-name').textContent = displayName;
+  document.getElementById('ov-user-info').classList.add('visible');
+
+  fillStats('ov-mine', data.stats.mine);
+  fillStats('ov-co', data.stats.company);
+
+  renderTopList(data.top_cvs || []);
+  renderAllList(data.all_cvs || []);
+  renderMyGrid(data.my_cvs || []);
+}
+
+function fillStats(prefix, s) {
+  document.getElementById(prefix + '-total').textContent = s.total_cvs;
+  document.getElementById(prefix + '-reviewed').textContent = s.reviewed_cvs;
+  document.getElementById(prefix + '-avg').textContent =
+    s.avg_score == null ? '—' : s.avg_score.toFixed(1);
+  document.getElementById(prefix + '-ready').textContent = s.client_ready_count;
+}
+
+function rankClass(i) {
+  return i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function relativeDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso), now = new Date();
+  var diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  if (diff < 86400*30) return Math.floor(diff/86400) + 'd ago';
+  return d.toLocaleDateString();
+}
+
+// Stops the parent <a> click from navigating when the user hits the
+// download icon — the icon should download in place, not open the editor.
+function rankRowHtml(c, opts) {
+  opts = opts || {};
+  var rankCell = opts.rank == null ? '' :
+    '<span class="ov-rank-num ' + rankClass(opts.rank) + '">#' + (opts.rank + 1) + '</span>';
+  var scoreCell = c.latest_score == null
+    ? '<span class="ov-rank-verdict">—</span>'
+    : '<span class="ov-rank-score ' + scoreClass(c.latest_score) + '">' + c.latest_score + '/10</span>';
+  var verdict = c.latest_verdict ? c.latest_verdict.replace(/_/g, ' ') : '';
+  var dateText = c.latest_review_at ? relativeDate(c.latest_review_at) : relativeDate(c.updated_at);
+  var rowClass = 'ov-rank-row' + (opts.rank == null ? ' no-rank-num' : '');
+  return '<a class="' + rowClass + '" href="/?id=' + encodeURIComponent(c.id) + '"' +
+    ' onclick="event.preventDefault(); navigateTo(this.getAttribute(\'href\'))">' +
+    rankCell +
+    scoreCell +
+    '<span class="ov-rank-name">' + escHtml(c.name || 'Untitled CV') + '</span>' +
+    '<span class="ov-rank-owner">' + escHtml(c.owner_name || '—') + '</span>' +
+    '<span class="ov-rank-verdict">' + escHtml(verdict) + '</span>' +
+    '<span class="ov-rank-date">' + dateText + '</span>' +
+    '<button class="ov-rank-dl" title="Download PDF"' +
+    ' onclick="event.preventDefault(); event.stopPropagation();' +
+    ' downloadCvPdf(\'' + c.id + '\', ' + JSON.stringify(c.name || '') + ', this)">&#8595;</button>' +
+  '</a>';
+}
+
+function renderTopList(items) {
+  var box = document.getElementById('ov-top-list');
+  if (!items.length) {
+    box.innerHTML = '<div class="ov-rank-empty">No reviewed CVs yet — run a review on yours and you might top the chart.</div>';
+    return;
+  }
+  box.innerHTML = items.map(function(c, i) {
+    return rankRowHtml(c, { rank: i });
+  }).join('');
+}
+
+function renderAllList(items) {
+  var box = document.getElementById('ov-all-list');
+  if (!items.length) {
+    box.innerHTML = '<div class="ov-rank-empty">No CVs yet on the platform.</div>';
+    return;
+  }
+  box.innerHTML = items.map(function(c) {
+    return rankRowHtml(c);
+  }).join('');
+}
+
+// Bearer-aware PDF download: fetch through the auth-wrapped fetch (so the
+// JWT lands as Authorization), turn the response into a blob, and trigger
+// a download via a synthetic <a download>. window.open() can't carry the
+// Bearer header, so plain anchor links to /api/* fail in auth mode.
+async function downloadCvPdf(cvId, name, btnEl, theme) {
+  if (btnEl) btnEl.disabled = true;
+  try {
+    var t = theme || 'lunatech';
+    var res = await fetch('/api/cvs/' + cvId + '/pdf?theme=' + encodeURIComponent(t));
+    if (!res.ok) throw new Error(await res.text());
+    var blob = await res.blob();
+    var blobUrl = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = blobUrl;
+    var slug = (name || 'cv').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cv';
+    a.download = 'cv-' + slug + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 1000);
+  } catch (e) {
+    alert('Download failed: ' + e.message);
+  } finally {
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+
+function renderMyGrid(items) {
+  var box = document.getElementById('ov-my-grid');
+  var newCard = '<a class="ov-cv-card ov-cv-card-add" href="/?new=1" onclick="event.preventDefault(); navigateTo(this.getAttribute(\'href\'))"><span>+ New CV</span></a>';
+  if (!items.length) {
+    box.innerHTML = newCard;
+    return;
+  }
+  box.innerHTML = items.map(function(c) {
+    var scoreCol;
+    if (c.latest_score == null) {
+      scoreCol = '<span class="ov-rank-verdict">Not reviewed</span>';
+    } else {
+      var cls = scoreClass(c.latest_score);
+      scoreCol =
+        '<div class="ov-cv-card-score-col">' +
+          '<span class="ov-rank-score ' + cls + '">' + c.latest_score + '/10</span>' +
+          '<span class="ov-cv-card-verdict ' + cls + '">' + escHtml(verdictLabel(c.latest_verdict)) + '</span>' +
+        '</div>';
+    }
+    return '<a class="ov-cv-card" href="/?id=' + encodeURIComponent(c.id) + '" onclick="event.preventDefault(); navigateTo(this.getAttribute(\'href\'))">' +
+      '<div class="ov-cv-card-row">' +
+        '<span class="ov-cv-card-name">' + escHtml(c.name || 'Untitled CV') + '</span>' +
+        scoreCol +
+      '</div>' +
+      '<span class="ov-cv-card-meta">Updated ' + relativeDate(c.updated_at) + '</span>' +
+    '</a>';
+  }).join('') + newCard;
+}
+
+// ─── Editor entry points (called by routeView) ───
+
+function openBlankEditor() {
+  currentOwnerId = meId;
+  setReadonly(false);
+  var ta = document.getElementById('yaml-editor');
+  ta.value = YAML_DEFAULT;
+  currentCvId = null;
+  savedYaml = null;
+  clearReviewState();
+  ta.dispatchEvent(new Event('input'));
+  refreshStatus();
+}
+
+async function openCvInEditor(id) {
+  try {
+    var cv = await fetch('/api/cvs/' + id).then(function(r) { return r.json(); });
+    var ta = document.getElementById('yaml-editor');
+    ta.value = cv.yaml;
+    currentCvId = cv.id;
+    savedYaml = cv.yaml;
+    currentOwnerId = (cv.owner && cv.owner.id) || null;
+    setReadonly(currentOwnerId !== meId, cv.owner);
+    if (cv.latest_review) {
+      cachedReview = cv.latest_review;
+      cachedReviewAt = cv.latest_review_at || null;
+      refreshReviewBadge();
+    } else {
+      clearReviewState();
+    }
+    ta.dispatchEvent(new Event('input'));
+    refreshStatus();
+  } catch (e) {
+    alert('Load failed: ' + e.message);
+  }
+}
+
+function setReadonly(yes, owner) {
+  var banner = document.getElementById('readonly-banner');
+  banner.classList.toggle('visible', yes);
+  if (yes && owner) {
+    document.getElementById('readonly-owner').textContent =
+      owner.name || owner.email || 'another user';
+  }
+  // Hide the actions that have no meaning on someone else's CV (Save,
+  // Delete, Save & Review, the saved-status indicator). Disabled greyed-out
+  // buttons would just be visual noise. Export PDF and the theme switcher
+  // stay — they make sense for a read-only viewer.
+  document.querySelectorAll('[data-owner-only]').forEach(function(el) {
+    el.style.display = yes ? 'none' : '';
+  });
+}
+
+// ══════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════
 (async function init() {
@@ -1248,9 +1683,11 @@ if (typeof ResizeObserver !== 'undefined') {
   attachEditor('yaml-editor', 'hl-yaml', 'gutter-yaml', 'wrap-yaml', highlightYaml, updateCV);
   attachEditor('css-editor',  'hl-css',  'gutter-css',  'wrap-css',  highlightCss,  updateCSS);
   setTheme('lunatech');
-  scalePreview();
   refreshStatus();
   refreshCvList();
+  // Decide which view to show based on the URL — overview is the default
+  // landing post-login; the editor opens with ?id=xxx or ?new=1.
+  await routeView();
 })();
 
 // ══════════════════════════════════════════════════════════
@@ -1509,6 +1946,7 @@ function applyImprovedYaml() {
     </div>
   </div>
 </div>
+</div><!-- /view-editor -->
 
 </body>
 </html>

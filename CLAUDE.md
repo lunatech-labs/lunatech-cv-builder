@@ -47,16 +47,19 @@ Optional env vars:
 
 ## API
 
-| Method | Path                       | Purpose                                                                |
-| ------ | -------------------------- | ---------------------------------------------------------------------- |
-| GET    | `/api/cvs`                 | list `[{id, name, updated_at}]`                                        |
-| POST   | `/api/cvs`                 | body `{yaml}` -> `{id}`                                                |
-| GET    | `/api/cvs/{id}`            | `{id, name, yaml, updated_at, latest_review?, latest_review_at?}`      |
-| PUT    | `/api/cvs/{id}`            | body `{yaml}`                                                          |
-| DELETE | `/api/cvs/{id}`            | -                                                                      |
-| GET    | `/api/cvs/{id}/pdf?theme=` | PDF bytes; theme = lunatech/cosmic/luxe/opera                          |
-| POST   | `/api/cvs/{id}/reviews`    | runs Claude on the saved YAML, persists, returns the review            |
-| POST   | `/api/review/pdf`          | body `{review, cv_name?}` -> PDF bytes (download); stateless           |
+| Method | Path                       | Purpose                                                                | Scope    |
+| ------ | -------------------------- | ---------------------------------------------------------------------- | -------- |
+| GET    | `/api/overview`            | `{me, stats, my_cvs, top_cvs}` — landing-page payload                  | self     |
+| GET    | `/api/cvs`                 | list `[{id, name, updated_at}]` of the caller's CVs                    | self     |
+| POST   | `/api/cvs`                 | body `{yaml}` -> `{id}` (assigned to caller)                           | self     |
+| GET    | `/api/cvs/{id}`            | `{id, name, yaml, updated_at, owner, latest_review?, latest_review_at?}` | any user |
+| PUT    | `/api/cvs/{id}`            | body `{yaml}` — owner only                                             | owner    |
+| DELETE | `/api/cvs/{id}`            | — owner only                                                           | owner    |
+| GET    | `/api/cvs/{id}/pdf?theme=` | PDF bytes; theme = lunatech/cosmic/luxe/opera                          | any user |
+| POST   | `/api/cvs/{id}/reviews`    | runs Claude on the saved YAML, persists, returns the review            | owner    |
+| POST   | `/api/review/pdf`          | body `{review, cv_name?}` -> PDF bytes (download); stateless           | any user |
+
+**Scope semantics** — `self` means the response is filtered to the caller's CVs. `any user` means any authenticated user can read (Lunatech-internal trust model: every recruiter can browse every consultant's CV). `owner` means only the CV's creator can mutate. The `owner` field on `GET /api/cvs/{id}` lets the frontend detect non-owned CVs and switch the editor into a read-only banner mode.
 
 The `name` column is extracted from the YAML's `name:` key on save and used for the list view.
 
@@ -71,6 +74,16 @@ Three tables, all in [`migrations/`](migrations/):
 In dev mode (no Keycloak configured) all requests resolve to a fixed **dev user** with id `00000000-0000-0000-0000-000000000000` — seeded by migration `0004_users.sql` and used as the owner for any pre-existing CVs that didn't have a `user_id` yet. Keeps the local hack-on-it-without-auth flow working unchanged.
 
 The user resolution lives in [`src/users.rs`](src/users.rs) as a Tower middleware that always runs on `/api/cvs/*` and `/api/review*`. It reads the `Claims` extension that the auth layer set (when present), parses the `sub` as a UUID, upserts the row, and stashes the `User` as a request extension. Handlers extract via `Extension<User>` and pass `user.id` into the `db.rs` calls.
+
+## Overview / landing page
+
+`GET /api/overview` is the single round-trip the post-login landing page makes. It returns:
+- `me` — the resolved `User` (id, email, name)
+- `stats` — split into `mine` (caller-scoped) and `company` (workspace-wide), each carrying `total_cvs`, `reviewed_cvs`, `avg_score` (over latest reviews), `client_ready_count`. One SQL with shared CTE so both sides return in a single round-trip.
+- `my_cvs` — every CV owned by the caller, with the score / verdict / timestamp of its latest review (denormalised columns from the `reviews` table via a `LEFT JOIN LATERAL`)
+- `top_cvs` — top 10 across the platform, ranked by `latest_score DESC` then recency, with `owner_name` so each row credits the consultant
+
+Everyone in the realm can see everyone's reviewed CVs in the ranking — that's the point. Edit / delete / re-review remain owner-only. The frontend lives in a single `index.html` with two views toggled by query string: `/` → overview, `/?id=xxx` → editor (read-only when `cv.owner.id !== me.id`), `/?new=1` → blank editor.
 
 ## Authentication (Keycloak via OIDC)
 

@@ -94,6 +94,14 @@ Structure your report as follows:
 ### Overall Assessment
 Start with a brief overall verdict: is this CV client-ready, needs minor improvements, or needs major rework? Give an overall score from 1 to 10.
 
+**Verdict thresholds — apply these so the structured verdict matches the tone of your prose:**
+
+- **client_ready** — the CV can be sent to a client as-is. Any remaining improvements are *polish* (typo fixes, phrasing tweaks, optional reordering) that take less than an hour to apply. Pick this verdict whenever you find yourself writing phrases like "essentially client-ready", "ready as-is", or "the suggestions above are polish, not rework".
+- **minor_improvements** — the CV has real content gaps that need filling: missing dates, vague descriptions, unstated team sizes, missing impact numbers. The structure is right; specific facts need to be added. Roughly 1–3 hours of work to be ready.
+- **major_rework** — the CV is structurally inadequate: missing entire sections, projects with no descriptions, no per-project technologies, or a generic "skill matrix" that doesn't tie back to specific projects. Half a day or more of work.
+
+The verdict and the score should track each other: 9/10 or 10/10 is almost always `client_ready`, 7/10 or 8/10 is typically `minor_improvements`, anything below 6 leans `major_rework`. If you find yourself wanting to write a positive prose verdict but a stricter structured verdict, raise the structured verdict — they should agree.
+
 ### Per-Project Analysis
 For each project on the CV, create a section with:
 

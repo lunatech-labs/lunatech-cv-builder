@@ -430,6 +430,63 @@ async fn review_returns_503_when_api_key_not_configured(pool: PgPool) {
     assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
+// ─────────────────────────── OVERVIEW ───────────────────────────
+
+#[sqlx::test]
+async fn overview_empty_returns_zero_stats(pool: PgPool) {
+    let app = router_with(pool);
+    let resp = app
+        .oneshot(empty_request("GET", "/overview"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = body_json(resp).await;
+    for scope in ["mine", "company"] {
+        assert_eq!(json["stats"][scope]["total_cvs"], 0);
+        assert_eq!(json["stats"][scope]["reviewed_cvs"], 0);
+        assert!(json["stats"][scope]["avg_score"].is_null());
+        assert_eq!(json["stats"][scope]["client_ready_count"], 0);
+    }
+    assert_eq!(json["my_cvs"].as_array().unwrap().len(), 0);
+    assert_eq!(json["top_cvs"].as_array().unwrap().len(), 0);
+}
+
+#[sqlx::test]
+async fn overview_lists_my_cvs(pool: PgPool) {
+    let app = router_with(pool);
+    create(&app, SAMPLE_YAML).await;
+    create(&app, "name: Second").await;
+
+    let resp = app.oneshot(empty_request("GET", "/overview")).await.unwrap();
+    let json = body_json(resp).await;
+    // Tests run as the dev user, who owns both CVs — mine and company match.
+    assert_eq!(json["stats"]["mine"]["total_cvs"], 2);
+    assert_eq!(json["stats"]["company"]["total_cvs"], 2);
+    let my = json["my_cvs"].as_array().unwrap();
+    assert_eq!(my.len(), 2);
+    // No reviews yet, so latest_score is null on each.
+    assert!(my[0]["latest_score"].is_null());
+    // top_cvs is restricted to reviewed CVs — none here.
+    assert_eq!(json["top_cvs"].as_array().unwrap().len(), 0);
+    // all_cvs is the unfiltered catalog — both CVs land here.
+    assert_eq!(json["all_cvs"].as_array().unwrap().len(), 2);
+}
+
+#[sqlx::test]
+async fn get_cv_includes_owner_info(pool: PgPool) {
+    let app = router_with(pool);
+    let id = create(&app, SAMPLE_YAML).await;
+
+    let resp = app
+        .oneshot(empty_request("GET", &format!("/cvs/{id}")))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = body_json(resp).await;
+    assert!(json["owner"].is_object(), "expected owner field");
+    assert!(json["owner"]["id"].is_string());
+}
+
 #[sqlx::test]
 async fn review_returns_404_for_unknown_cv_even_without_key(pool: PgPool) {
     // The 503 (no API key) check fires before the lookup, so a missing

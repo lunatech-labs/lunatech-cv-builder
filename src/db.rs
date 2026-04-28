@@ -153,21 +153,20 @@ impl Db {
         Ok(row.0)
     }
 
-    /// Returns the most recent review for a CV (scoped to the calling user
-    /// so we never expose another user's review even if the cv_id leaks),
-    /// alongside the timestamp the review was run.
+    /// Returns the most recent review for a CV regardless of who ran it.
+    /// All authenticated users can see each other's reviews on the Overview
+    /// + read-only-CV surfaces; the *write* side (running a new review)
+    /// stays owner-only and is enforced in the handler.
     pub async fn latest_review(
         &self,
         cv_id: Uuid,
-        user_id: Uuid,
     ) -> Result<Option<(Review, DateTime<Utc>)>> {
         let row: Option<(serde_json::Value, DateTime<Utc>)> = sqlx::query_as(
             "SELECT payload, created_at FROM reviews
-             WHERE cv_id = $1 AND user_id = $2
+             WHERE cv_id = $1
              ORDER BY created_at DESC LIMIT 1",
         )
         .bind(cv_id)
-        .bind(user_id)
         .fetch_optional(&self.pool)
         .await?;
         match row {
@@ -179,4 +178,226 @@ impl Db {
             None => Ok(None),
         }
     }
+
+    // ────────── Cross-user reads (Overview + read-only viewer) ──────────
+
+    /// Reads any CV regardless of owner — used by the read-only viewer and
+    /// the PDF download. Returns the record plus the owner's identity so
+    /// the frontend can show "by Alice Smith" and detect non-owned CVs.
+    pub async fn get_any(&self, id: Uuid) -> Result<Option<CvWithOwner>> {
+        let row: Option<(
+            Uuid,
+            String,
+            String,
+            DateTime<Utc>,
+            Uuid,
+            Option<String>,
+            Option<String>,
+        )> = sqlx::query_as(
+            "SELECT c.id, c.name, c.yaml, c.updated_at,
+                    u.id, u.name, u.email
+             FROM cvs c JOIN users u ON u.id = c.user_id
+             WHERE c.id = $1",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(row.map(
+            |(id, name, yaml, updated_at, owner_id, owner_name, owner_email)| CvWithOwner {
+                id,
+                name,
+                yaml,
+                updated_at,
+                owner: Owner {
+                    id: owner_id,
+                    name: owner_name,
+                    email: owner_email,
+                },
+            },
+        ))
+    }
+
+    /// Computes the same 4-tuple of stats both for the calling user (`mine`)
+    /// and for the entire workspace (`company`) in a single round-trip — the
+    /// CTE for `latest` is shared, only the WHERE on the per-user side
+    /// differs.
+    pub async fn overview_stats(&self, user_id: Uuid) -> Result<OverviewStats> {
+        let row: (
+            i64,
+            i64,
+            Option<f64>,
+            i64,
+            i64,
+            i64,
+            Option<f64>,
+            i64,
+        ) = sqlx::query_as(
+            "WITH all_latest AS (
+                 SELECT DISTINCT ON (r.cv_id)
+                     r.cv_id, r.overall_score, r.verdict, c.user_id
+                 FROM reviews r
+                 JOIN cvs c ON c.id = r.cv_id
+                 ORDER BY r.cv_id, r.created_at DESC
+             )
+             SELECT
+                 -- Mine
+                 (SELECT COUNT(*) FROM cvs WHERE user_id = $1)::bigint,
+                 (SELECT COUNT(*) FROM all_latest WHERE user_id = $1)::bigint,
+                 (SELECT AVG(overall_score)::float8 FROM all_latest WHERE user_id = $1),
+                 (SELECT COUNT(*) FROM all_latest
+                    WHERE user_id = $1 AND verdict = 'client_ready')::bigint,
+                 -- Company-wide
+                 (SELECT COUNT(*) FROM cvs)::bigint,
+                 (SELECT COUNT(*) FROM all_latest)::bigint,
+                 (SELECT AVG(overall_score)::float8 FROM all_latest),
+                 (SELECT COUNT(*) FROM all_latest WHERE verdict = 'client_ready')::bigint",
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(OverviewStats {
+            mine: ScopedStats {
+                total_cvs: row.0 as u32,
+                reviewed_cvs: row.1 as u32,
+                avg_score: row.2,
+                client_ready_count: row.3 as u32,
+            },
+            company: ScopedStats {
+                total_cvs: row.4 as u32,
+                reviewed_cvs: row.5 as u32,
+                avg_score: row.6,
+                client_ready_count: row.7 as u32,
+            },
+        })
+    }
+
+    /// All CVs owned by a user, with the score of their latest review (any
+    /// reviewer; in practice the owner since only owners can run reviews).
+    pub async fn my_cvs_with_review(&self, user_id: Uuid) -> Result<Vec<CvOverviewItem>> {
+        sqlx::query_as::<_, CvOverviewItem>(
+            "SELECT
+                c.id, c.name, c.updated_at,
+                u.id   AS owner_id,
+                u.name AS owner_name,
+                r.overall_score AS latest_score,
+                r.verdict       AS latest_verdict,
+                r.created_at    AS latest_review_at
+             FROM cvs c
+             JOIN users u ON u.id = c.user_id
+             LEFT JOIN LATERAL (
+                 SELECT overall_score, verdict, created_at
+                 FROM reviews
+                 WHERE cv_id = c.id
+                 ORDER BY created_at DESC
+                 LIMIT 1
+             ) r ON TRUE
+             WHERE c.user_id = $1
+             ORDER BY c.updated_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .context("loading my_cvs_with_review")
+    }
+
+    /// Every CV across the platform, sorted by recency. Used by the
+    /// Overview's "All CVs" listing — recruiters need a flat catalog they
+    /// can browse and download from regardless of review status.
+    pub async fn all_cvs_with_review(&self) -> Result<Vec<CvOverviewItem>> {
+        sqlx::query_as::<_, CvOverviewItem>(
+            "SELECT
+                c.id, c.name, c.updated_at,
+                u.id   AS owner_id,
+                u.name AS owner_name,
+                r.overall_score AS latest_score,
+                r.verdict       AS latest_verdict,
+                r.created_at    AS latest_review_at
+             FROM cvs c
+             JOIN users u ON u.id = c.user_id
+             LEFT JOIN LATERAL (
+                 SELECT overall_score, verdict, created_at
+                 FROM reviews
+                 WHERE cv_id = c.id
+                 ORDER BY created_at DESC
+                 LIMIT 1
+             ) r ON TRUE
+             ORDER BY c.updated_at DESC",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .context("loading all_cvs_with_review")
+    }
+
+    /// Top N CVs across the platform, ranked by their latest review's score
+    /// (descending). CVs that have never been reviewed are excluded — there's
+    /// nothing to rank them by. Ties are broken by recency.
+    pub async fn top_cvs(&self, limit: i64) -> Result<Vec<CvOverviewItem>> {
+        sqlx::query_as::<_, CvOverviewItem>(
+            "SELECT
+                c.id, c.name, c.updated_at,
+                u.id   AS owner_id,
+                u.name AS owner_name,
+                r.overall_score AS latest_score,
+                r.verdict       AS latest_verdict,
+                r.created_at    AS latest_review_at
+             FROM cvs c
+             JOIN users u ON u.id = c.user_id
+             JOIN LATERAL (
+                 SELECT overall_score, verdict, created_at
+                 FROM reviews
+                 WHERE cv_id = c.id
+                 ORDER BY created_at DESC
+                 LIMIT 1
+             ) r ON TRUE
+             ORDER BY r.overall_score DESC, r.created_at DESC
+             LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .context("loading top_cvs")
+    }
 }
+
+#[derive(Serialize)]
+pub struct Owner {
+    pub id: Uuid,
+    pub name: Option<String>,
+    pub email: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct CvWithOwner {
+    pub id: Uuid,
+    pub name: String,
+    pub yaml: String,
+    pub updated_at: DateTime<Utc>,
+    pub owner: Owner,
+}
+
+#[derive(Serialize)]
+pub struct OverviewStats {
+    pub mine: ScopedStats,
+    pub company: ScopedStats,
+}
+
+#[derive(Serialize)]
+pub struct ScopedStats {
+    pub total_cvs: u32,
+    pub reviewed_cvs: u32,
+    pub avg_score: Option<f64>,
+    pub client_ready_count: u32,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct CvOverviewItem {
+    pub id: Uuid,
+    pub name: String,
+    pub updated_at: DateTime<Utc>,
+    pub owner_id: Uuid,
+    pub owner_name: Option<String>,
+    pub latest_score: Option<i16>,
+    pub latest_verdict: Option<String>,
+    pub latest_review_at: Option<DateTime<Utc>>,
+}
+

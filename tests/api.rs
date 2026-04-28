@@ -440,3 +440,49 @@ async fn review_rejects_empty_yaml(pool: PgPool) {
     // we get a 400 rather than 503.
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
+
+#[sqlx::test]
+async fn review_pdf_renders_a_pdf(pool: PgPool) {
+    // Stateless route — doesn't touch DB or call Claude, so it works even
+    // without an API key. We feed it a hand-crafted Review and check the
+    // response is a real PDF.
+    let app = router_with(pool);
+    let body = json!({
+        "review": {
+            "overall_score": 7,
+            "verdict": "minor_improvements",
+            "language": "en",
+            "report_markdown": "# Overall\n\nThe CV is solid.\n\n## Per-Project\n\n- Lead the API team\n- Designed the auth flow\n",
+            "improved_yaml": ""
+        },
+        "cv_name": "Alice Smith"
+    });
+    let resp = app
+        .oneshot(json_request("POST", "/review/pdf", body))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = body_bytes(resp).await;
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+#[sqlx::test]
+async fn review_pdf_works_without_cv_name(pool: PgPool) {
+    let app = router_with(pool);
+    let body = json!({
+        "review": {
+            "overall_score": 3,
+            "verdict": "major_rework",
+            "language": "fr",
+            "report_markdown": "# Verdict\n\nÀ retravailler.",
+            "improved_yaml": ""
+        }
+    });
+    let resp = app
+        .oneshot(json_request("POST", "/review/pdf", body))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = body_bytes(resp).await;
+    assert!(bytes.starts_with(b"%PDF-"));
+}

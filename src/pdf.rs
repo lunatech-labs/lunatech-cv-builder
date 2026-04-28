@@ -32,6 +32,32 @@ struct CvWorld {
     source: Source,
 }
 
+/// Shared Typst compile + PDF export. Used by both the CV renderer and the
+/// review-PDF renderer — keeps font loading, error formatting, and the
+/// `World` plumbing in one place.
+pub fn compile(source: String) -> Result<Vec<u8>> {
+    let loaded = load_fonts();
+    let main_id = FileId::new(None, VirtualPath::new("main.typ"));
+    let world = CvWorld {
+        library: LazyHash::new(Library::builder().build()),
+        book: LazyHash::new(loaded.book.clone()),
+        fonts: &loaded.fonts,
+        main: main_id,
+        source: Source::new(main_id, source),
+    };
+
+    let result = typst::compile::<typst::layout::PagedDocument>(&world);
+    let doc = result.output.map_err(|errs| {
+        let msgs: Vec<String> = errs.iter().map(|e| format!("{}", e.message)).collect();
+        anyhow!("typst compile failed: {}", msgs.join("; "))
+    })?;
+    let pdf = typst_pdf::pdf(&doc, &Default::default()).map_err(|errs| {
+        let msgs: Vec<String> = errs.iter().map(|e| format!("{}", e.message)).collect();
+        anyhow!("typst pdf export failed: {}", msgs.join("; "))
+    })?;
+    Ok(pdf)
+}
+
 impl typst::World for CvWorld {
     fn library(&self) -> &LazyHash<Library> {
         &self.library
@@ -82,27 +108,7 @@ pub fn render(yaml: &str, theme: &str) -> Result<Vec<u8>> {
         let _ = std::fs::write("/tmp/cv-builder-debug.typ", &src);
     }
 
-    let loaded = load_fonts();
-    let main_id = FileId::new(None, VirtualPath::new("main.typ"));
-    let source = Source::new(main_id, src);
-    let world = CvWorld {
-        library: LazyHash::new(Library::builder().build()),
-        book: LazyHash::new(loaded.book.clone()),
-        fonts: &loaded.fonts,
-        main: main_id,
-        source,
-    };
-
-    let result = typst::compile::<typst::layout::PagedDocument>(&world);
-    let doc = result.output.map_err(|errs| {
-        let msgs: Vec<String> = errs.iter().map(|e| format!("{}", e.message)).collect();
-        anyhow!("typst compile failed: {}", msgs.join("; "))
-    })?;
-    let pdf = typst_pdf::pdf(&doc, &Default::default()).map_err(|errs| {
-        let msgs: Vec<String> = errs.iter().map(|e| format!("{}", e.message)).collect();
-        anyhow!("typst pdf export failed: {}", msgs.join("; "))
-    })?;
-    Ok(pdf)
+    compile(src)
 }
 
 fn write_value(buf: &mut String, value: &serde_yaml::Value) {

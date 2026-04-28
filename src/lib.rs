@@ -3,6 +3,7 @@ pub mod cv_reviewer;
 pub mod db;
 pub mod handlers;
 pub mod pdf;
+pub mod review_pdf;
 
 pub use auth::KeycloakConfig;
 pub use cv_reviewer::AnthropicConfig;
@@ -50,6 +51,7 @@ pub fn api_router(state: AppState, authorizer: Option<auth::Authorizer>) -> Rout
         )
         .route("/cvs/{id}/pdf", get(handlers::pdf_cv))
         .route("/review", post(handlers::review_yaml))
+        .route("/review/pdf", post(handlers::review_pdf_handler))
         .with_state(state);
 
     let protected = match authorizer {

@@ -3,6 +3,7 @@ use crate::auth::KeycloakConfig;
 use crate::cv_reviewer;
 use crate::db::{CvRecord, CvSummary, Db};
 use crate::pdf;
+use crate::review_pdf;
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::{StatusCode, header};
@@ -153,6 +154,52 @@ pub async fn get_config(State(state): State<AppState>) -> Json<PublicConfig> {
         keycloak: state.keycloak.clone(),
         anthropic_enabled: state.anthropic.is_some(),
     })
+}
+
+/// Body for `POST /api/review/pdf` — the review object the frontend already
+/// has in memory plus an optional CV name for the PDF title.
+#[derive(Deserialize)]
+pub struct ReviewPdfBody {
+    pub review: cv_reviewer::Review,
+    #[serde(default)]
+    pub cv_name: Option<String>,
+}
+
+/// Renders a review (returned earlier from `POST /api/review`) as a Lunatech-
+/// branded PDF and streams it back. Stateless — doesn't touch the DB or call
+/// Claude. Useful when the recruiter wants to share the report with the
+/// consultant or attach it to a ticket.
+pub async fn review_pdf_handler(
+    Json(body): Json<ReviewPdfBody>,
+) -> Result<Response, ApiError> {
+    let bytes = review_pdf::render(&body.review, body.cv_name.as_deref()).map_err(err500)?;
+    let base = body
+        .cv_name
+        .as_deref()
+        .map(|n| n.trim())
+        .filter(|n| !n.is_empty())
+        .map(|n| {
+            n.to_lowercase()
+                .chars()
+                .map(|c| if c.is_alphanumeric() { c } else { '-' })
+                .collect::<String>()
+                .trim_matches('-')
+                .to_string()
+        })
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "review".to_string());
+    let filename = format!("cv-review-{}.pdf", base);
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/pdf".to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{}\"", filename),
+            ),
+        ],
+        bytes,
+    )
+        .into_response())
 }
 
 /// Calls Claude with the cv-reviewer skill on the YAML supplied in the body.

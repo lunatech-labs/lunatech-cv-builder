@@ -1432,6 +1432,46 @@ async function runReview() {
   }
 }
 
+async function exportReviewPdf() {
+  var review = window.__currentReview;
+  if (!review) return;
+  // Pull the consultant's name from the editor so the PDF title and filename
+  // get personalised — falls back to "review" if the field is missing.
+  var cvName = '';
+  try {
+    var data = jsyaml.load(document.getElementById('yaml-editor').value) || {};
+    if (typeof data.name === 'string') cvName = data.name;
+  } catch (_) {}
+
+  var btn = document.getElementById('review-modal-pdfbtn');
+  var original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="review-spinner"></span>Rendering…';
+  try {
+    var res = await fetch('/api/review/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review: review, cv_name: cvName }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    var slug = (cvName || 'review').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'review';
+    a.download = 'cv-review-' + slug + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  } catch (e) {
+    alert('Export PDF failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
 function applyImprovedYaml() {
   var review = window.__currentReview;
   if (!review || !review.improved_yaml) return;
@@ -1457,6 +1497,7 @@ function applyImprovedYaml() {
     <div class="review-modal-footer">
       <span class="meta" id="review-modal-meta"></span>
       <button class="btn btn-ghost" id="review-modal-applybtn" onclick="applyImprovedYaml()">Apply improved YAML</button>
+      <button class="btn btn-ghost" id="review-modal-pdfbtn" onclick="exportReviewPdf()">&#8595; Export PDF</button>
       <button class="btn btn-ghost" onclick="runReview()">Re-run</button>
       <button class="btn btn-primary" onclick="closeReviewModal()">Close</button>
     </div>

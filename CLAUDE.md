@@ -56,6 +56,7 @@ Optional env vars:
 | DELETE | `/api/cvs/{id}`            | -                                                                      |
 | GET    | `/api/cvs/{id}/pdf?theme=` | PDF bytes; theme = lunatech/cosmic/luxe/opera                          |
 | POST   | `/api/review`              | body `{yaml}` -> review JSON; stateless, no DB write                   |
+| POST   | `/api/review/pdf`          | body `{review, cv_name?}` -> PDF bytes (download); stateless           |
 
 The `name` column is extracted from the YAML's `name:` key on save and used for the list view.
 
@@ -72,6 +73,8 @@ When any `KEYCLOAK_*` var is missing the backend starts unauthenticated (warning
 ## Review with Claude
 
 `POST /api/review` is **stateless** — it accepts a `{yaml}` body, calls Claude (`claude-opus-4-7`, adaptive thinking + `effort: high`) with [`assets/skills/cv-reviewer/SKILL.md`](assets/skills/cv-reviewer/SKILL.md) as the system prompt, and returns the structured review without writing anything to the database. This lets recruiters iterate on a draft CV without committing it. Output is constrained by a JSON schema (`overall_score`, `verdict`, `language`, `report_markdown`, `improved_yaml`). Wall time is typically 20-60s; the reqwest client has a 5-min timeout, no streaming. The skill file is the single source of truth for the rubric — edit it to tune the review. The frontend caches the latest review in browser memory; refreshing the page clears it.
+
+`POST /api/review/pdf` accepts `{review, cv_name?}` and returns a Lunatech-branded PDF rendering of the report. The body's `report_markdown` is converted to Typst via [`src/review_pdf.rs`](src/review_pdf.rs) (using `pulldown-cmark` for the markdown→Typst syntax mapping — headings, lists, tables, bold/italic, code), then compiled through the same shared `pdf::compile` helper as the CV. The route is stateless: nothing in the DB, no Claude call. Triggered from the "↓ Export PDF" button in the review modal once a review is in memory.
 
 ## Two-renderer rule
 

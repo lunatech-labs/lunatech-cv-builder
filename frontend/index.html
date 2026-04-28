@@ -172,7 +172,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .hl-brace   { color: #6c7086; }
 
 /* ── PREVIEW ── */
-.preview-area { flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 32px; background-image: linear-gradient(45deg,#777 25%,transparent 25%),linear-gradient(-45deg,#777 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#777 75%),linear-gradient(-45deg,transparent 75%,#777 75%); background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; background-color: #888; }
+.preview-area { flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 16px; background-image: linear-gradient(45deg,#777 25%,transparent 25%),linear-gradient(-45deg,#777 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#777 75%),linear-gradient(-45deg,transparent 75%,#777 75%); background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; background-color: #888; }
 #cv-frame-wrapper { background: white; box-shadow: 0 8px 48px rgba(0,0,0,.5); transform-origin: top center; overflow: hidden; }
 
 /* ══════════════════════════════════════════════════════════
@@ -1192,14 +1192,25 @@ function copyYaml() {
 function scalePreview() {
   var area = document.getElementById('preview-area');
   var wrapper = document.getElementById('cv-frame-wrapper');
-  var scaleW = (area.clientWidth - 64) / 794;
-  var scaleH = (area.clientHeight - 64) / 1123;
-  var scale = Math.min(1, scaleW, scaleH);
-  wrapper.style.transform = 'scale('+scale+')';
-  wrapper.style.transformOrigin = 'top center';
-  wrapper.style.marginBottom = scale < 1 ? ((scale-1)*1123)+'px' : '0';
+  var root = document.getElementById('cv-root');
+  // Available space inside the area (matches .preview-area { padding: 16px }).
+  var scale = Math.min(1, (area.clientWidth - 32) / 794, (area.clientHeight - 32) / 1123);
+  // Scale the inner CV from its top-left corner, then size the wrapper to the
+  // scaled dimensions so it occupies its painted size in flex layout (a plain
+  // `transform: scale` on the wrapper keeps the unscaled 794-px layout box,
+  // which overflows the column on narrow previews and gets clipped).
+  root.style.transform = 'scale(' + scale + ')';
+  root.style.transformOrigin = 'top left';
+  wrapper.style.width  = (794  * scale) + 'px';
+  wrapper.style.height = (1123 * scale) + 'px';
 }
-window.addEventListener('resize', scalePreview);
+// ResizeObserver catches layout shifts the window-resize event misses — e.g.
+// the auth flow showing user-info / the review badge becoming visible.
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(scalePreview).observe(document.getElementById('preview-area'));
+} else {
+  window.addEventListener('resize', scalePreview);
+}
 
 // ══════════════════════════════════════════════════════════
 // INIT

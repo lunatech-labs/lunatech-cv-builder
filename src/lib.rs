@@ -4,6 +4,7 @@ pub mod db;
 pub mod handlers;
 pub mod pdf;
 pub mod review_pdf;
+pub mod seniority;
 pub mod users;
 
 pub use auth::KeycloakConfig;

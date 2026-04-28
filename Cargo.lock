@@ -562,6 +562,7 @@ dependencies = [
  "jsonwebtoken",
  "mime",
  "pulldown-cmark",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

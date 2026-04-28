@@ -473,6 +473,36 @@ async fn overview_lists_my_cvs(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn create_then_get_exposes_seniority(pool: PgPool) {
+    let app = router_with(pool);
+    let id = create(&app, SAMPLE_YAML).await;
+
+    let resp = app
+        .oneshot(empty_request("GET", &format!("/cvs/{id}")))
+        .await
+        .unwrap();
+    let json = body_json(resp).await;
+    assert!(json["seniority"].is_object(), "expected seniority on detail");
+    assert!(json["seniority"]["score"].is_number());
+    assert!(json["seniority"]["level"].is_string());
+    assert!(json["seniority"]["breakdown"].is_object());
+}
+
+#[sqlx::test]
+async fn overview_items_include_seniority(pool: PgPool) {
+    let app = router_with(pool);
+    create(&app, SAMPLE_YAML).await;
+
+    let resp = app.oneshot(empty_request("GET", "/overview")).await.unwrap();
+    let json = body_json(resp).await;
+    let my = json["my_cvs"].as_array().unwrap();
+    assert!(!my.is_empty());
+    // The dashboard rows carry the lean variant — score + level only.
+    assert!(my[0]["seniority_score"].is_number() || my[0]["seniority_score"].is_null());
+    assert!(my[0]["seniority_level"].is_string() || my[0]["seniority_level"].is_null());
+}
+
+#[sqlx::test]
 async fn get_cv_includes_owner_info(pool: PgPool) {
     let app = router_with(pool);
     let id = create(&app, SAMPLE_YAML).await;

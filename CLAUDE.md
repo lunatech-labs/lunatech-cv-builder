@@ -71,6 +71,8 @@ Three tables, all in [`migrations/`](migrations/):
 - `cvs` — `user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE`. Every read / write is scoped on `user_id` so a CV from another user is invisible (looks like 404). When a user is deleted the cascade removes their CVs.
 - `reviews` — every Claude review is persisted with `cv_id` (cascade), `user_id` (denormalised cascade), `overall_score` / `verdict` / `language` (denormalised top-level columns for cheap aggregation), `payload JSONB` (full review object), `yaml_snapshot TEXT` (the YAML that was actually reviewed), and `created_at`. Indexes on `(cv_id, created_at DESC)` and `(user_id, created_at DESC)` for the upcoming history / overview surfaces.
 
+`cvs` also carries three cached seniority columns (`seniority JSONB`, `seniority_score SMALLINT`, `seniority_level TEXT`) — see Seniority below.
+
 In dev mode (no Keycloak configured) all requests resolve to a fixed **dev user** with id `00000000-0000-0000-0000-000000000000` — seeded by migration `0004_users.sql` and used as the owner for any pre-existing CVs that didn't have a `user_id` yet. Keeps the local hack-on-it-without-auth flow working unchanged.
 
 The user resolution lives in [`src/users.rs`](src/users.rs) as a Tower middleware that always runs on `/api/cvs/*` and `/api/review*`. It reads the `Claims` extension that the auth layer set (when present), parses the `sub` as a UUID, upserts the row, and stashes the `User` as a request extension. Handlers extract via `Extension<User>` and pass `user.id` into the `db.rs` calls.
@@ -84,6 +86,14 @@ The user resolution lives in [`src/users.rs`](src/users.rs) as a Tower middlewar
 - `top_cvs` — top 10 across the platform, ranked by `latest_score DESC` then recency, with `owner_name` so each row credits the consultant
 
 Everyone in the realm can see everyone's reviewed CVs in the ranking — that's the point. Edit / delete / re-review remain owner-only. The frontend lives in a single `index.html` with two views toggled by query string: `/` → overview, `/?id=xxx` → editor (read-only when `cv.owner.id !== me.id`), `/?new=1` → blank editor.
+
+## Seniority
+
+[`src/seniority.rs`](src/seniority.rs) is a Rust port of `seniority_score.py` — a transparent 0-100 grade derived from the YAML CV. Five dimensions add up to 100: years of experience (30), leadership signals (25), scope of contributions (20), external signals (15), title bonus (10). Total is bucketed into Junior / Mid-level / Senior / Staff / Tech Lead / Principal. The grid lives in constants at the top of the module — tune them to match Lunatech's house calibration.
+
+Computed on every `db.create` / `db.update` and persisted into three columns on `cvs`: `seniority JSONB` (the full per-dimension breakdown for the editor's tooltip), `seniority_score SMALLINT` and `seniority_level TEXT` (denormalised for cheap dashboard queries). `Db::connect` runs a one-shot `backfill_seniority` after migrations so any pre-existing CV gets scored on first boot.
+
+The frontend surfaces it as a colour-coded chip (grey → blue → purple → gold → red, by level) in every rank row, every "My CVs" card, and the editor header (with a hover-tooltip breaking down the points per dimension).
 
 ## Authentication (Keycloak via OIDC)
 

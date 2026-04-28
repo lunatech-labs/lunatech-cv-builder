@@ -1,8 +1,10 @@
 use crate::cv_reviewer::Review;
+use crate::seniority;
 use crate::users::User;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use serde_json::Value as Json;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
@@ -34,7 +36,43 @@ impl Db {
             .connect(url)
             .await?;
         sqlx::migrate!("./migrations").run(&pool).await?;
-        Ok(Self { pool })
+        let db = Self { pool };
+        // One-shot backfill: any CV missing the seniority snapshot gets one
+        // at boot. Idempotent — re-running is a no-op once the column is
+        // populated. Cheap (< a few ms per CV) for our scale.
+        db.backfill_seniority().await?;
+        Ok(db)
+    }
+
+    pub async fn backfill_seniority(&self) -> Result<usize> {
+        let rows: Vec<(Uuid, String)> =
+            sqlx::query_as("SELECT id, yaml FROM cvs WHERE seniority IS NULL")
+                .fetch_all(&self.pool)
+                .await?;
+        let n = rows.len();
+        for (id, yaml) in rows {
+            let report = seniority::score_yaml(&yaml);
+            self.persist_seniority(id, &report).await?;
+        }
+        if n > 0 {
+            tracing::info!("seniority: backfilled {n} CV(s)");
+        }
+        Ok(n)
+    }
+
+    async fn persist_seniority(&self, cv_id: Uuid, report: &seniority::Report) -> Result<()> {
+        let payload = serde_json::to_value(report).context("serialising Seniority report")?;
+        sqlx::query(
+            "UPDATE cvs SET seniority = $1, seniority_score = $2, seniority_level = $3
+             WHERE id = $4",
+        )
+        .bind(payload)
+        .bind(report.score as i16)
+        .bind(&report.level)
+        .bind(cv_id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
     }
 
     /// Idempotent — refresh email/name on every login, bump last_seen_at.
@@ -74,12 +112,18 @@ impl Db {
     }
 
     pub async fn create(&self, user_id: Uuid, yaml: &str, name: &str) -> Result<Uuid> {
+        let report = seniority::score_yaml(yaml);
+        let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
         let row: (Uuid,) = sqlx::query_as(
-            "INSERT INTO cvs (user_id, name, yaml) VALUES ($1, $2, $3) RETURNING id",
+            "INSERT INTO cvs (user_id, name, yaml, seniority, seniority_score, seniority_level)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
         )
         .bind(user_id)
         .bind(name)
         .bind(yaml)
+        .bind(payload)
+        .bind(report.score as i16)
+        .bind(&report.level)
         .fetch_one(&self.pool)
         .await?;
         Ok(row.0)
@@ -102,12 +146,20 @@ impl Db {
     }
 
     pub async fn update(&self, user_id: Uuid, id: Uuid, yaml: &str, name: &str) -> Result<bool> {
+        let report = seniority::score_yaml(yaml);
+        let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
         let result = sqlx::query(
-            "UPDATE cvs SET yaml = $1, name = $2, updated_at = NOW()
-             WHERE id = $3 AND user_id = $4",
+            "UPDATE cvs
+             SET yaml = $1, name = $2,
+                 seniority = $3, seniority_score = $4, seniority_level = $5,
+                 updated_at = NOW()
+             WHERE id = $6 AND user_id = $7",
         )
         .bind(yaml)
         .bind(name)
+        .bind(payload)
+        .bind(report.score as i16)
+        .bind(&report.level)
         .bind(id)
         .bind(user_id)
         .execute(&self.pool)
@@ -193,28 +245,36 @@ impl Db {
             Uuid,
             Option<String>,
             Option<String>,
+            Option<Json>,
         )> = sqlx::query_as(
             "SELECT c.id, c.name, c.yaml, c.updated_at,
-                    u.id, u.name, u.email
+                    u.id, u.name, u.email,
+                    c.seniority
              FROM cvs c JOIN users u ON u.id = c.user_id
              WHERE c.id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
         .await?;
-        Ok(row.map(
-            |(id, name, yaml, updated_at, owner_id, owner_name, owner_email)| CvWithOwner {
-                id,
-                name,
-                yaml,
-                updated_at,
-                owner: Owner {
-                    id: owner_id,
-                    name: owner_name,
-                    email: owner_email,
+        Ok(
+            row.map(
+                |(id, name, yaml, updated_at, owner_id, owner_name, owner_email, seniority)| {
+                    CvWithOwner {
+                        id,
+                        name,
+                        yaml,
+                        updated_at,
+                        owner: Owner {
+                            id: owner_id,
+                            name: owner_name,
+                            email: owner_email,
+                        },
+                        seniority: seniority
+                            .and_then(|v| serde_json::from_value(v).ok()),
+                    }
                 },
-            },
-        ))
+            ),
+        )
     }
 
     /// Computes the same 4-tuple of stats both for the calling user (`mine`)
@@ -281,7 +341,9 @@ impl Db {
                 u.name AS owner_name,
                 r.overall_score AS latest_score,
                 r.verdict       AS latest_verdict,
-                r.created_at    AS latest_review_at
+                r.created_at    AS latest_review_at,
+                c.seniority_score,
+                c.seniority_level
              FROM cvs c
              JOIN users u ON u.id = c.user_id
              LEFT JOIN LATERAL (
@@ -311,7 +373,9 @@ impl Db {
                 u.name AS owner_name,
                 r.overall_score AS latest_score,
                 r.verdict       AS latest_verdict,
-                r.created_at    AS latest_review_at
+                r.created_at    AS latest_review_at,
+                c.seniority_score,
+                c.seniority_level
              FROM cvs c
              JOIN users u ON u.id = c.user_id
              LEFT JOIN LATERAL (
@@ -339,7 +403,9 @@ impl Db {
                 u.name AS owner_name,
                 r.overall_score AS latest_score,
                 r.verdict       AS latest_verdict,
-                r.created_at    AS latest_review_at
+                r.created_at    AS latest_review_at,
+                c.seniority_score,
+                c.seniority_level
              FROM cvs c
              JOIN users u ON u.id = c.user_id
              JOIN LATERAL (
@@ -373,6 +439,8 @@ pub struct CvWithOwner {
     pub yaml: String,
     pub updated_at: DateTime<Utc>,
     pub owner: Owner,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seniority: Option<seniority::Report>,
 }
 
 #[derive(Serialize)]
@@ -399,5 +467,7 @@ pub struct CvOverviewItem {
     pub latest_score: Option<i16>,
     pub latest_verdict: Option<String>,
     pub latest_review_at: Option<DateTime<Utc>>,
+    pub seniority_score: Option<i16>,
+    pub seniority_level: Option<String>,
 }
 

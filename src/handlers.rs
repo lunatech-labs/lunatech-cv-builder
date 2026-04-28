@@ -97,6 +97,25 @@ pub async fn get_cv(
     }))
 }
 
+/// Fetches the CV and returns 404 if it doesn't exist, 403 if the caller is
+/// neither the owner nor an admin. Used as a guard at the top of every
+/// mutating handler so the actual SQL stays simple.
+async fn require_write_access(
+    db: &Db,
+    user: &User,
+    id: Uuid,
+) -> Result<(), ApiError> {
+    let cv = db
+        .get_any(id)
+        .await
+        .map_err(err500)?
+        .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;
+    if !user.is_admin && cv.owner.id != user.id {
+        return Err((StatusCode::FORBIDDEN, "not your CV".into()));
+    }
+    Ok(())
+}
+
 pub async fn update_cv(
     State(db): State<Db>,
     Extension(user): Extension<User>,
@@ -106,14 +125,17 @@ pub async fn update_cv(
     if body.yaml.trim().is_empty() {
         return Err(err400("yaml is empty"));
     }
+    require_write_access(&db, &user, id).await?;
     let name = extract_name(&body.yaml);
     let updated = db
-        .update(user.id, id, &body.yaml, &name)
+        .update_any(id, &body.yaml, &name)
         .await
         .map_err(err500)?;
     if updated {
         Ok(StatusCode::NO_CONTENT)
     } else {
+        // Vanishingly unlikely race: row went away between the auth fetch
+        // and the update. Surface as 404 — the caller will refresh.
         Err((StatusCode::NOT_FOUND, "cv not found".into()))
     }
 }
@@ -123,7 +145,8 @@ pub async fn delete_cv(
     Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = db.delete(user.id, id).await.map_err(err500)?;
+    require_write_access(&db, &user, id).await?;
+    let deleted = db.delete_any(id).await.map_err(err500)?;
     if deleted {
         Ok(StatusCode::NO_CONTENT)
     } else {
@@ -269,9 +292,9 @@ pub async fn review_pdf_handler(
 }
 
 /// Runs Claude with the cv-reviewer skill on a saved CV, persists the
-/// resulting review, and returns it. The CV must belong to the calling
-/// user — anything else returns 404 (we never leak other users' CVs).
-/// Returns 503 if `ANTHROPIC_API_KEY` isn't set.
+/// resulting review, and returns it. The caller must own the CV (or be an
+/// admin); a non-owning, non-admin caller gets 403. Returns 503 if
+/// `ANTHROPIC_API_KEY` isn't set.
 pub async fn review_cv(
     State(state): State<AppState>,
     Extension(user): Extension<User>,
@@ -282,18 +305,24 @@ pub async fn review_cv(
         "ANTHROPIC_API_KEY is not set on the server".to_string(),
     ))?;
 
-    let rec = state
+    let cv = state
         .db
-        .get(user.id, cv_id)
+        .get_any(cv_id)
         .await
         .map_err(err500)?
         .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;
+    if !user.is_admin && cv.owner.id != user.id {
+        return Err((StatusCode::FORBIDDEN, "not your CV".into()));
+    }
 
-    let review = cv_reviewer::review(cfg, &rec.yaml).await.map_err(err500)?;
+    let review = cv_reviewer::review(cfg, &cv.yaml).await.map_err(err500)?;
 
+    // The review is attributed to the caller (whoever ran it), not the
+    // owner — that's accurate provenance even when an admin is reviewing
+    // someone else's CV.
     state
         .db
-        .save_review(cv_id, user.id, &review, &rec.yaml)
+        .save_review(cv_id, user.id, &review, &cv.yaml)
         .await
         .map_err(err500)?;
     Ok(Json(review))

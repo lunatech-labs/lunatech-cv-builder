@@ -1391,11 +1391,12 @@ async function deleteCv() {
 }
 
 async function exportPDF() {
-  // Save first only if I own the CV (or it's a draft I'm about to create) —
-  // a non-owner viewing someone else's CV gets the saved version straight
-  // through, since their PUT would 404 anyway.
-  var iOwnIt = currentCvId == null || currentOwnerId == null || currentOwnerId === meId;
-  if (iOwnIt) {
+  // Save first only if I have write access (owner, admin, or fresh draft).
+  // A non-admin viewer of someone else's CV downloads the stored version
+  // straight through — their PUT would 403 anyway.
+  var canWrite = currentCvId == null || currentOwnerId == null
+              || currentOwnerId === meId || meIsAdmin;
+  if (canWrite) {
     var ok = await saveCv();
     if (!ok || !currentCvId) return;
   } else if (!currentCvId) {
@@ -1450,6 +1451,7 @@ if (typeof ResizeObserver !== 'undefined') {
 // We swap views by toggling the .active class; pushState handles back/forward.
 
 var meId = null;            // resolved Keycloak `sub` UUID, set after /api/overview
+var meIsAdmin = false;      // admin flag from the same response
 var currentOwnerId = null;  // owner of the CV currently loaded in the editor
 
 function navigateTo(url) {
@@ -1489,6 +1491,7 @@ async function renderOverview() {
     return;
   }
   meId = data.me && data.me.id;
+  meIsAdmin = !!(data.me && data.me.is_admin);
   var displayName = (data.me && (data.me.name || data.me.email)) || 'there';
   document.getElementById('ov-me-name').textContent = displayName;
   document.getElementById('ov-user-name').textContent = displayName;
@@ -1715,7 +1718,9 @@ async function openCvInEditor(id) {
     currentCvId = cv.id;
     savedYaml = cv.yaml;
     currentOwnerId = (cv.owner && cv.owner.id) || null;
-    setReadonly(currentOwnerId !== meId, cv.owner);
+    // Admins can edit / delete / review any CV — the read-only banner only
+    // applies to non-admin viewers looking at someone else's CV.
+    setReadonly(!meIsAdmin && currentOwnerId !== meId, cv.owner);
     if (cv.latest_review) {
       cachedReview = cv.latest_review;
       cachedReviewAt = cv.latest_review_at || null;

@@ -27,11 +27,27 @@ use uuid::Uuid;
 /// migration `0004_users.sql`.
 pub const DEV_USER_ID: Uuid = Uuid::nil();
 
+/// Hardcoded admin allow-list. Anyone whose Keycloak email matches (case-
+/// insensitive) gets the `is_admin` flag and can edit / delete / review any
+/// CV regardless of ownership. Extend this list when the admin set grows;
+/// promote to a config value if it ever does.
+const ADMIN_EMAILS: &[&str] = &[
+    "nicolas.leroux@lunatech.com",
+    "willem.jan.glerum@lunatech.nl",
+];
+
+fn is_admin_email(email: &str) -> bool {
+    ADMIN_EMAILS
+        .iter()
+        .any(|a| a.eq_ignore_ascii_case(email.trim()))
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct User {
     pub id: Uuid,
     pub email: Option<String>,
     pub name: Option<String>,
+    pub is_admin: bool,
 }
 
 impl User {
@@ -40,19 +56,25 @@ impl User {
             id: DEV_USER_ID,
             email: Some("dev@local".into()),
             name: Some("Dev User".into()),
+            // Local dev runs everything as a single fixed user; we don't
+            // grant admin to that synthetic identity by default.
+            is_admin: false,
         }
     }
 
     fn from_claims(claims: &Claims) -> Result<Self, String> {
         let id = Uuid::from_str(&claims.sub)
             .map_err(|e| format!("Keycloak `sub` is not a UUID: {e}"))?;
+        let email = claims.email.clone();
+        let is_admin = email.as_deref().map(is_admin_email).unwrap_or(false);
         Ok(Self {
             id,
-            email: claims.email.clone(),
+            email,
             name: claims
                 .name
                 .clone()
                 .or_else(|| claims.preferred_username.clone()),
+            is_admin,
         })
     }
 }

@@ -77,6 +77,8 @@ In dev mode (no Keycloak configured) all requests resolve to a fixed **dev user*
 
 The user resolution lives in [`src/users.rs`](src/users.rs) as a Tower middleware that always runs on `/api/cvs/*` and `/api/review*`. It reads the `Claims` extension that the auth layer set (when present), parses the `sub` as a UUID, upserts the row, and stashes the `User` as a request extension. Handlers extract via `Extension<User>` and pass `user.id` into the `db.rs` calls.
 
+**Admin role.** A hardcoded allow-list of emails in `users.rs` (`ADMIN_EMAILS`) gives the corresponding users an `is_admin: true` flag on their resolved `User`. Admins can update, delete, and trigger reviews on any CV regardless of ownership — the write handlers (`update_cv` / `delete_cv` / `review_cv`) all run a `require_write_access` check that succeeds when `user.is_admin` *or* `cv.owner.id == user.id`, and dispatch to the unscoped `db.update_any` / `db.delete_any` variants. Reviews persisted by an admin are still attributed to the admin's `user_id`, not the owner's, so provenance stays accurate. The dev user is intentionally not admin — any privilege escalation has to go through Keycloak.
+
 ## Overview / landing page
 
 `GET /api/overview` is the single round-trip the post-login landing page makes. It returns:

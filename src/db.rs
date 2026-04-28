@@ -176,6 +176,41 @@ impl Db {
         Ok(result.rows_affected() > 0)
     }
 
+    // ────────── Admin variants — bypass the user_id filter ──────────
+    //
+    // Used after a handler-level ownership-or-admin check; the SQL itself is
+    // unscoped. Callers must NOT call these without first verifying the
+    // caller is allowed to mutate the row.
+
+    pub async fn update_any(&self, id: Uuid, yaml: &str, name: &str) -> Result<bool> {
+        let report = seniority::score_yaml(yaml);
+        let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
+        let result = sqlx::query(
+            "UPDATE cvs
+             SET yaml = $1, name = $2,
+                 seniority = $3, seniority_score = $4, seniority_level = $5,
+                 updated_at = NOW()
+             WHERE id = $6",
+        )
+        .bind(yaml)
+        .bind(name)
+        .bind(payload)
+        .bind(report.score as i16)
+        .bind(&report.level)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    pub async fn delete_any(&self, id: Uuid) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM cvs WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
     // ────────── Reviews ──────────
 
     /// Records a fresh review for a CV alongside the YAML it was run against.

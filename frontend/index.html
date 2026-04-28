@@ -41,14 +41,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .cv-status { font-size: 11px; color: var(--ui-muted); padding: 0 6px; white-space: nowrap; font-style: italic; }
 .cv-status.saved { color: var(--ui-accent); font-style: normal; }
 .cv-status.dirty { color: #f9b550; }
-.cv-select {
-  font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 500;
-  padding: 6px 10px; border-radius: 6px; cursor: pointer;
-  background: transparent; color: var(--ui-muted); border: 1px solid var(--ui-border);
-  letter-spacing: .04em; max-width: 220px;
-}
-.cv-select:hover { color: var(--ui-text); border-color: var(--ui-accent); }
-.cv-select option { background: var(--ui-surface); color: var(--ui-text); }
 
 /* Toggle photo button */
 .toggle-wrap { display: flex; align-items: center; gap: 8px; }
@@ -832,9 +824,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
         <span class="toggle-track"></span>
       </label>
     </div>
-    <select class="cv-select" id="cv-list" onchange="loadCv(this.value)" title="Open a saved CV">
-      <option value="">Open saved CV…</option>
-    </select>
     <button class="btn btn-ghost" onclick="newCv()">+ New</button>
     <button class="btn btn-ghost" data-owner-only onclick="deleteCv()" title="Delete the currently loaded CV">Delete</button>
     <span class="cv-status" id="cv-status" data-owner-only>Unsaved</span>
@@ -1318,34 +1307,6 @@ function refreshStatus() {
   }
 }
 
-async function refreshCvList() {
-  try {
-    var res = await fetch('/api/cvs');
-    if (!res.ok) return;
-    var list = await res.json();
-    var sel = document.getElementById('cv-list');
-    var opts = ['<option value="">Open saved CV…</option>'];
-    list.forEach(function(cv) {
-      // Show only the consultant's name in the dropdown — append the label
-      // (the client this version targets, e.g. "Disney") when present, so
-      // a recruiter can pick the right tailored copy at a glance.
-      var labelText = (cv.name || '(unnamed)') + (cv.label ? ' — ' + cv.label : '');
-      var sel = cv.id === currentCvId ? ' selected' : '';
-      opts.push('<option value="' + cv.id + '"' + sel + '>' + escapeHtml(labelText) + '</option>');
-    });
-    sel = document.getElementById('cv-list');
-    sel.innerHTML = opts.join('');
-    if (currentCvId) sel.value = currentCvId;
-  } catch (e) {
-    console.error('refreshCvList', e);
-  }
-}
-
-// Thin wrapper — the dropdown calls this; we let the URL drive everything.
-function loadCv(id) {
-  if (id) navigateTo('/?id=' + encodeURIComponent(id));
-}
-
 async function saveCv() {
   var yaml = document.getElementById('yaml-editor').value;
   try {
@@ -1373,7 +1334,6 @@ async function saveCv() {
       }
     }
     savedYaml = yaml;
-    await refreshCvList();
     refreshStatus();
     return true;
   } catch (e) {
@@ -1397,9 +1357,9 @@ async function deleteCv() {
     currentCvId = null;
     savedYaml = null;
     clearReviewState();
-    await refreshCvList();
-    // Back to the overview — the deleted CV obviously doesn't make sense
-    // to keep editing, and the user gets the refreshed listings.
+    // Back to the overview — the deleted CV obviously doesn't make sense to
+    // keep editing, and routeView re-fetches /api/overview which carries
+    // the refreshed listings.
     navigateTo('/');
   } catch (e) {
     alert('Delete failed: ' + e.message);
@@ -1730,7 +1690,6 @@ function openBlankEditor() {
   savedYaml = null;
   clearReviewState();
   setEditorSeniority(null);
-  document.getElementById('cv-list').value = '';
   ta.dispatchEvent(new Event('input'));
   refreshStatus();
 }
@@ -1754,7 +1713,6 @@ async function openCvInEditor(id) {
       clearReviewState();
     }
     setEditorSeniority(cv.seniority);
-    document.getElementById('cv-list').value = cv.id;
     ta.dispatchEvent(new Event('input'));
     refreshStatus();
   } catch (e) {
@@ -1826,9 +1784,6 @@ function setReadonly(yes, owner) {
   attachEditor('css-editor',  'hl-css',  'gutter-css',  'wrap-css',  highlightCss,  updateCSS);
   setTheme('lunatech');
   refreshStatus();
-  // Await — routeView runs openCvInEditor which sets cv-list.value, and that
-  // silently no-ops if the <option>s haven't been inserted yet.
-  await refreshCvList();
   // Decide which view to show based on the URL — overview is the default
   // landing post-login; the editor opens with ?id=xxx or ?new=1.
   await routeView();

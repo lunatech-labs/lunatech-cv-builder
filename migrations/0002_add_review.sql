@@ -1,0 +1,3 @@
+ALTER TABLE cvs
+    ADD COLUMN IF NOT EXISTS latest_review JSONB,
+    ADD COLUMN IF NOT EXISTS latest_review_at TIMESTAMPTZ;

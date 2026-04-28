@@ -2,12 +2,14 @@
 
 Features queued for the CV Builder, not yet started.
 
-## Google authentication
+## ~~Google authentication~~ → Keycloak SSO — shipped
 
-Gate the app behind Google OAuth so only Lunatech recruiters can read or
-edit CVs. Today the API is fully open and the binary listens on `0.0.0.0`,
-so this is the next protective layer before the app is exposed beyond a
-single workstation.
+Originally scoped as Google OAuth, replaced with Keycloak (Lunatech already
+runs one). When `KEYCLOAK_URL` / `_REALM` / `_CLIENT_ID` are set, the backend
+validates Bearer JWTs against the realm's JWKS on every `/api/*` call and the
+frontend redirects unauthenticated users via keycloak-js + PKCE. Without
+those vars the app falls back to dev mode (no auth) so contributors don't
+need a Keycloak account to work locally.
 
 ## Overview / statistics page
 
@@ -15,12 +17,10 @@ A dashboard surfacing aggregate information across the stored CVs:
 counts, recent activity, breakdowns by role / skill / client. Exact
 metrics still to define.
 
-## `cv-reviewer` skill integration
+## ~~`cv-reviewer` skill integration~~ — shipped
 
-Surface the 8-criteria review (role, team size, client interaction,
-source of pride, added value, contributions, technologies, dates) from
-inside the app — for example a "Review with Claude" action that calls
-the Anthropic API with the `cv-reviewer` skill and renders the
-structured feedback. The YAML schema is already aligned with the rubric
-(see `CLAUDE.md`, "Things that should NOT regress"), so the remaining
-work is the call wiring and the UX for displaying / persisting reviews.
+`POST /api/cvs/{id}/review` calls Claude with [`assets/skills/cv-reviewer/SKILL.md`](assets/skills/cv-reviewer/SKILL.md)
+as the system prompt and persists a structured review on the CV record
+(`overall_score`, `verdict`, `language`, `report_markdown`, `improved_yaml`).
+The frontend has a "Review with Claude" button that opens a modal with
+the markdown report rendered and an "Apply improved YAML" action.

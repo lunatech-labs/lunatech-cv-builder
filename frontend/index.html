@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="/assets/lunatech-logo-alone.png">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -461,6 +462,102 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   #print-portal #cv-root { width: 210mm !important; height: 297mm !important; box-shadow: none !important; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
+
+/* ── USER (Keycloak) ── */
+.user-info {
+  display: none; align-items: center; gap: 8px;
+  padding-left: 12px; margin-left: 4px;
+  border-left: 1px solid var(--ui-border);
+}
+.user-info.visible { display: inline-flex; }
+.user-name { font-size: 11px; color: var(--ui-muted); font-weight: 500; letter-spacing: .03em; }
+
+/* ── REVIEW WITH CLAUDE ── */
+.review-score-badge {
+  display: none; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  background: var(--ui-surface); border: 1px solid var(--ui-border);
+  color: var(--ui-text); cursor: pointer;
+}
+.review-score-badge.visible { display: inline-flex; }
+.review-score-badge .score-num { font-weight: 700; }
+.review-score-badge.score-low    { border-color: #ef4444; color: #ef4444; }
+.review-score-badge.score-mid    { border-color: #f59e0b; color: #f59e0b; }
+.review-score-badge.score-high   { border-color: #10b981; color: #10b981; }
+.btn-review { background: transparent; color: var(--ui-accent); border: 1px solid var(--ui-accent); font-weight: 600; }
+.btn-review:hover { background: var(--ui-accent); color: #fff; }
+.btn-review:disabled { opacity: 0.6; cursor: wait; }
+
+.review-modal-bg {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(2px);
+  align-items: center; justify-content: center;
+  padding: 32px;
+}
+.review-modal-bg.visible { display: flex; }
+.review-modal {
+  width: min(900px, 100%); max-height: calc(100vh - 64px);
+  display: flex; flex-direction: column;
+  background: var(--ui-surface); color: var(--ui-text);
+  border: 1px solid var(--ui-border); border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+}
+.review-modal-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 22px; border-bottom: 1px solid var(--ui-border);
+  flex-shrink: 0;
+}
+.review-modal-title { font-size: 14px; font-weight: 600; letter-spacing: .04em; }
+.review-modal-meta { display: flex; gap: 10px; align-items: center; margin-left: auto; }
+.review-score-pill {
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  border: 1px solid;
+}
+.review-score-pill.score-low  { color: #ef4444; border-color: #ef4444; }
+.review-score-pill.score-mid  { color: #f59e0b; border-color: #f59e0b; }
+.review-score-pill.score-high { color: #10b981; border-color: #10b981; }
+.review-verdict-pill {
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 11px; font-weight: 500; letter-spacing: .06em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,.05); color: var(--ui-muted);
+  border: 1px solid var(--ui-border);
+}
+.review-modal-body {
+  padding: 18px 26px 22px;
+  overflow-y: auto; flex: 1;
+  font-family: 'Poppins', sans-serif; font-size: 13px; line-height: 1.6;
+  color: var(--ui-text);
+}
+.review-modal-body h1, .review-modal-body h2, .review-modal-body h3 {
+  margin: 18px 0 8px; font-weight: 600; color: var(--ui-text);
+}
+.review-modal-body h1 { font-size: 18px; }
+.review-modal-body h2 { font-size: 15px; color: var(--ui-accent); }
+.review-modal-body h3 { font-size: 13px; }
+.review-modal-body p { margin: 6px 0 10px; }
+.review-modal-body ul, .review-modal-body ol { margin: 6px 0 10px; padding-left: 22px; }
+.review-modal-body li { margin: 3px 0; }
+.review-modal-body table { border-collapse: collapse; margin: 10px 0; font-size: 12.5px; }
+.review-modal-body th, .review-modal-body td { padding: 6px 10px; border: 1px solid var(--ui-border); text-align: left; }
+.review-modal-body th { background: rgba(255,255,255,.04); font-weight: 600; }
+.review-modal-body code { font-family: 'Fira Code', monospace; font-size: 12px; background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 3px; }
+.review-modal-body strong { color: var(--ui-text); }
+.review-modal-footer {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 22px; border-top: 1px solid var(--ui-border);
+  flex-shrink: 0;
+}
+.review-modal-footer .meta { font-size: 11px; color: var(--ui-muted); margin-right: auto; font-style: italic; }
+.review-spinner {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid var(--ui-border); border-top-color: var(--ui-accent);
+  border-radius: 50%; animation: spin .8s linear infinite;
+  margin-right: 6px; vertical-align: -2px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -496,7 +593,16 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
     <button class="btn btn-ghost" onclick="deleteCv()" title="Delete the currently loaded CV">Delete</button>
     <span class="cv-status" id="cv-status">Unsaved</span>
     <button class="btn btn-ghost" onclick="copyYaml()">Copy YAML</button>
+    <span class="review-score-badge" id="review-score-badge" onclick="openReviewModalFromCache()" title="Open the latest Claude review">
+      <span class="score-num" id="review-score-num">—</span>
+      <span>/ 10</span>
+    </span>
+    <button class="btn btn-review" id="btn-review" onclick="runReview()" title="Ask Claude to review this CV">Review with Claude</button>
     <button class="btn btn-primary" onclick="exportPDF()">&#8595; Export PDF</button>
+    <span class="user-info" id="user-info">
+      <span class="user-name" id="user-name"></span>
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </span>
   </div>
 </header>
 
@@ -996,6 +1102,8 @@ async function loadCv(id) {
     ta.value = cv.yaml;
     currentCvId = cv.id;
     savedYaml = cv.yaml;
+    // Reviews are session-only, so a freshly loaded CV starts with none.
+    clearReviewState();
     ta.dispatchEvent(new Event('input'));
     refreshStatus();
   } catch (e) {
@@ -1034,6 +1142,7 @@ async function saveCv() {
 }
 
 function newCv() {
+  clearReviewState();
   var current = document.getElementById('yaml-editor').value;
   if (savedYaml !== current && !confirm('Discard unsaved changes and start a new CV?')) return;
   var ta = document.getElementById('yaml-editor');
@@ -1053,6 +1162,7 @@ async function deleteCv() {
     if (!res.ok) throw new Error(await res.text());
     currentCvId = null;
     savedYaml = null;
+    clearReviewState();
     var ta = document.getElementById('yaml-editor');
     ta.value = YAML_DEFAULT;
     ta.dispatchEvent(new Event('input'));
@@ -1095,6 +1205,24 @@ window.addEventListener('resize', scalePreview);
 // INIT
 // ══════════════════════════════════════════════════════════
 (async function init() {
+  // Auth must be ready before any /api/* call below — bootstrap returns null
+  // when the backend is in dev mode (no Keycloak vars), which is fine.
+  try {
+    var kc = await bootstrapAuth();
+    if (kc) {
+      window.kc = kc;
+      installAuthFetch(kc);
+      setUserBadge(kc);
+    }
+  } catch (e) {
+    // Surface as much as possible — keycloak-js error objects often have a
+    // useful `.error_description` or wrap the underlying response status.
+    console.error('Auth bootstrap failed:', e);
+    var detail = (e && (e.error_description || e.error || e.message)) || String(e);
+    alert('Authentication failed: ' + detail + '\n\nCheck the browser console for details.');
+    return;
+  }
+
   try {
     var res = await fetch('/assets/cv-empty.yaml');
     if (res.ok) YAML_DEFAULT = await res.text();
@@ -1106,6 +1234,223 @@ window.addEventListener('resize', scalePreview);
   refreshStatus();
   refreshCvList();
 })();
+
+// ══════════════════════════════════════════════════════════
+// AUTHENTICATION (Keycloak via OIDC)
+// ══════════════════════════════════════════════════════════
+// Boot order:
+//   1. fetch /api/config  (always public, advertises whether Keycloak is on)
+//   2. if Keycloak configured → load keycloak-js → init with login-required
+//   3. wrap window.fetch to attach Bearer to /api/* calls (except /api/config)
+//   4. populate the user header
+// If the backend is in dev mode (no Keycloak vars), we skip all of this and
+// behave exactly as before — fetch stays untouched, no login redirect.
+
+window.kc = null;
+
+function loadScript(src) {
+  return new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = function() { reject(new Error('Failed to load ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+
+// keycloak-js v26 is ES-module-only; we dynamic-import it from jsdelivr and
+// hoist the default export onto window so the rest of the code can call
+// `new Keycloak(...)` as if it had been loaded as a UMD.
+async function loadKeycloakJs(_serverUrl) {
+  var mod = await import('https://cdn.jsdelivr.net/npm/keycloak-js@26/lib/keycloak.js');
+  window.Keycloak = mod.default;
+  console.info('keycloak-js: loaded v26 ESM from jsdelivr');
+}
+
+async function bootstrapAuth() {
+  var cfg;
+  try {
+    cfg = await fetch('/api/config').then(function(r) { return r.json(); });
+  } catch (e) {
+    console.error('Could not fetch /api/config:', e);
+    return null;
+  }
+  if (!cfg.keycloak) return null;
+
+  await loadKeycloakJs(cfg.keycloak.url);
+
+  var kc = new Keycloak({
+    url: cfg.keycloak.url,
+    realm: cfg.keycloak.realm,
+    clientId: cfg.keycloak.client_id,
+  });
+
+  await kc.init({
+    onLoad: 'login-required',
+    pkceMethod: 'S256',
+    checkLoginIframe: false,
+    // Pin the redirect URI to the app root — leaving it implicit means
+    // keycloak-js sends `window.location.href`, which on the post-login
+    // round-trip can include leftover state and trip up redirect-URI matching.
+    redirectUri: window.location.origin + '/',
+  });
+
+  // Auto-renew on expiry — gives the next fetch a valid token without us
+  // having to await updateToken on every call (we still call it as a belt).
+  kc.onTokenExpired = function() {
+    kc.updateToken(30).catch(function() {
+      console.warn('Token refresh failed, redirecting to login');
+      kc.login();
+    });
+  };
+
+  return kc;
+}
+
+function installAuthFetch(kc) {
+  var originalFetch = window.fetch;
+  window.fetch = async function(input, opts) {
+    opts = opts || {};
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    // /api/config is intentionally public — sending a Bearer to it is harmless
+    // but we skip it to avoid a redirect loop if the token has just expired.
+    if (url.indexOf('/api/') === 0 && url !== '/api/config') {
+      try { await kc.updateToken(30); } catch (_) {}
+      var headers = new Headers(opts.headers || (input && input.headers) || {});
+      headers.set('Authorization', 'Bearer ' + kc.token);
+      opts.headers = headers;
+    }
+    return originalFetch(input, opts);
+  };
+}
+
+function setUserBadge(kc) {
+  var p = kc.tokenParsed || {};
+  var name = p.name || p.preferred_username || p.email || 'Authenticated';
+  document.getElementById('user-name').textContent = name;
+  document.getElementById('user-info').classList.add('visible');
+}
+
+function logout() {
+  if (window.kc) window.kc.logout({ redirectUri: window.location.origin });
+}
+
+// ══════════════════════════════════════════════════════════
+// REVIEW WITH CLAUDE
+// ══════════════════════════════════════════════════════════
+var cachedReview = null;       // last review object (from server) for the loaded CV
+var cachedReviewAt = null;     // ISO timestamp from the server, when known
+
+function scoreClass(score) {
+  if (score >= 8) return 'score-high';
+  if (score >= 5) return 'score-mid';
+  return 'score-low';
+}
+
+function verdictLabel(verdict) {
+  if (verdict === 'client_ready')         return 'Client ready';
+  if (verdict === 'minor_improvements')   return 'Minor improvements';
+  if (verdict === 'major_rework')         return 'Major rework';
+  return verdict || '';
+}
+
+function refreshReviewBadge() {
+  var badge = document.getElementById('review-score-badge');
+  if (!cachedReview) { badge.classList.remove('visible'); return; }
+  badge.classList.remove('score-low', 'score-mid', 'score-high');
+  badge.classList.add(scoreClass(cachedReview.overall_score));
+  document.getElementById('review-score-num').textContent = cachedReview.overall_score;
+  badge.classList.add('visible');
+}
+
+function clearReviewState() {
+  cachedReview = null;
+  cachedReviewAt = null;
+  refreshReviewBadge();
+}
+
+function openReviewModal(review, ts) {
+  document.getElementById('review-modal-score').textContent = review.overall_score + ' / 10';
+  document.getElementById('review-modal-score').className = 'review-score-pill ' + scoreClass(review.overall_score);
+  document.getElementById('review-modal-verdict').textContent = verdictLabel(review.verdict);
+  document.getElementById('review-modal-body').innerHTML = marked.parse(review.report_markdown || '');
+  document.getElementById('review-modal-applybtn').style.display = (review.improved_yaml || '').trim() ? 'inline-block' : 'none';
+  document.getElementById('review-modal-meta').textContent = ts ? ('Reviewed ' + new Date(ts).toLocaleString()) : '';
+  document.getElementById('review-modal-bg').classList.add('visible');
+  // stash for "apply"
+  window.__currentReview = review;
+}
+
+function openReviewModalFromCache() {
+  if (cachedReview) openReviewModal(cachedReview, cachedReviewAt);
+}
+
+function closeReviewModal() {
+  document.getElementById('review-modal-bg').classList.remove('visible');
+}
+
+async function runReview() {
+  // Stateless — sends the editor's YAML directly to the backend, no DB write.
+  // The user can iterate on a draft without committing it.
+  var yaml = document.getElementById('yaml-editor').value;
+  if (!yaml.trim()) { alert('The editor is empty — nothing to review.'); return; }
+  var btn = document.getElementById('btn-review');
+  var originalText = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="review-spinner"></span>Reviewing…';
+  try {
+    var res = await fetch('/api/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ yaml: yaml })
+    });
+    if (res.status === 503) {
+      alert('Review unavailable: ANTHROPIC_API_KEY is not set on the server.');
+      return;
+    }
+    if (!res.ok) throw new Error(await res.text());
+    cachedReview = await res.json();
+    cachedReviewAt = new Date().toISOString();
+    refreshReviewBadge();
+    openReviewModal(cachedReview, cachedReviewAt);
+  } catch (e) {
+    alert('Review failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+function applyImprovedYaml() {
+  var review = window.__currentReview;
+  if (!review || !review.improved_yaml) return;
+  if (!confirm('Replace the editor with the improved YAML? You can still Save or undo by reloading.')) return;
+  var ta = document.getElementById('yaml-editor');
+  ta.value = review.improved_yaml;
+  ta.dispatchEvent(new Event('input'));
+  closeReviewModal();
+}
+
 </script>
+
+<div class="review-modal-bg" id="review-modal-bg" onclick="if(event.target===this) closeReviewModal()">
+  <div class="review-modal">
+    <div class="review-modal-header">
+      <span class="review-modal-title">CV Review</span>
+      <div class="review-modal-meta">
+        <span class="review-verdict-pill" id="review-modal-verdict">—</span>
+        <span class="review-score-pill" id="review-modal-score">—</span>
+      </div>
+    </div>
+    <div class="review-modal-body" id="review-modal-body"></div>
+    <div class="review-modal-footer">
+      <span class="meta" id="review-modal-meta"></span>
+      <button class="btn btn-ghost" id="review-modal-applybtn" onclick="applyImprovedYaml()">Apply improved YAML</button>
+      <button class="btn btn-ghost" onclick="runReview()">Re-run</button>
+      <button class="btn btn-primary" onclick="closeReviewModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -1,3 +1,6 @@
+use crate::AppState;
+use crate::auth::KeycloakConfig;
+use crate::cv_reviewer;
 use crate::db::{CvRecord, CvSummary, Db};
 use crate::pdf;
 use axum::Json;
@@ -134,6 +137,42 @@ pub async fn pdf_cv(
         bytes,
     )
         .into_response())
+}
+
+/// Public bootstrap config the frontend needs to wire up keycloak-js. Always
+/// returns 200 — the frontend decides what to do based on which fields are
+/// populated. Never includes secrets (no API keys, only public OIDC ids).
+#[derive(Serialize)]
+pub struct PublicConfig {
+    pub keycloak: Option<KeycloakConfig>,
+    pub anthropic_enabled: bool,
+}
+
+pub async fn get_config(State(state): State<AppState>) -> Json<PublicConfig> {
+    Json(PublicConfig {
+        keycloak: state.keycloak.clone(),
+        anthropic_enabled: state.anthropic.is_some(),
+    })
+}
+
+/// Calls Claude with the cv-reviewer skill on the YAML supplied in the body.
+/// Stateless — does NOT touch the database, so reviewers can iterate on a
+/// draft without committing it. Returns 503 if the API key isn't configured.
+pub async fn review_yaml(
+    State(state): State<AppState>,
+    Json(body): Json<YamlBody>,
+) -> Result<Json<cv_reviewer::Review>, ApiError> {
+    if body.yaml.trim().is_empty() {
+        return Err(err400("yaml is empty"));
+    }
+    let cfg = state.anthropic.as_ref().ok_or((
+        StatusCode::SERVICE_UNAVAILABLE,
+        "ANTHROPIC_API_KEY is not set on the server".to_string(),
+    ))?;
+    let review = cv_reviewer::review(cfg, &body.yaml)
+        .await
+        .map_err(err500)?;
+    Ok(Json(review))
 }
 
 #[cfg(test)]

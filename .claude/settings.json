@@ -16,7 +16,21 @@
       "Bash(xargs -r ps -o pid,command -p)",
       "Bash(kill 76373)",
       "Bash(curl -sf -o /dev/null http://127.0.0.1:3000/)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(kill 83430)",
+      "Read(//Users/nicolas/**)",
+      "Bash(security find-generic-password *)",
+      "Bash(env)",
+      "Bash(make dev *)",
+      "Bash(curl -sS -X POST http://127.0.0.1:3000/api/review -H 'Content-Type: application/json' -d '{\"yaml\":\"name: Test\\\\ntitle: Engineer\"}' -w \"\\\\nHTTP %{http_code}\\\\n\" --max-time 120)",
+      "Bash(curl -sI \"https://cdn.jsdelivr.net/npm/keycloak-js@26/dist/keycloak.min.js\")",
+      "Bash(curl -sI \"https://cdn.jsdelivr.net/npm/keycloak-js@26/lib/keycloak.js\")",
+      "Bash(curl -sI \"https://keycloak.lunatech.com/realms/lunatech/.well-known/openid-configuration\")",
+      "Bash(curl -sI -H \"Origin: http://127.0.0.1:3000\" \"https://keycloak.lunatech.com/realms/lunatech/.well-known/openid-configuration\")",
+      "Bash(curl -sI -H \"Origin: http://localhost:3000\" \"https://keycloak.lunatech.com/realms/lunatech/.well-known/openid-configuration\")",
+      "Bash(curl -sI -X OPTIONS -H \"Origin: http://127.0.0.1:3000\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: content-type\" \"https://keycloak.lunatech.com/realms/lunatech/protocol/openid-connect/token\")"
     ]
   }
 }

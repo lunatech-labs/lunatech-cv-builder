@@ -1,6 +1,6 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use cv_builder::{Db, api_router};
+use cv_builder::{AppState, Db, api_router};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -31,7 +31,14 @@ languages:
 "#;
 
 fn router_with(pool: PgPool) -> axum::Router {
-    api_router(Db { pool })
+    api_router(
+        AppState {
+            db: Db { pool },
+            anthropic: None,
+            keycloak: None,
+        },
+        None,
+    )
 }
 
 async fn body_string(resp: axum::http::Response<Body>) -> String {
@@ -404,4 +411,32 @@ async fn pdf_for_minimal_yaml_still_renders(pool: PgPool) {
     assert_eq!(resp.status(), StatusCode::OK);
     let body = body_bytes(resp).await;
     assert!(body.starts_with(b"%PDF-"));
+}
+
+// ─────────────────────────── REVIEW ───────────────────────────
+//
+// We always run with `anthropic: None` so the route returns 503 — that
+// guarantees we don't accidentally call the live Anthropic API from CI.
+// Hitting Claude for real is exercised by manual end-to-end testing.
+
+#[sqlx::test]
+async fn review_returns_503_when_api_key_not_configured(pool: PgPool) {
+    let app = router_with(pool);
+    let resp = app
+        .oneshot(json_request("POST", "/review", json!({"yaml": SAMPLE_YAML})))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[sqlx::test]
+async fn review_rejects_empty_yaml(pool: PgPool) {
+    let app = router_with(pool);
+    let resp = app
+        .oneshot(json_request("POST", "/review", json!({"yaml": "   "})))
+        .await
+        .unwrap();
+    // Validation runs before the API-key check, so even without a key
+    // we get a 400 rather than 503.
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }

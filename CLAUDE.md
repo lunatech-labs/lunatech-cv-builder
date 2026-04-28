@@ -41,20 +41,37 @@ cargo run                              # app on :3000
 Optional env vars:
 - `DATABASE_URL` — defaults to `postgres://cvbuilder:cvbuilder@localhost:5433/cvbuilder`
 - `BIND_ADDR` — defaults to `0.0.0.0:3000` (e.g. `BIND_ADDR=127.0.0.1:8080`)
+- `ANTHROPIC_API_KEY` — enables `POST /api/review`. Without it, the route returns 503 and the rest of the API is unaffected.
+- `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` — together gate `/api/*` (except `/api/config`) behind a Bearer JWT validated against Keycloak. When **any** of the three is missing the app runs unauthenticated (dev mode, with a warning log) so contributors without Keycloak access can still work.
 - `CV_DEBUG_TYPST=1` — writes the generated Typst source to `/tmp/cv-builder-debug.typ` for each PDF render
 
 ## API
 
-| Method | Path                       | Purpose                              |
-| ------ | -------------------------- | ------------------------------------ |
-| GET    | `/api/cvs`                 | list `[{id, name, updated_at}]`      |
-| POST   | `/api/cvs`                 | body `{yaml}` -> `{id}`              |
-| GET    | `/api/cvs/{id}`            | `{id, name, yaml, updated_at}`       |
-| PUT    | `/api/cvs/{id}`            | body `{yaml}`                        |
-| DELETE | `/api/cvs/{id}`            | -                                    |
-| GET    | `/api/cvs/{id}/pdf?theme=` | PDF bytes; theme = cosmic/luxe/opera |
+| Method | Path                       | Purpose                                                                |
+| ------ | -------------------------- | ---------------------------------------------------------------------- |
+| GET    | `/api/cvs`                 | list `[{id, name, updated_at}]`                                        |
+| POST   | `/api/cvs`                 | body `{yaml}` -> `{id}`                                                |
+| GET    | `/api/cvs/{id}`            | `{id, name, yaml, updated_at}`                                         |
+| PUT    | `/api/cvs/{id}`            | body `{yaml}`                                                          |
+| DELETE | `/api/cvs/{id}`            | -                                                                      |
+| GET    | `/api/cvs/{id}/pdf?theme=` | PDF bytes; theme = lunatech/cosmic/luxe/opera                          |
+| POST   | `/api/review`              | body `{yaml}` -> review JSON; stateless, no DB write                   |
 
 The `name` column is extracted from the YAML's `name:` key on save and used for the list view.
+
+## Authentication (Keycloak via OIDC)
+
+When the three `KEYCLOAK_*` env vars are set, the backend validates a Bearer JWT on every `/api/*` call (except `/api/config`, which is intentionally public so the frontend can bootstrap). Validation: signature against the realm's JWKS (fetched once at startup from `{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/certs`), `iss` pinned to the realm, `aud` pinned to `account` (Keycloak's default).
+
+The frontend uses [keycloak-js](https://www.keycloak.org/securing-apps/javascript-adapter), loaded directly from the Keycloak server at `{KEYCLOAK_URL}/js/keycloak.min.js` (version-locked to the realm). On page load it fetches `/api/config`, then if Keycloak is configured calls `keycloak.init({onLoad: 'login-required', pkceMethod: 'S256'})`, which redirects unauthenticated users to the Keycloak login. After auth, every `fetch('/api/...')` is wrapped to attach `Authorization: Bearer ${kc.token}`, with auto-refresh.
+
+When any `KEYCLOAK_*` var is missing the backend starts unauthenticated (warning log) and the frontend skips the redirect and Bearer header — useful for local dev without Keycloak access.
+
+**Keycloak client setup** (one-time admin task per realm): create a public OIDC client (no secret), set Valid redirect URIs to the app's URL with `/*` suffix, set Web Origins to `+`, enable PKCE with `S256`. The token's `aud` claim must include `account` — that's the default Keycloak mapping; nothing extra to configure.
+
+## Review with Claude
+
+`POST /api/review` is **stateless** — it accepts a `{yaml}` body, calls Claude (`claude-opus-4-7`, adaptive thinking + `effort: high`) with [`assets/skills/cv-reviewer/SKILL.md`](assets/skills/cv-reviewer/SKILL.md) as the system prompt, and returns the structured review without writing anything to the database. This lets recruiters iterate on a draft CV without committing it. Output is constrained by a JSON schema (`overall_score`, `verdict`, `language`, `report_markdown`, `improved_yaml`). Wall time is typically 20-60s; the reqwest client has a 5-min timeout, no streaming. The skill file is the single source of truth for the rubric — edit it to tune the review. The frontend caches the latest review in browser memory; refreshing the page clears it.
 
 ## Two-renderer rule
 

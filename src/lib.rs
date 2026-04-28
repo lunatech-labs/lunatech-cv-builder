@@ -4,6 +4,7 @@ pub mod db;
 pub mod handlers;
 pub mod pdf;
 pub mod review_pdf;
+pub mod users;
 
 pub use auth::KeycloakConfig;
 pub use cv_reviewer::AnthropicConfig;
@@ -35,13 +36,14 @@ impl FromRef<AppState> for Db {
 
 /// Builds the full `/api/*` router. `/api/config` is always public so the
 /// frontend can read it before keycloak-js boots; everything else gets the
-/// JWT layer when an authorizer is supplied.
+/// user resolver (always-on) and, when an authorizer is supplied, the JWT
+/// layer in front of it.
 pub fn api_router(state: AppState, authorizer: Option<auth::Authorizer>) -> Router {
     let public = Router::new()
         .route("/config", get(handlers::get_config))
         .with_state(state.clone());
 
-    let protected = Router::new()
+    let mut protected = Router::new()
         .route("/cvs", get(handlers::list_cvs).post(handlers::create_cv))
         .route(
             "/cvs/{id}",
@@ -52,12 +54,16 @@ pub fn api_router(state: AppState, authorizer: Option<auth::Authorizer>) -> Rout
         .route("/cvs/{id}/pdf", get(handlers::pdf_cv))
         .route("/review", post(handlers::review_yaml))
         .route("/review/pdf", post(handlers::review_pdf_handler))
-        .with_state(state);
+        .with_state(state.clone());
 
-    let protected = match authorizer {
-        Some(authz) => protected.layer(from_fn_with_state(authz, auth::require_auth)),
-        None => protected,
-    };
+    // Always-on: turns the JWT claims (when the auth layer ran) or the dev
+    // fallback into a `User` extension that handlers extract.
+    protected = protected.layer(from_fn_with_state(state, users::resolve_user));
+
+    // When auth is on, validate the JWT *before* the user resolver runs.
+    if let Some(authz) = authorizer {
+        protected = protected.layer(from_fn_with_state(authz, auth::require_auth));
+    }
 
     public.merge(protected)
 }

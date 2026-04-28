@@ -4,10 +4,11 @@ use crate::cv_reviewer;
 use crate::db::{CvRecord, CvSummary, Db};
 use crate::pdf;
 use crate::review_pdf;
-use axum::Json;
-use axum::extract::{Path, Query, State};
+use crate::users::User;
+use axum::extract::{Extension, Path, Query, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
+use axum::Json;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -40,29 +41,34 @@ fn extract_name(yaml: &str) -> String {
         .unwrap_or_default()
 }
 
-pub async fn list_cvs(State(db): State<Db>) -> Result<Json<Vec<CvSummary>>, ApiError> {
-    let rows = db.list().await.map_err(err500)?;
+pub async fn list_cvs(
+    State(db): State<Db>,
+    Extension(user): Extension<User>,
+) -> Result<Json<Vec<CvSummary>>, ApiError> {
+    let rows = db.list(user.id).await.map_err(err500)?;
     Ok(Json(rows))
 }
 
 pub async fn create_cv(
     State(db): State<Db>,
+    Extension(user): Extension<User>,
     Json(body): Json<YamlBody>,
 ) -> Result<Json<CreateResponse>, ApiError> {
     if body.yaml.trim().is_empty() {
         return Err(err400("yaml is empty"));
     }
     let name = extract_name(&body.yaml);
-    let id = db.create(&body.yaml, &name).await.map_err(err500)?;
+    let id = db.create(user.id, &body.yaml, &name).await.map_err(err500)?;
     Ok(Json(CreateResponse { id }))
 }
 
 pub async fn get_cv(
     State(db): State<Db>,
+    Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<CvRecord>, ApiError> {
     let rec = db
-        .get(id)
+        .get(user.id, id)
         .await
         .map_err(err500)?
         .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;
@@ -71,6 +77,7 @@ pub async fn get_cv(
 
 pub async fn update_cv(
     State(db): State<Db>,
+    Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
     Json(body): Json<YamlBody>,
 ) -> Result<StatusCode, ApiError> {
@@ -78,7 +85,10 @@ pub async fn update_cv(
         return Err(err400("yaml is empty"));
     }
     let name = extract_name(&body.yaml);
-    let updated = db.update(id, &body.yaml, &name).await.map_err(err500)?;
+    let updated = db
+        .update(user.id, id, &body.yaml, &name)
+        .await
+        .map_err(err500)?;
     if updated {
         Ok(StatusCode::NO_CONTENT)
     } else {
@@ -88,9 +98,10 @@ pub async fn update_cv(
 
 pub async fn delete_cv(
     State(db): State<Db>,
+    Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = db.delete(id).await.map_err(err500)?;
+    let deleted = db.delete(user.id, id).await.map_err(err500)?;
     if deleted {
         Ok(StatusCode::NO_CONTENT)
     } else {
@@ -105,11 +116,12 @@ pub struct PdfQuery {
 
 pub async fn pdf_cv(
     State(db): State<Db>,
+    Extension(user): Extension<User>,
     Path(id): Path<Uuid>,
     Query(q): Query<PdfQuery>,
 ) -> Result<Response, ApiError> {
     let rec = db
-        .get(id)
+        .get(user.id, id)
         .await
         .map_err(err500)?
         .ok_or((StatusCode::NOT_FOUND, "cv not found".into()))?;

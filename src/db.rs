@@ -1,3 +1,4 @@
+use crate::users::User;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -35,10 +36,34 @@ impl Db {
         Ok(Self { pool })
     }
 
-    pub async fn list(&self) -> Result<Vec<CvSummary>> {
-        let rows = sqlx::query_as::<_, (Uuid, String, DateTime<Utc>)>(
-            "SELECT id, name, updated_at FROM cvs ORDER BY updated_at DESC",
+    /// Idempotent — refresh email/name on every login, bump last_seen_at.
+    pub async fn upsert_user(&self, u: &User) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO users (id, email, name) VALUES ($1, $2, $3)
+             ON CONFLICT (id) DO UPDATE SET
+               email = EXCLUDED.email,
+               name = EXCLUDED.name,
+               last_seen_at = NOW()",
         )
+        .bind(u.id)
+        .bind(u.email.as_deref())
+        .bind(u.name.as_deref())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    // ────────── CV operations — all scoped to the calling user ──────────
+    //
+    // Every query takes the owner's user_id and filters on it. A CV that
+    // belongs to a different user is invisible (404 on get/update/delete)
+    // — we never leak it via cross-user lookups.
+
+    pub async fn list(&self, user_id: Uuid) -> Result<Vec<CvSummary>> {
+        let rows = sqlx::query_as::<_, (Uuid, String, DateTime<Utc>)>(
+            "SELECT id, name, updated_at FROM cvs WHERE user_id = $1 ORDER BY updated_at DESC",
+        )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await?;
         Ok(rows
@@ -47,20 +72,24 @@ impl Db {
             .collect())
     }
 
-    pub async fn create(&self, yaml: &str, name: &str) -> Result<Uuid> {
-        let row: (Uuid,) = sqlx::query_as("INSERT INTO cvs (name, yaml) VALUES ($1, $2) RETURNING id")
-            .bind(name)
-            .bind(yaml)
-            .fetch_one(&self.pool)
-            .await?;
+    pub async fn create(&self, user_id: Uuid, yaml: &str, name: &str) -> Result<Uuid> {
+        let row: (Uuid,) = sqlx::query_as(
+            "INSERT INTO cvs (user_id, name, yaml) VALUES ($1, $2, $3) RETURNING id",
+        )
+        .bind(user_id)
+        .bind(name)
+        .bind(yaml)
+        .fetch_one(&self.pool)
+        .await?;
         Ok(row.0)
     }
 
-    pub async fn get(&self, id: Uuid) -> Result<Option<CvRecord>> {
+    pub async fn get(&self, user_id: Uuid, id: Uuid) -> Result<Option<CvRecord>> {
         let row = sqlx::query_as::<_, (Uuid, String, String, DateTime<Utc>)>(
-            "SELECT id, name, yaml, updated_at FROM cvs WHERE id = $1",
+            "SELECT id, name, yaml, updated_at FROM cvs WHERE id = $1 AND user_id = $2",
         )
         .bind(id)
+        .bind(user_id)
         .fetch_optional(&self.pool)
         .await?;
         Ok(row.map(|(id, name, yaml, updated_at)| CvRecord {
@@ -71,21 +100,24 @@ impl Db {
         }))
     }
 
-    pub async fn update(&self, id: Uuid, yaml: &str, name: &str) -> Result<bool> {
+    pub async fn update(&self, user_id: Uuid, id: Uuid, yaml: &str, name: &str) -> Result<bool> {
         let result = sqlx::query(
-            "UPDATE cvs SET yaml = $1, name = $2, updated_at = NOW() WHERE id = $3",
+            "UPDATE cvs SET yaml = $1, name = $2, updated_at = NOW()
+             WHERE id = $3 AND user_id = $4",
         )
         .bind(yaml)
         .bind(name)
         .bind(id)
+        .bind(user_id)
         .execute(&self.pool)
         .await?;
         Ok(result.rows_affected() > 0)
     }
 
-    pub async fn delete(&self, id: Uuid) -> Result<bool> {
-        let result = sqlx::query("DELETE FROM cvs WHERE id = $1")
+    pub async fn delete(&self, user_id: Uuid, id: Uuid) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM cvs WHERE id = $1 AND user_id = $2")
             .bind(id)
+            .bind(user_id)
             .execute(&self.pool)
             .await?;
         Ok(result.rows_affected() > 0)

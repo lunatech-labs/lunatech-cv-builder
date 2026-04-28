@@ -24,7 +24,7 @@ src/handlers.rs      HTTP handlers; PDF route reads ?theme= query param
 src/pdf.rs           YAML -> Typst dict literal -> compile -> PDF bytes
 assets/cv.typ        Typst template (mirrors the HTML preview visually)
 frontend/index.html  YAML editor + live HTML preview + Open/Save/PDF UI
-migrations/          schema (single `cvs` table)
+migrations/          schema (`cvs` and `users` tables)
 tests/api.rs         integration tests (use `#[sqlx::test]` for per-test DBs)
 .cargo/config.toml   sets DATABASE_URL for cargo run / test
 docker-compose.yml   Postgres service
@@ -59,6 +59,17 @@ Optional env vars:
 | POST   | `/api/review/pdf`          | body `{review, cv_name?}` -> PDF bytes (download); stateless           |
 
 The `name` column is extracted from the YAML's `name:` key on save and used for the list view.
+
+## Data model
+
+Two tables, both in [`migrations/`](migrations/):
+
+- `users` — keyed on the Keycloak `sub` claim (UUID). Holds `email`, `name`, `created_at`, `last_seen_at`. Auto-populated by the auth middleware on first login (upsert).
+- `cvs` — gains a `user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE`. Every read / write is scoped on `user_id` so a CV from another user is invisible (looks like 404). When a user is deleted the cascade removes their CVs.
+
+In dev mode (no Keycloak configured) all requests resolve to a fixed **dev user** with id `00000000-0000-0000-0000-000000000000` — seeded by migration `0004_users.sql` and used as the owner for any pre-existing CVs that didn't have a `user_id` yet. Keeps the local hack-on-it-without-auth flow working unchanged.
+
+The user resolution lives in [`src/users.rs`](src/users.rs) as a Tower middleware that always runs on `/api/cvs/*` and `/api/review*`. It reads the `Claims` extension that the auth layer set (when present), parses the `sub` as a UUID, upserts the row, and stashes the `User` as a request extension. Handlers extract via `Extension<User>` and pass `user.id` into the `db.rs` calls.
 
 ## Authentication (Keycloak via OIDC)
 

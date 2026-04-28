@@ -670,7 +670,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 /* Client label chip — neutral pill that travels with the CV name */
 .cv-label-chip {
   display: inline-flex; align-items: center;
-  margin-left: 8px;
   padding: 2px 8px; border-radius: 4px;
   font-size: 10px; font-weight: 600; letter-spacing: .04em;
   text-transform: uppercase;
@@ -678,6 +677,8 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   border: 1px solid var(--ui-accent-deep);
   white-space: nowrap;
 }
+/* In rank rows the chip sits inline after the name span — needs spacing. */
+.ov-rank-name .cv-label-chip { margin-left: 8px; }
 
 /* My CVs grid */
 .ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
@@ -690,7 +691,8 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 }
 .ov-cv-card:hover { border-color: var(--ui-accent); background: rgba(255,255,255,.03); }
 .ov-cv-card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.ov-cv-card-name { font-size: 14px; font-weight: 600; color: var(--ui-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-top: 4px; }
+.ov-cv-card-title { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; flex-wrap: wrap; padding-top: 2px; }
+.ov-cv-card-name { font-size: 14px; font-weight: 600; color: var(--ui-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ov-cv-card-score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .ov-cv-card-verdict {
   font-size: 10px; font-weight: 500; letter-spacing: .04em;
@@ -1706,7 +1708,10 @@ function renderMyGrid(items) {
     }
     return '<a class="ov-cv-card" href="/?id=' + encodeURIComponent(c.id) + '" onclick="event.preventDefault(); navigateTo(this.getAttribute(\'href\'))">' +
       '<div class="ov-cv-card-row">' +
-        '<span class="ov-cv-card-name">' + escHtml(c.name || 'Untitled CV') + labelChipHtml(c.label) + '</span>' +
+        '<div class="ov-cv-card-title">' +
+          '<span class="ov-cv-card-name">' + escHtml(c.name || 'Untitled CV') + '</span>' +
+          labelChipHtml(c.label) +
+        '</div>' +
         scoreCol +
       '</div>' +
       '<span class="ov-cv-card-meta">Updated ' + relativeDate(c.updated_at) + '</span>' +

@@ -78,7 +78,7 @@
     #line(length: 100%, stroke: 0.4pt + p.border)
     #v(1mm)
     #align(center, text(size: 6.5pt, fill: p.muted, tracking: 0.5pt)[
-      Lunatech France #h(2mm) | #h(2mm) 3 rue de la Galmy 77700 Chessy, France #h(2mm) | #h(2mm) +33 1 82 88 56 64 #h(2mm) | #h(2mm) info\@lunatech.fr
+      Lunatech #h(2mm) #sym.dot.c #h(2mm) France #h(2mm) #sym.dot.c #h(2mm) Netherlands
     ])
   ]),
 )
@@ -120,8 +120,9 @@
       [
         #set align(right)
         #set text(size: 7.5pt, weight: 300, fill: white.transparentize(15%))
-        #let email = opt(cv-data, "email", default: "info@lunatech.fr")
-        #text(fill: white.transparentize(40%))[✉] #h(1mm) #email
+        #if opt(cv-data, "email") != "" [
+          #text(fill: white.transparentize(40%))[✉] #h(1mm) #cv-data.email
+        ]
         #if opt(cv-data, "availability") != "" [
           #linebreak()
           #text(fill: white.transparentize(40%))[◎] #h(1mm)

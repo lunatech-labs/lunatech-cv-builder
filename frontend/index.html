@@ -1043,11 +1043,10 @@ function renderCV(data) {
   }
 
   // ── Header (right contacts) ──
-  var email = data.email || 'info@lunatech.fr';
   var headerContacts = [
-    '<span class="cv-contact"><i class="cv-contact-icon">✉</i>' + email + '</span>',
+    data.email        ? '<span class="cv-contact"><i class="cv-contact-icon">✉</i>' + data.email + '</span>' : '',
     data.availability ? '<span class="cv-contact strong"><i class="cv-contact-icon">◎</i>Available : ' + data.availability + '</span>' : '',
-    data.location    ? '<span class="cv-contact"><i class="cv-contact-icon">⌖</i>' + data.location + '</span>' : ''
+    data.location     ? '<span class="cv-contact"><i class="cv-contact-icon">⌖</i>' + data.location + '</span>' : ''
   ].filter(Boolean).join('');
 
   // ── Experience timeline ──
@@ -1133,7 +1132,7 @@ function renderCV(data) {
     return '<div class="cv-lang-item"><span>' + (l.language||'') + '</span><span class="cv-lang-level">' + (l.level||'') + '</span></div>';
   }).join('');
 
-  var footer = 'Lunatech France &nbsp;&nbsp;&#124;&nbsp;&nbsp; 3 rue de la Galmy 77700 Chessy, France &nbsp;&nbsp;&#124;&nbsp;&nbsp; +33 1 82 88 56 64 &nbsp;&nbsp;&#124;&nbsp;&nbsp; info@lunatech.fr';
+  var footer = 'Lunatech &nbsp;&middot;&nbsp; France &nbsp;&middot;&nbsp; Netherlands';
 
   root.innerHTML =
     '<div class="cv-header">' +

@@ -50,7 +50,7 @@ fn build_template(review: &Review, cv_name: Option<&str>, body: &str) -> String 
   paper: "a4",
   margin: (top: 18mm, bottom: 18mm, x: 16mm),
   footer: align(center, text(size: 7pt, fill: rgb("#6b6b6b"), tracking: 0.4pt)[
-    Lunatech France #h(2mm) | #h(2mm) +33 1 82 88 56 64 #h(2mm) | #h(2mm) info\@lunatech.fr
+    Lunatech #h(2mm) #sym.dot.c #h(2mm) France #h(2mm) #sym.dot.c #h(2mm) Netherlands
   ]),
 )
 #set text(font: ("Poppins", "Inter", "Helvetica"), size: 10pt, fill: rgb("#1a1a1a"))

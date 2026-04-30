@@ -344,6 +344,28 @@ mod tests {
     }
 
     #[test]
+    fn render_handles_unquoted_integer_year() {
+        // Regression: a `year: 2026` (bare integer) in certifications used to
+        // crash the Typst compile with "cannot join string with integer"
+        // because the template's parts.join() saw a mix of types. Coercing
+        // every part with str(...) fixed it; this test pins the behaviour.
+        let yaml = r#"
+name: Daan
+title: Engineer
+certifications:
+  - name: Reliability Engineering
+    issuer: Web Infra Academy
+    year: 2026
+education:
+  - school: Hogeschool Rotterdam
+    degree: "Bachelor's, IT"
+    year: 2007
+"#;
+        let bytes = render(yaml, "lunatech").expect("integer years should render");
+        assert!(bytes.starts_with(b"%PDF-"));
+    }
+
+    #[test]
     fn render_handles_special_characters() {
         let yaml = "name: \"O'Brien & Sons\"\ntitle: \"C++ \\\"Senior\\\" Eng\"\nsummary: \"Backslashes \\\\ and unicode 日本語\"";
         let bytes = render(yaml, "cosmic").expect("special chars should render");

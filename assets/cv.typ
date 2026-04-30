@@ -248,11 +248,14 @@
     tag-arr: opt-arr(proj, "tags"))
 }
 
+// `year` is sometimes a quoted string in the YAML and sometimes a bare
+// integer (`2026` vs `"2026"`); coerce with `str(...)` so `parts.join`
+// doesn't try to mix string and integer values.
 #let cert-block(c) = {
   let parts = ()
-  if opt(c, "subtitle") != "" { parts.push(c.subtitle) }
-  if opt(c, "issuer")   != "" { parts.push(c.issuer) }
-  if opt(c, "year")     != "" { parts.push(c.year) }
+  if opt(c, "subtitle") != "" { parts.push(str(c.subtitle)) }
+  if opt(c, "issuer")   != "" { parts.push(str(c.issuer)) }
+  if opt(c, "year")     != "" { parts.push(str(c.year)) }
   let meta = parts.join(" " + sym.dot.c + " ")
   block-entry([#opt(c, "name")], meta: meta)
 }
@@ -260,8 +263,8 @@
 #let edu-block(e) = {
   let title = if opt(e, "degree") != "" { e.degree } else { opt(e, "school") }
   let parts = ()
-  if opt(e, "school") != "" and opt(e, "degree") != "" and e.school != title { parts.push(e.school) }
-  if opt(e, "year")   != "" { parts.push(e.year) }
+  if opt(e, "school") != "" and opt(e, "degree") != "" and e.school != title { parts.push(str(e.school)) }
+  if opt(e, "year")   != "" { parts.push(str(e.year)) }
   let meta = parts.join(" " + sym.dot.c + " ")
   block-entry([#title], meta: meta)
 }

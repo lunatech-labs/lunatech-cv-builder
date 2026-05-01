@@ -83,7 +83,7 @@
   ]),
 )
 #set text(font: sans, size: 9pt, fill: p.text, hyphenate: false)
-#set par(leading: 0.55em, justify: false)
+#set par(leading: 0.45em, justify: false)
 
 #let opt(d, k, default: "") = if k in d { d.at(k) } else { default }
 #let opt-arr(d, k) = if k in d and d.at(k) != none { d.at(k) } else { () }
@@ -209,7 +209,7 @@
       ]
       #v(-1mm)
       #if opt(exp, "description") != "" [
-        #text(font: serif, size: 8.5pt, style: "italic", fill: p.body)[#exp.description]
+        #text(size: 8pt, fill: p.body)[#exp.description]
       ]
       #if opt-arr(exp, "tags").len() > 0 [
         #v(0.5mm)
@@ -223,11 +223,11 @@
   #text(font: serif, size: 9.5pt, weight: 700)[#title-body]
   #if meta != "" [
     #v(-1.2mm)
-    #text(font: serif, size: 8pt, style: "italic", fill: p.body)[#meta]
+    #text(size: 7pt, fill: p.muted)[#meta]
   ]
   #if desc != "" [
     #v(-0.6mm)
-    #text(font: serif, size: 8.5pt, style: "italic", fill: p.body)[#desc]
+    #text(size: 7.5pt, fill: p.body)[#desc]
   ]
   #if tag-arr.len() > 0 [
     #v(0.5mm)
@@ -299,7 +299,7 @@
     {
       if opt(cv-data, "summary") != "" {
         section-title("Profile")
-        text(font: serif, size: 9pt, style: "italic", fill: p.body)[#cv-data.summary]
+        text(font: serif, size: 8.5pt, style: "italic", fill: p.body)[#cv-data.summary]
         v(3mm)
       }
       if opt-arr(cv-data, "experiences").len() > 0 {

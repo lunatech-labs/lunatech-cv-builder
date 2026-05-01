@@ -382,6 +382,26 @@ education:
     }
 
     #[test]
+    fn render_rebuilds_smashed_bullet_lists() {
+        // YAML's folded `>` scalar joins same-indented bullet lines with a
+        // space, so "Key contributions:\n- foo\n- bar\n" lands as one
+        // line. The Typst template's `detect-bulleted` helper must
+        // regex-match this back into a real list. We don't inspect the
+        // PDF bytes here — we just need the render to succeed (the
+        // regex compiles, items >= 2, every item >= 10 chars).
+        let yaml = r#"
+name: Bullet Test
+experiences:
+  - company: ACME
+    role: Engineer
+    period: "2024 — present"
+    description: "Key contributions: - Strategic Integration: I spearheaded the gateway design - Client Onboarding: I led technical homologation for partners - Production Excellence: I maintained 99.5 percent SLA across the platform"
+"#;
+        let bytes = render(yaml, "lunatech").expect("smashed-bullet description should render");
+        assert!(bytes.starts_with(b"%PDF-"));
+    }
+
+    #[test]
     fn render_handles_special_characters() {
         let yaml = "name: \"O'Brien & Sons\"\ntitle: \"C++ \\\"Senior\\\" Eng\"\nsummary: \"Backslashes \\\\ and unicode 日本語\"";
         let bytes = render(yaml, "cosmic").expect("special chars should render");

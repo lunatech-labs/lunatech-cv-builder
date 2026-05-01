@@ -232,11 +232,49 @@
 // source, so this is exactly what gives us the per-section spacing the
 // reader expects — and `justify: true` then applies *per paragraph*
 // instead of stretching the whole description into one slab.
+//
+// Folded scalars also smash bulleted sub-lists: a YAML block that looks
+// like "Key contributions:\n- foo\n- bar\n" comes back as a single line
+// "Key contributions: - foo - bar" because same-indented lines get joined
+// with a space. `detect-bulleted` recognises that pattern and rebuilds
+// the list — the author keeps writing `>` everywhere and still gets
+// bullets in the rendered PDF.
+#let detect-bulleted(line) = {
+  let m = line.match(regex("^(.{1,80}?):\s+-\s+(.+)$"))
+  if m == none { return none }
+  let header = m.captures.at(0) + ":"
+  let items = m.captures.at(1)
+    .split(regex("\s+-\s+"))
+    .map(s => s.trim())
+    .filter(s => s != "")
+  if items.len() < 2 { return none }
+  // Reject false positives like "Worked: 2020 - 2024" — real bullet
+  // items are full sentences, not single words or numbers.
+  for item in items {
+    if item.len() < 10 { return none }
+  }
+  (header: header, items: items)
+}
+
 #let render-desc(raw, size: 8pt) = {
   for line in raw.split("\n") {
     let para = line.trim()
     if para != "" {
-      block(below: 1.4mm, text(size: size, fill: p.body)[#para])
+      let bullets = detect-bulleted(para)
+      if bullets != none {
+        block(below: 0.6mm, text(size: size, fill: p.body)[#bullets.header])
+        for item in bullets.items {
+          block(below: 0.8mm, grid(
+            columns: (3.5mm, 1fr),
+            column-gutter: 0pt,
+            text(size: size, fill: p.bullet)[•],
+            text(size: size, fill: p.body)[#item],
+          ))
+        }
+        v(0.6mm)
+      } else {
+        block(below: 1.4mm, text(size: size, fill: p.body)[#para])
+      }
     }
   }
 }

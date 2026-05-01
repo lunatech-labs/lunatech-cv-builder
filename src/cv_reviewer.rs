@@ -64,7 +64,7 @@ fn output_schema() -> Value {
         "properties": {
             "overall_score": {
                 "type": "integer",
-                "description": "Score from 0 (unusable) to 100 (perfect). Use the full range so two similarly-good CVs can still be told apart by 5-10 points. CRITICAL: per-project length deductions are mechanical — for every project with description length > 150 words, subtract 8 points (or 12 if > 220 words) from the score, then sum across projects. A CV with several overlong projects MUST land below 70 even if every other criterion is satisfied."
+                "description": "Score from 0 (unusable) to 100 (perfect). Use the full range so two similarly-good CVs can still be told apart by 5-10 points. CRITICAL: per-project length deductions are mechanical — for every project with description length > 280 words, subtract 8 points (or 12 if > 380 words) from the score, then sum across projects. A CV with several overlong projects MUST land below 70 even if every other criterion is satisfied."
             },
             "verdict": {
                 "type": "string",

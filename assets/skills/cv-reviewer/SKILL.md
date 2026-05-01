@@ -103,30 +103,41 @@ Start with a brief overall verdict: is this CV client-ready, needs minor improve
 The verdict and the score should track each other: **85–100** is almost always `client_ready`, **60–85** is typically `minor_improvements`, anything **below 50** leans `major_rework`. The 50–60 band is borderline — pick the verdict that matches what the bulk of the work would be. If you find yourself wanting to write a positive prose verdict but a stricter structured verdict, raise the structured verdict — they should agree.
 
 ### Per-Project Analysis
-For each project on the CV, create a section with:
+For each project on the CV, you **must** start the section with the project header and a length line — these two lines are not optional and not negotiable, they appear on every project section verbatim:
 
-**Project: [Project name / Client name — dates]**
+```
+**Project: <Project name or Client> — <dates>**
+**Length:** <N> words — <verdict>
+```
 
-A scorecard table showing each criterion with a status:
+Where `<N>` is the word count of that project's `description` (count it, do not skip), and `<verdict>` is one of:
+
+- **✅ on target** — N ≤ 130
+- **⚠️ slightly long** — 131 ≤ N ≤ 150 (mention it but do not dock yet)
+- **❌ overlong, dock 8 points** — 151 ≤ N ≤ 220
+- **❌ severely overlong, dock 12 points** — N > 220
+
+After the length line, give the scorecard table for the 8 criteria, with status per criterion:
+
 - ✅ **Present & Clear** — the information is there and well expressed
 - ⚠️ **Partial** — something is mentioned but it's too vague or incomplete
 - ❌ **Missing** — no information at all on this criterion
 
-For each criterion that is Partial or Missing, write a specific note explaining what's lacking and suggesting what kind of information should be added. Be concrete — don't just say "add more detail", say what *kind* of detail is missing.
+For each criterion that is Partial or Missing, write a specific note. Be concrete — don't just say "add more detail", say what *kind* of detail is missing. **For an overlong entry**, also add a "Trim suggestions" sub-section listing 3–5 specific sentences or phrases the consultant should cut (paraphrase / restate / nested sub-header / generic activity prose / adjective stacking).
 
 ### Length & density (just as important as completeness)
 
-Each project entry should fit in roughly **80–130 words total** (~5–8 short sentences or compact bullets). The reader is a recruiter scanning ten CVs in an hour, not someone reading a memoir — every word that doesn't add a fact or differentiate the person from a generic engineer is dead weight.
+Each project entry should fit in roughly **80–130 words total** (~5–8 short sentences or compact bullets). The reader is a recruiter scanning ten CVs in an hour, not someone reading a memoir — every word that doesn't add a fact or differentiate the person from a generic engineer is dead weight. The deductions in the per-project header above are not soft guidance; they are computed mechanically and **must** show up in `overall_score`.
 
-Common patterns that bloat entries (flag them in the report when you see them):
+Worked example: a CV with 6 projects where 3 are 250+ words and 1 is 180 words = `8 + 8 + 12 + 8 = 36` points off the `overall_score`, capping the CV around 60–65 even if every other criterion is ✅. That is correct — a verbose CV that says nothing in 1500 words is not client-ready, regardless of how complete it is.
+
+Common bloat patterns to flag in the trim suggestions:
 
 - Restating the same fact in two ways ("monitoring platform … operating instructions flow through the platform every day").
 - Multi-sentence context paragraphs that fit in one ("a small team of three engineers, two juniors (myself included) and one senior who acted as our mentor" → "3-person team: 1 senior + 2 juniors").
 - Generic activity prose ("worked closely with stakeholders", "ensured high quality") that any engineer could write.
 - Adjective stacking ("critical, high-frequency, business-critical, sensitive industrial application").
 - Sub-section headers inside a free-text description (Context / Team / Client interaction / Key contributions / Proud of) that nest two levels of narrative.
-
-If a project entry exceeds **150 words**, call it out in the per-project analysis: count the words, point at the bloat patterns above, and dock the score (typically 5–10 points off `overall_score` for a clearly bloated entry; more if it's pervasive across the CV). A CV that says more in less space ranks higher — concision is not a stylistic preference, it is part of being client-ready.
 
 ### Summary of Recurring Issues
 If certain criteria are consistently weak across multiple projects, call this out — it's likely a pattern in how this person writes about their experience, not a one-off omission.

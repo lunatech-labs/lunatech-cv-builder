@@ -12,7 +12,12 @@ const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODEL: &str = "claude-opus-4-7";
 const MAX_TOKENS: u32 = 16000;
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
+// Streaming keeps the connection alive while Claude works through a long CV
+// (8+ experiences with effort: high routinely take 5-15 minutes). Without
+// streaming we'd hit the reqwest timeout *and* Anthropic's own ~10-minute
+// server-side limit on non-streaming responses. 25 minutes is a generous
+// upper bound; the request normally completes in well under that.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(25 * 60);
 const SKILL_PATH: &str = "assets/skills/cv-reviewer/SKILL.md";
 
 /// Configuration shared across requests. Created once at startup.
@@ -96,6 +101,7 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
     let body = json!({
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
+        "stream": true,
         "thinking": { "type": "adaptive" },
         "output_config": {
             "effort": "high",
@@ -117,21 +123,24 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
         }]
     });
 
-    let resp = cfg
+    let mut resp = cfg
         .http
         .post(ANTHROPIC_URL)
         .header("x-api-key", cfg.api_key.as_str())
         .header("anthropic-version", ANTHROPIC_VERSION)
         .header("content-type", "application/json")
+        .header("accept", "text/event-stream")
         .json(&body)
         .send()
         .await
         .context("calling Anthropic API")?;
 
     let status = resp.status();
-    let payload: Value = resp.json().await.context("decoding Anthropic response")?;
-
     if !status.is_success() {
+        let payload: Value = resp
+            .json()
+            .await
+            .context("decoding Anthropic error response")?;
         let msg = payload
             .pointer("/error/message")
             .and_then(Value::as_str)
@@ -139,23 +148,74 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
         return Err(anyhow!("Anthropic API {}: {}", status, msg));
     }
 
-    // Find the first text block — that's where the structured JSON lands when
-    // `output_config.format` is set.
-    let text = payload
-        .get("content")
-        .and_then(Value::as_array)
-        .and_then(|blocks| {
-            blocks.iter().find_map(|b| {
-                if b.get("type").and_then(Value::as_str) == Some("text") {
-                    b.get("text").and_then(Value::as_str)
-                } else {
-                    None
-                }
-            })
-        })
-        .ok_or_else(|| anyhow!("Anthropic response had no text content block"))?;
+    // Consume the SSE stream. Each event is one or more lines terminated by
+    // `\n`, with the JSON payload on a `data: ...` line. We track which
+    // content block is currently open and accumulate `text_delta`s on the
+    // text block (where the JSON-schema-constrained structured output lands)
+    // — `thinking_delta`s on the thinking block are intentionally dropped.
+    let mut buf: Vec<u8> = Vec::new();
+    let mut text_accum = String::new();
+    let mut current_block_type: Option<String> = None;
 
-    serde_json::from_str::<Review>(text).context("parsing Review JSON from Claude")
+    while let Some(chunk) = resp
+        .chunk()
+        .await
+        .context("reading Anthropic SSE stream")?
+    {
+        buf.extend_from_slice(&chunk);
+
+        while let Some(nl) = buf.iter().position(|b| *b == b'\n') {
+            let line_bytes: Vec<u8> = buf.drain(..=nl).collect();
+            let line = std::str::from_utf8(&line_bytes[..line_bytes.len() - 1])
+                .unwrap_or("")
+                .trim_end_matches('\r');
+
+            let Some(data) = line.strip_prefix("data: ") else {
+                continue;
+            };
+            let Ok(event) = serde_json::from_str::<Value>(data) else {
+                continue;
+            };
+
+            match event.get("type").and_then(Value::as_str) {
+                Some("content_block_start") => {
+                    current_block_type = event
+                        .pointer("/content_block/type")
+                        .and_then(Value::as_str)
+                        .map(String::from);
+                }
+                Some("content_block_delta") => {
+                    let delta_type = event.pointer("/delta/type").and_then(Value::as_str);
+                    if delta_type == Some("text_delta")
+                        && current_block_type.as_deref() == Some("text")
+                    {
+                        if let Some(t) = event.pointer("/delta/text").and_then(Value::as_str) {
+                            text_accum.push_str(t);
+                        }
+                    }
+                }
+                Some("content_block_stop") => {
+                    current_block_type = None;
+                }
+                Some("error") => {
+                    let msg = event
+                        .pointer("/error/message")
+                        .and_then(Value::as_str)
+                        .unwrap_or("unknown stream error");
+                    return Err(anyhow!("Anthropic stream error: {msg}"));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    if text_accum.is_empty() {
+        return Err(anyhow!(
+            "Anthropic streaming response had no text content block"
+        ));
+    }
+
+    serde_json::from_str::<Review>(&text_accum).context("parsing Review JSON from Claude")
 }
 
 #[cfg(test)]

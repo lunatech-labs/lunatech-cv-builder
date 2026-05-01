@@ -191,20 +191,25 @@
   parts.join()
 }
 
-#let exp-block(exp) = block(below: 3mm, breakable: false, [
+// `breakable: true` — a single very long mission description (Daan's CVs
+// have ~200-word ones) is taller than the remaining first-page space, and
+// `breakable: false` would dump the whole entry onto page 2 leaving page
+// one half-empty. Allow the description to flow across pages; the section
+// title above it is `sticky: true` so headings still travel with content.
+#let exp-block(exp) = block(below: 3mm, breakable: true, [
   #grid(
     columns: (10mm, 4mm, 1fr),
     column-gutter: 2mm,
     align: (center + top, center + top, left + top),
 
-    text(size: 6.5pt, style: "italic", fill: p.muted)[#opt(exp, "period")],
+    text(size: 7pt, style: "italic", fill: p.muted)[#opt(exp, "period")],
     text(size: 8pt, fill: p.bullet)[◆],
     [
       #text(font: serif, size: 10pt, weight: 700)[
         #opt(exp, "company")
         #if opt(exp, "role") != "" [
           #text(weight: 400, fill: p.muted)[ #sym.dot.c ]
-          #text(style: "italic", weight: 500)[#exp.role]
+          #text(style: "italic", weight: 500, fill: p.muted)[#exp.role]
         ]
       ]
       #v(-1mm)
@@ -219,7 +224,7 @@
   )
 ])
 
-#let block-entry(title-body, meta: "", desc: "", tag-arr: ()) = block(below: 2.5mm, breakable: false, [
+#let block-entry(title-body, meta: "", desc: "", tag-arr: ()) = block(below: 2.5mm, breakable: true, [
   #text(font: serif, size: 9.5pt, weight: 700)[#title-body]
   #if meta != "" [
     #v(-1.2mm)
@@ -240,7 +245,7 @@
     [
       #opt(proj, "name")
       #text(weight: 400, fill: p.muted)[ #sym.dash.em ]
-      #text(style: "italic", weight: 500)[#proj.subtitle]
+      #text(style: "italic", weight: 500, fill: p.muted)[#proj.subtitle]
     ]
   } else { [#opt(proj, "name")] }
   block-entry(title,
@@ -299,7 +304,7 @@
     {
       if opt(cv-data, "summary") != "" {
         section-title("Profile")
-        text(font: serif, size: 8.5pt, style: "italic", fill: p.body)[#cv-data.summary]
+        text(font: serif, size: 9pt, fill: p.body)[#cv-data.summary]
         v(3mm)
       }
       if opt-arr(cv-data, "experiences").len() > 0 {

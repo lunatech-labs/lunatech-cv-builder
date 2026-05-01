@@ -2317,6 +2317,12 @@ function applyImprovedYaml() {
   </div>
 </div>
 
+</div><!-- /view-editor -->
+
+<!-- Batch-review modal lives at the top level (outside view-editor) so it
+     can overlay the overview view too — the trigger button is on the
+     overview page, and the editor view is `display: none` while the
+     overview is showing. -->
 <div class="review-modal-bg" id="batch-modal-bg" onclick="if(event.target===this) closeBatchModal()">
   <div class="review-modal">
     <div class="review-modal-header">
@@ -2351,7 +2357,6 @@ function applyImprovedYaml() {
     </div>
   </div>
 </div>
-</div><!-- /view-editor -->
 
 </body>
 </html>

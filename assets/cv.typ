@@ -144,6 +144,11 @@
   ],
 )
 
+// From the next page break onward, give the page a real top margin so
+// continuation pages don't start flush at the paper edge. The first-page
+// banner above already bled to y=0 thanks to the initial `top: 0pt`.
+#set page(margin: (top: 16mm, bottom: 16mm, x: 0pt))
+
 // ─────────── KEY ASSETS CAPSULE ───────────
 
 #if opt-arr(cv-data, "key_assets").len() > 0 {

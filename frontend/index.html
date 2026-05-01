@@ -288,14 +288,21 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .cv-exp-headline .cv-exp-role { font-style: italic; font-weight: 500; color: var(--cv-muted); }
 .cv-exp-headline .cv-exp-sep { color: var(--cv-muted); font-weight: 400; margin: 0 .35em; }
 .cv-exp-desc {
+  /* Wrapper only — actual paragraph styling lives on the inner <p> so each
+     "Context: / Responsibilities: / Key contributions: …" section is its
+     own justified paragraph rather than one giant justified block. */
+  margin-bottom: 4px;
+}
+.cv-exp-desc p {
   /* Body paragraphs in Poppins regular — italic serif made long descriptions
      feel heavy on densely-written CVs. Heading-level elements (consultant
      name, company, block titles) keep EB Garamond. */
   font-size: 10.5px;
   color: var(--cv-body); line-height: 1.4;
   text-align: justify; hyphens: auto;
-  margin-bottom: 4px;
+  margin: 0 0 4px 0;
 }
+.cv-exp-desc p:last-child { margin-bottom: 0; }
 .cv-tags {
   font-size: 9.5px; font-weight: 600;
   color: var(--cv-text);
@@ -336,12 +343,14 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   font-size: 9.5px; color: var(--cv-muted);
   margin-bottom: 2px;
 }
-.cv-block-desc {
+.cv-block-desc { margin-bottom: 3px; }
+.cv-block-desc p {
   font-size: 10px;
   color: var(--cv-body); line-height: 1.4;
   text-align: justify; hyphens: auto;
-  margin-bottom: 3px;
+  margin: 0 0 3px 0;
 }
+.cv-block-desc p:last-child { margin-bottom: 0; }
 
 /* ── KEY ASSETS — full-width capsule under the header ── */
 .cv-key-assets-capsule {
@@ -1037,6 +1046,21 @@ function renderCV(data) {
       tags.map(esc).join('<span class="cv-tag-sep">·</span>') +
     '</div>';
   }
+
+  // YAML's folded `>` scalar emits one `\n` per blank line in the source,
+  // so a description with "Context: …\n\nResponsibilities: …" lands here as
+  // "Context: …\nResponsibilities: …". Split on those newlines and wrap
+  // each chunk in <p> so each section becomes its own justified paragraph
+  // — without this, `text-align: justify` would stretch the whole
+  // description as one slab and lose the section rhythm.
+  function descParagraphs(text) {
+    if (!text) return '';
+    return text.split('\n')
+      .map(function(s) { return s.replace(/^\s+|\s+$/g, ''); })
+      .filter(function(s) { return s.length > 0; })
+      .map(function(s) { return '<p>' + esc(s) + '</p>'; })
+      .join('');
+  }
   var experiences = (data.experiences||[]).map(function(exp) {
     var headline = '<span>' + (exp.company||'') + '</span>' +
                    (exp.role ? '<span class="cv-exp-sep">·</span><span class="cv-exp-role">' + exp.role + '</span>' : '');
@@ -1045,7 +1069,7 @@ function renderCV(data) {
              '<div class="cv-exp-marker">◆</div>' +
              '<div class="cv-exp-content">' +
                '<div class="cv-exp-headline">' + headline + '</div>' +
-               (exp.description ? '<div class="cv-exp-desc">' + exp.description + '</div>' : '') +
+               (exp.description ? '<div class="cv-exp-desc">' + descParagraphs(exp.description) + '</div>' : '') +
                tagsHtml(exp.tags) +
              '</div>' +
            '</div>';
@@ -1072,7 +1096,7 @@ function renderCV(data) {
                    (p.subtitle ? '<span class="cv-block-sep">—</span><span class="cv-block-sub">' + p.subtitle + '</span>' : '');
     return '<div class="cv-block">' +
              '<div class="cv-block-title">' + headline + '</div>' +
-             (p.description ? '<div class="cv-block-desc">' + p.description + '</div>' : '') +
+             (p.description ? '<div class="cv-block-desc">' + descParagraphs(p.description) + '</div>' : '') +
              tagsHtml(p.tags) +
            '</div>';
   }).join('');

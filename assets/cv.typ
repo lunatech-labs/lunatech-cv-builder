@@ -225,6 +225,22 @@
   parts.join()
 }
 
+// Render a description that may carry several "paragraphs" (Context: /
+// Responsibilities: / Key contributions: / Most rewarding moment:) by
+// splitting on `\n` and giving each non-empty line its own block. YAML's
+// folded `>` scalar emits a single `\n` for every blank line in the
+// source, so this is exactly what gives us the per-section spacing the
+// reader expects — and `justify: true` then applies *per paragraph*
+// instead of stretching the whole description into one slab.
+#let render-desc(raw, size: 8pt) = {
+  for line in raw.split("\n") {
+    let para = line.trim()
+    if para != "" {
+      block(below: 1.4mm, text(size: size, fill: p.body)[#para])
+    }
+  }
+}
+
 // `breakable: true` — a single very long mission description (Daan's CVs
 // have ~200-word ones) is taller than the remaining first-page space, and
 // `breakable: false` would dump the whole entry onto page 2 leaving page
@@ -247,9 +263,9 @@
         ]
       ]
       #v(-1mm)
-      #if opt(exp, "description") != "" [
-        #text(size: 8pt, fill: p.body)[#exp.description]
-      ]
+      #if opt(exp, "description") != "" {
+        render-desc(exp.description)
+      }
       #if opt-arr(exp, "tags").len() > 0 [
         #v(0.5mm)
         #tags(opt-arr(exp, "tags"))
@@ -264,10 +280,10 @@
     #v(-1.2mm)
     #text(size: 7pt, fill: p.muted)[#meta]
   ]
-  #if desc != "" [
-    #v(-0.6mm)
-    #text(size: 7.5pt, fill: p.body)[#desc]
-  ]
+  #if desc != "" {
+    v(-0.6mm)
+    render-desc(desc, size: 7.5pt)
+  }
   #if tag-arr.len() > 0 [
     #v(0.5mm)
     #tags(tag-arr)

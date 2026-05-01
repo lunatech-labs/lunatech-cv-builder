@@ -112,10 +112,10 @@ For each project on the CV, you **must** start the section with the project head
 
 Where `<N>` is the word count of that project's `description` (count it, do not skip), and `<verdict>` is one of:
 
-- **✅ on target** — N ≤ 220
-- **⚠️ slightly long** — 221 ≤ N ≤ 280 (mention it but do not dock yet)
-- **❌ overlong, dock 8 points** — 281 ≤ N ≤ 380
-- **❌ severely overlong, dock 12 points** — N > 380
+- **✅ on target** — N ≤ 200
+- **⚠️ slightly long** — 201 ≤ N ≤ 260 (mention it, no dock — but the improved YAML must still trim it back toward 200)
+- **❌ overlong, dock 8 points** — 261 ≤ N ≤ 340
+- **❌ severely overlong, dock 12 points** — N > 340
 
 After the length line, give the scorecard table for the 8 criteria, with status per criterion:
 
@@ -127,9 +127,9 @@ For each criterion that is Partial or Missing, write a specific note. Be concret
 
 ### Length & density (just as important as completeness)
 
-Each project entry should fit in roughly **150–220 words total** (~4 short paragraphs: one each for Context, Responsibilities, Key contributions — 3 to 5 of them — and optionally Source of pride). The reader is a recruiter scanning ten CVs in an hour, not someone reading a memoir, but they do need enough substance to decide whether to pitch this consultant. Below 100 words is usually too thin (no context, no impact); above ~280 starts to be padding. The deductions in the per-project header above are not soft guidance; they are computed mechanically and **must** show up in `overall_score`.
+Each project entry should fit in roughly **150–200 words total** (~4 short paragraphs: one each for Context, Responsibilities, Key contributions — 3 to 5 of them — and optionally Source of pride). The reader is a recruiter scanning ten CVs in an hour, not someone reading a memoir, but they do need enough substance to decide whether to pitch this consultant. Below 100 words is usually too thin (no context, no impact); above ~260 starts to be padding. The deductions in the per-project header above are not soft guidance; they are computed mechanically and **must** show up in `overall_score`.
 
-Worked example: a CV with 6 projects where 2 are 320 words and 1 is 410 words = `8 + 8 + 12 = 28` points off the `overall_score`, pushing what would have been a 90 down to 62. That is correct — a verbose CV that says nothing across 2000 words is not client-ready, regardless of how complete it is.
+Worked example: a CV with 6 projects where 2 are 290 words and 1 is 360 words = `8 + 8 + 12 = 28` points off the `overall_score`, pushing what would have been a 90 down to 62. That is correct — a verbose CV that says nothing across 2000 words is not client-ready, regardless of how complete it is.
 
 Common bloat patterns to flag in the trim suggestions:
 
@@ -148,7 +148,7 @@ After the analysis, produce a revised version of the CV that:
 
 1. **Preserves all factual information** — don't invent achievements or numbers. When information is missing, insert a clearly marked placeholder like `[TO COMPLETE: team size?]` or `[TO COMPLETE: what specific impact did this have?]`.
 
-2. **Restructures each project entry** so it fits in **150–220 words**, in this shape (short prose paragraphs, no nested sub-headings, no walls of bullets):
+2. **Restructures each project entry** so it fits in **150–200 words**, in this shape (short prose paragraphs, no nested sub-headings, no walls of bullets):
 
    - **Context** — 1–2 sentences: who the client was, what the system was, the team shape, why it mattered (a single number where it helps, like users served or transactions/day).
    - **Responsibilities** — 1–2 sentences: what the consultant was accountable for; team size, leadership signals, client-facing role if any.
@@ -156,7 +156,7 @@ After the analysis, produce a revised version of the CV that:
    - **Source of pride** — optional, 1 sentence. Skip it if there's nothing concrete to put in it; better to omit it than to write a vague platitude.
    - **Tech** is in the YAML's `tags` field, not the description — keep it there.
 
-   If the original is over-long (> 280 words), **rewrite, don't translate** — pick the load-bearing facts and drop the rest. The role of `improved_yaml` is to show the consultant what their CV should look like, so it has to be visibly shorter and tighter than what they wrote, not a polished version of the same length.
+   If the original is over 200 words, **trim — don't just polish**. Pick the load-bearing facts and drop the rest. This applies to "slightly long" entries too (201–260 words), not only the docked ones — a warn band that doesn't actually shorten the prose is useless. The role of `improved_yaml` is to show the consultant what their CV should look like, so it has to be visibly shorter and tighter than what they wrote, not a polished version of the same length.
 
 3. **Preserves all factual information that survives the trim** — don't invent achievements or numbers. When a fact is genuinely missing (not just bloated prose), insert a clearly marked placeholder like `[TO COMPLETE: team size?]` or `[TO COMPLETE: what specific impact did this have?]`.
 

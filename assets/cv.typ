@@ -119,11 +119,15 @@
         ]
       ],
 
-      // ── header right (contacts)
+      // ── header right: Lunatech logo + (optional) contacts beneath it.
+      // The logo is the brand anchor and stays whether or not the YAML
+      // carries email / availability / location.
       [
         #set align(right)
+        #image("/lunatech-logo-alone.png", height: 14mm)
         #set text(size: 7.5pt, weight: 300, fill: white.transparentize(15%))
         #if opt(cv-data, "email") != "" [
+          #v(2mm)
           #text(fill: white.transparentize(40%))[✉] #h(1mm) #cv-data.email
         ]
         #if opt(cv-data, "availability") != "" [

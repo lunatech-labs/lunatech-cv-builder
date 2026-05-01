@@ -114,6 +114,20 @@ A scorecard table showing each criterion with a status:
 
 For each criterion that is Partial or Missing, write a specific note explaining what's lacking and suggesting what kind of information should be added. Be concrete — don't just say "add more detail", say what *kind* of detail is missing.
 
+### Length & density (just as important as completeness)
+
+Each project entry should fit in roughly **80–130 words total** (~5–8 short sentences or compact bullets). The reader is a recruiter scanning ten CVs in an hour, not someone reading a memoir — every word that doesn't add a fact or differentiate the person from a generic engineer is dead weight.
+
+Common patterns that bloat entries (flag them in the report when you see them):
+
+- Restating the same fact in two ways ("monitoring platform … operating instructions flow through the platform every day").
+- Multi-sentence context paragraphs that fit in one ("a small team of three engineers, two juniors (myself included) and one senior who acted as our mentor" → "3-person team: 1 senior + 2 juniors").
+- Generic activity prose ("worked closely with stakeholders", "ensured high quality") that any engineer could write.
+- Adjective stacking ("critical, high-frequency, business-critical, sensitive industrial application").
+- Sub-section headers inside a free-text description (Context / Team / Client interaction / Key contributions / Proud of) that nest two levels of narrative.
+
+If a project entry exceeds **150 words**, call it out in the per-project analysis: count the words, point at the bloat patterns above, and dock the score (typically 5–10 points off `overall_score` for a clearly bloated entry; more if it's pervasive across the CV). A CV that says more in less space ranks higher — concision is not a stylistic preference, it is part of being client-ready.
+
 ### Summary of Recurring Issues
 If certain criteria are consistently weak across multiple projects, call this out — it's likely a pattern in how this person writes about their experience, not a one-off omission.
 
@@ -123,18 +137,22 @@ After the analysis, produce a revised version of the CV that:
 
 1. **Preserves all factual information** — don't invent achievements or numbers. When information is missing, insert a clearly marked placeholder like `[TO COMPLETE: team size?]` or `[TO COMPLETE: what specific impact did this have?]`.
 
-2. **Restructures each project entry** to follow this template:
-   - **Role** and duration
-   - **Context**: what the project was about, who the client was (if disclosable)
-   - **Responsibilities**: what they were accountable for
-   - **Key contributions**: 3-5 specific things they did, with impact where possible
-   - **Technologies**: used on this specific project
+2. **Restructures each project entry** so it fits in **80–130 words**, in this compact shape (no nested sub-headings, no multi-paragraph prose):
 
-3. **Keeps the same language** as the original CV.
+   - **Role + duration** — one line.
+   - **Context** — *one sentence*: who the client was, what the system was, the team shape, why it mattered (a single number where it helps, like users served or transactions/day).
+   - **Key contributions** — 3 to 5 bullets, **12–18 words each**, every one anchored on either a concrete artefact ("built X", "migrated Y", "cut Z from 2 min to 15s") or a measurable outcome. No verb-only bullets ("contributed to", "worked on") — they don't survive trimming.
+   - **Tech** — comma-separated list, *only the ones actually used on this project*, not a full skills repeat.
 
-4. **Marks all placeholders clearly** so the consultant or their manager knows exactly what needs to be filled in. Use a consistent format like `[TO COMPLETE: specific question]`.
+   Skip a section when there's nothing concrete to put in it; better to omit "Source of pride" than to write a vague one. If the original is over-long, **rewrite, don't translate** — pick the load-bearing facts and drop the rest. The role of `improved_yaml` is to show the consultant what their CV should look like, so it has to be visibly shorter and tighter than what they wrote, not a polished version of the same length.
 
-The goal is not to fabricate a better CV — it's to reshape the existing content into a more compelling structure and highlight exactly where the gaps are so the consultant can fill them in with real information.
+3. **Preserves all factual information that survives the trim** — don't invent achievements or numbers. When a fact is genuinely missing (not just bloated prose), insert a clearly marked placeholder like `[TO COMPLETE: team size?]` or `[TO COMPLETE: what specific impact did this have?]`.
+
+4. **Keeps the same language** as the original CV.
+
+5. **Marks all placeholders clearly** so the consultant or their manager knows exactly what needs to be filled in. Use a consistent format like `[TO COMPLETE: specific question]`.
+
+The goal is not to fabricate a better CV — it's to reshape the existing content into a more compelling structure, **cut the prose down to fighting weight**, and highlight exactly where real gaps remain so the consultant can fill them in with concrete information.
 
 ## Tone of the review
 

@@ -82,7 +82,17 @@ impl typst::World for CvWorld {
         }
     }
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        Err(FileError::NotFound(id.vpath().as_rooted_path().to_path_buf()))
+        // Resolve `image("/foo.png")` etc. against the `assets/` directory
+        // so the Typst template can pull in the bundled logo + future image
+        // assets without us inlining them as raw byte literals.
+        let vpath = id.vpath();
+        let rooted = vpath.as_rooted_path();
+        let rel = rooted.strip_prefix("/").unwrap_or(rooted);
+        let full = std::path::Path::new("assets").join(rel);
+        match std::fs::read(&full) {
+            Ok(bytes) => Ok(Bytes::new(bytes)),
+            Err(_) => Err(FileError::NotFound(rooted.to_path_buf())),
+        }
     }
     fn font(&self, index: usize) -> Option<Font> {
         self.fonts.get(index)?.get()

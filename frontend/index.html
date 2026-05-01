@@ -1870,7 +1870,12 @@ async function runReview() {
       return;
     }
     if (!res.ok) throw new Error(await res.text());
-    cachedReview = await res.json();
+    // The endpoint streams (heartbeat space bytes then the JSON) so it
+    // always returns 200; any error from the Anthropic call or the DB
+    // save lands in the body as {"error": "..."} instead.
+    var payload = await res.json();
+    if (payload && payload.error) throw new Error(payload.error);
+    cachedReview = payload;
     cachedReviewAt = new Date().toISOString();
     refreshReviewBadge();
     openReviewModal(cachedReview, cachedReviewAt);

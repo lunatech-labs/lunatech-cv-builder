@@ -557,6 +557,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "bytes",
  "chrono",
  "http-body-util",
  "jsonwebtoken",
@@ -569,6 +570,7 @@ dependencies = [
  "serde_yaml",
  "sqlx",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tracing",

@@ -5,11 +5,14 @@ use crate::db::{CvOverviewItem, CvSummary, CvWithOwner, Db, OverviewStats};
 use crate::pdf;
 use crate::review_pdf;
 use crate::users::User;
+use axum::Json;
+use axum::body::Body;
 use axum::extract::{Extension, Path, Query, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::Json;
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use uuid::Uuid;
 
 type ApiError = (StatusCode, String);
@@ -311,11 +314,25 @@ pub async fn review_pdf_handler(
 /// resulting review, and returns it. The caller must own the CV (or be an
 /// admin); a non-owning, non-admin caller gets 403. Returns 503 if
 /// `ANTHROPIC_API_KEY` isn't set.
+///
+/// The Anthropic call routinely takes 5-15 minutes for a long CV, which
+/// blows past the idle-timeout of any reverse proxy in front of axum
+/// (CleverCloud's default is 5 min → 504 Gateway Timeout). To keep the
+/// proxy happy we stream the response back to the browser: a single
+/// space byte every 15s while the call is in flight, then the JSON
+/// payload at the end. JSON allows arbitrary whitespace before the
+/// opening `{`, so `await res.json()` on the client just works.
+///
+/// Errors that happen *after* headers are sent (Anthropic call failure,
+/// DB save failure) can't change the status code anymore — we encode
+/// them as `{"error": "..."}` in the JSON body, and the frontend checks
+/// for that field. Pre-stream errors (auth, ownership, missing config)
+/// still return their proper status codes.
 pub async fn review_cv(
     State(state): State<AppState>,
     Extension(user): Extension<User>,
     Path(cv_id): Path<Uuid>,
-) -> Result<Json<cv_reviewer::Review>, ApiError> {
+) -> Result<Response, ApiError> {
     let cfg = state.anthropic.as_ref().ok_or((
         StatusCode::SERVICE_UNAVAILABLE,
         "ANTHROPIC_API_KEY is not set on the server".to_string(),
@@ -331,17 +348,66 @@ pub async fn review_cv(
         return Err((StatusCode::FORBIDDEN, "not your CV".into()));
     }
 
-    let review = cv_reviewer::review(cfg, &cv.yaml).await.map_err(err500)?;
+    let cfg = cfg.clone();
+    let yaml = cv.yaml.clone();
+    let db = state.db.clone();
+    let user_id = user.id;
 
-    // The review is attributed to the caller (whoever ran it), not the
-    // owner — that's accurate provenance even when an admin is reviewing
-    // someone else's CV.
-    state
-        .db
-        .save_review(cv_id, user.id, &review, &cv.yaml)
-        .await
-        .map_err(err500)?;
-    Ok(Json(review))
+    let (tx, rx) = tokio::sync::mpsc::channel::<Result<Bytes, std::io::Error>>(8);
+
+    tokio::spawn(async move {
+        let review_fut = cv_reviewer::review(&cfg, &yaml);
+        tokio::pin!(review_fut);
+
+        let mut heartbeat = tokio::time::interval(Duration::from_secs(15));
+        // Skip the first immediate tick — we don't need a heartbeat before
+        // any work has started.
+        heartbeat.tick().await;
+
+        let result = loop {
+            tokio::select! {
+                biased;
+                r = &mut review_fut => break r,
+                _ = heartbeat.tick() => {
+                    if tx.send(Ok(Bytes::from_static(b" "))).await.is_err() {
+                        // Client disconnected — drop the in-flight call.
+                        return;
+                    }
+                }
+            }
+        };
+
+        let payload = match result {
+            Ok(review) => {
+                // The review is attributed to the caller (whoever ran it),
+                // not the owner — that's accurate provenance even when an
+                // admin is reviewing someone else's CV.
+                if let Err(e) = db.save_review(cv_id, user_id, &review, &yaml).await {
+                    tracing::error!("save_review failed: {e}");
+                    serde_json::json!({ "error": format!("save_review: {e}") })
+                } else {
+                    serde_json::to_value(&review).unwrap_or_else(|e| {
+                        serde_json::json!({ "error": format!("serialise review: {e}") })
+                    })
+                }
+            }
+            Err(e) => {
+                tracing::error!("cv_reviewer::review failed: {e}");
+                serde_json::json!({ "error": e.to_string() })
+            }
+        };
+
+        let bytes = serde_json::to_vec(&payload).unwrap_or_else(|_| b"{}".to_vec());
+        let _ = tx.send(Ok(Bytes::from(bytes))).await;
+    });
+
+    let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+    let body = Body::from_stream(stream);
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(body)
+        .map_err(err500)
 }
 
 #[cfg(test)]

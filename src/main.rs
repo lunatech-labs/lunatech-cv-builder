@@ -1,6 +1,8 @@
 use anyhow::Result;
 use cv_builder::{AnthropicConfig, AppState, Db, KeycloakConfig, app, auth};
 use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -46,6 +48,7 @@ async fn main() -> Result<()> {
         db,
         anthropic,
         keycloak,
+        batch_review: Arc::new(RwLock::new(None)),
     };
 
     let bind = std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());

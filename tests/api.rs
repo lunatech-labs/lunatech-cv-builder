@@ -4,6 +4,8 @@ use cv_builder::{AppState, Db, api_router};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use tower::ServiceExt;
 
 const SAMPLE_YAML: &str = r#"
@@ -36,6 +38,7 @@ fn router_with(pool: PgPool) -> axum::Router {
             db: Db { pool },
             anthropic: None,
             keycloak: None,
+            batch_review: Arc::new(RwLock::new(None)),
         },
         None,
     )
@@ -575,4 +578,36 @@ async fn review_pdf_works_without_cv_name(pool: PgPool) {
     assert_eq!(resp.status(), StatusCode::OK);
     let bytes = body_bytes(resp).await;
     assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// ─────────────────── BATCH REVIEWS (admin-triggered) ───────────────────
+
+// The dev user the test middleware injects has `is_admin = false`, so any
+// admin-only endpoint should return 403 without us touching env vars. The
+// 503 case (no Anthropic config) would also be testable but the admin
+// gate fires first, which is fine.
+//
+// We deliberately avoid the 202/409 happy-path here: it would require
+// flipping `ADMIN_EMAILS` process-wide, racing with other tests. The
+// staleness filter is unit-tested in `batch_review::tests` and the
+// kickoff handler is exercised by manual end-to-end runs.
+
+#[sqlx::test]
+async fn batch_reviews_start_returns_403_for_non_admin(pool: PgPool) {
+    let app = router_with(pool);
+    let resp = app
+        .oneshot(empty_request("POST", "/batch-reviews"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test]
+async fn batch_reviews_events_returns_403_for_non_admin(pool: PgPool) {
+    let app = router_with(pool);
+    let resp = app
+        .oneshot(empty_request("GET", "/batch-reviews"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
 }

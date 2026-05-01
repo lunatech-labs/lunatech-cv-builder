@@ -1,5 +1,6 @@
 use crate::AppState;
 use crate::auth::KeycloakConfig;
+use crate::batch_review::{self, BatchEvent, BatchReviewJob};
 use crate::cv_reviewer;
 use crate::db::{CvOverviewItem, CvSummary, CvWithOwner, Db, OverviewStats};
 use crate::pdf;
@@ -9,9 +10,12 @@ use axum::Json;
 use axum::body::Body;
 use axum::extract::{Extension, Path, Query, State};
 use axum::http::{StatusCode, header};
+use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
 use bytes::Bytes;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -408,6 +412,189 @@ pub async fn review_cv(
         .header(header::CONTENT_TYPE, "application/json")
         .body(body)
         .map_err(err500)
+}
+
+// ─────────────────────────── Batch reviews (admin) ───────────────────────────
+
+#[derive(Deserialize)]
+pub struct BatchReviewQuery {
+    #[serde(default)]
+    pub force: bool,
+}
+
+#[derive(Serialize)]
+pub struct BatchReviewStarted {
+    pub job_id: Uuid,
+    pub total: usize,
+    pub started_at: chrono::DateTime<Utc>,
+    pub force: bool,
+}
+
+/// Admin-only kickoff for the "review every CV" batch. Returns 202 with a
+/// snapshot of the brand-new job; the heavy lifting runs in a detached
+/// `tokio::spawn`. Concurrent runs are rejected with 409 — admins can
+/// follow the existing job via the SSE stream instead.
+pub async fn batch_reviews_start(
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
+    Query(q): Query<BatchReviewQuery>,
+) -> Result<(StatusCode, Json<BatchReviewStarted>), ApiError> {
+    if !user.is_admin {
+        return Err((StatusCode::FORBIDDEN, "admin only".into()));
+    }
+    let cfg = state.anthropic.as_ref().ok_or((
+        StatusCode::SERVICE_UNAVAILABLE,
+        "ANTHROPIC_API_KEY is not set on the server".to_string(),
+    ))?;
+
+    // Single-flight: refuse if the previous job is still running. A finished
+    // job is left in place so a fresh subscriber can still pick up its
+    // final snapshot — only when the next batch starts do we replace it.
+    {
+        let guard = state.batch_review.read().await;
+        if let Some(job) = guard.as_ref() {
+            if job.is_running() {
+                return Err((
+                    StatusCode::CONFLICT,
+                    "a batch review is already running".into(),
+                ));
+            }
+        }
+    }
+
+    let catalog = state.db.all_cvs_with_review().await.map_err(err500)?;
+    let work = batch_review::select_work_list(catalog, q.force);
+    let total = work.len();
+    let job_id = Uuid::new_v4();
+    let started_at = Utc::now();
+    let (tx, _) = tokio::sync::broadcast::channel::<BatchEvent>(64);
+
+    let job = BatchReviewJob {
+        job_id,
+        started_at,
+        started_by: user.id,
+        force: q.force,
+        total,
+        done: 0,
+        succeeded: 0,
+        failed: Vec::new(),
+        current: Vec::new(),
+        completed_at: None,
+        events: tx,
+    };
+
+    {
+        let mut guard = state.batch_review.write().await;
+        *guard = Some(job);
+    }
+
+    // If the staleness filter trimmed the work list to zero we still want a
+    // clean lifecycle: spawn the worker, it has nothing to do, and emits a
+    // Done event so the SSE modal shows "0/0 done" and closes cleanly.
+    let shared = state.batch_review.clone();
+    let db = state.db.clone();
+    let cfg = cfg.clone();
+    let started_by = user.id;
+    tokio::spawn(async move {
+        batch_review::run(shared, db, cfg, work, started_by).await;
+    });
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(BatchReviewStarted {
+            job_id,
+            total,
+            started_at,
+            force: q.force,
+        }),
+    ))
+}
+
+/// Admin-only SSE stream of batch-review events. On connect, sends one
+/// snapshot event so a late subscriber syncs from a single message; then
+/// forwards every broadcast event until `Done` arrives, then closes. If
+/// no job has been started since boot, sends a synthetic idle "done"
+/// event and closes immediately.
+pub async fn batch_reviews_events(
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
+) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, ApiError> {
+    if !user.is_admin {
+        return Err((StatusCode::FORBIDDEN, "admin only".into()));
+    }
+
+    // Snapshot + a broadcast subscription, both produced under one lock so
+    // the snapshot is consistent with the events that follow it.
+    let (initial_event, mut rx, terminal) = {
+        let guard = state.batch_review.read().await;
+        match guard.as_ref() {
+            Some(job) => {
+                let snapshot = job.snapshot();
+                let initial = Event::default()
+                    .event(if job.is_running() { "snapshot" } else { "done" })
+                    .json_data(&snapshot)
+                    .map_err(err500)?;
+                let rx = job.events.subscribe();
+                let terminal = !job.is_running();
+                (initial, rx, terminal)
+            }
+            None => {
+                // No job has ever run — send an "idle" event and close.
+                let initial = Event::default().event("idle").data("{}");
+                // A receiver that immediately closes — we'll drop it below.
+                let (_tx, rx) = tokio::sync::broadcast::channel::<BatchEvent>(1);
+                (initial, rx, true)
+            }
+        }
+    };
+
+    let (out_tx, out_rx) =
+        tokio::sync::mpsc::channel::<Result<Event, Infallible>>(16);
+
+    // Push the snapshot first so any subscriber sees current state on
+    // arrival, even if no broadcast events follow.
+    let _ = out_tx.send(Ok(initial_event)).await;
+
+    if !terminal {
+        tokio::spawn(async move {
+            // Forward every broadcast event, mapping the discriminant to the
+            // SSE event name so the frontend can `switch (event.event)`.
+            // Lagged subscribers (slow clients) just resync from the next
+            // event's snapshot — that's why we always include one.
+            loop {
+                let evt = match rx.recv().await {
+                    Ok(e) => e,
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                };
+                let (name, done) = match &evt {
+                    BatchEvent::Started { .. } => ("started", false),
+                    BatchEvent::Progress { .. } => ("progress", false),
+                    BatchEvent::Done { .. } => ("done", true),
+                };
+                let sse_event = match Event::default().event(name).json_data(&evt) {
+                    Ok(e) => e,
+                    Err(e) => {
+                        tracing::error!("encoding SSE event: {e}");
+                        continue;
+                    }
+                };
+                if out_tx.send(Ok(sse_event)).await.is_err() {
+                    break;
+                }
+                if done {
+                    break;
+                }
+            }
+        });
+    }
+
+    let stream = tokio_stream::wrappers::ReceiverStream::new(out_rx);
+    Ok(Sse::new(stream).keep_alive(
+        KeepAlive::new()
+            .interval(Duration::from_secs(15))
+            .text("keep-alive"),
+    ))
 }
 
 #[cfg(test)]

@@ -504,6 +504,33 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Batch review (admin) — section header, modal progress bar/lists ── */
+.ov-section-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.ov-section-head .ov-section-title { margin: 0; }
+.ov-batch-btn { margin-left: auto; }
+.batch-counts { font-size: 13px; color: var(--ui-muted); margin-bottom: 8px; }
+.batch-counts strong { color: var(--ui-text); font-weight: 600; }
+.batch-bar {
+  height: 8px; background: rgba(255,255,255,.06);
+  border: 1px solid var(--ui-border); border-radius: 999px; overflow: hidden;
+  margin: 0 0 16px;
+}
+.batch-bar-fill {
+  height: 100%; width: 0; background: var(--ui-accent);
+  transition: width .25s ease-out;
+}
+.batch-section-title {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ui-muted);
+  margin: 14px 0 4px;
+}
+.batch-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.batch-list li { padding: 4px 0; border-bottom: 1px solid var(--ui-border); }
+.batch-list li:last-child { border-bottom: none; }
+.batch-list-empty { color: var(--ui-muted); font-style: italic; }
+.batch-failed li { color: #ef4444; }
+.batch-failed li .reason { color: var(--ui-muted); font-size: 11px; margin-left: 8px; }
+
 /* ── VIEWS ── */
 .view { display: none; }
 .view-editor.active { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -714,7 +741,15 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
     </section>
 
     <section class="ov-section">
-      <h2 class="ov-section-title"><span class="icon">&#127970;</span> Lunatech CVs</h2>
+      <div class="ov-section-head">
+        <h2 class="ov-section-title"><span class="icon">&#127970;</span> Lunatech CVs</h2>
+        <button class="btn btn-ghost ov-batch-btn" data-admin-only id="ov-batch-btn"
+                style="display:none"
+                onclick="openBatchModal()"
+                title="Run the cv-reviewer skill against every CV that hasn't been reviewed since its last edit">
+          ⟳ Review all CVs
+        </button>
+      </div>
       <div class="ov-stats-row">
         <div class="ov-stat">
           <div class="ov-stat-num" id="ov-co-total">—</div>
@@ -1387,6 +1422,16 @@ async function renderOverview() {
   renderTopList(data.top_cvs || []);
   renderAllList(data.all_cvs || []);
   renderMyGrid(data.my_cvs || []);
+  applyAdminVisibility();
+}
+
+// Mirrors `data-owner-only`: hides every `[data-admin-only]` element when
+// the current user isn't an admin. Called after `meIsAdmin` is set in
+// loadOverview.
+function applyAdminVisibility() {
+  document.querySelectorAll('[data-admin-only]').forEach(function(el) {
+    el.style.display = meIsAdmin ? '' : 'none';
+  });
 }
 
 function fillStats(prefix, s) {
@@ -1851,6 +1896,238 @@ function closeReviewModal() {
   document.getElementById('review-modal-bg').classList.remove('visible');
 }
 
+// ══════════════════════════════════════════════════════════
+// BATCH REVIEW (admin)
+// ══════════════════════════════════════════════════════════
+// Opens the modal, kicks off the server-side job, and subscribes to the
+// SSE event feed. The job lives on the server — closing the modal only
+// stops the local subscription; reopening picks the current snapshot back
+// up. We use fetch+ReadableStream rather than EventSource because the
+// auth-fetch wrapper attaches the Bearer token to /api/* calls, and
+// EventSource can't carry custom headers.
+
+var batchAbortCtrl = null;
+
+function openBatchModal() {
+  document.getElementById('batch-modal-bg').classList.add('visible');
+  resetBatchModal();
+  // Auto-attach to an existing job if one is running on the server — admin
+  // could have started it from another tab and just opened this one.
+  attachToExistingBatchIfAny();
+}
+
+function closeBatchModal() {
+  if (batchAbortCtrl) { try { batchAbortCtrl.abort(); } catch (_) {} batchAbortCtrl = null; }
+  document.getElementById('batch-modal-bg').classList.remove('visible');
+}
+
+function resetBatchModal() {
+  document.getElementById('batch-prestart').style.display = '';
+  document.getElementById('batch-progress').style.display = 'none';
+  document.getElementById('batch-state-pill').textContent = 'Ready';
+  var btn = document.getElementById('batch-start-btn');
+  btn.disabled = false;
+  btn.textContent = 'Start';
+  btn.style.display = '';
+  document.getElementById('batch-modal-meta').textContent = '';
+}
+
+async function attachToExistingBatchIfAny() {
+  // Probe the SSE endpoint with a short fetch — the first event tells us
+  // whether there's a job (snapshot/progress/done) or none (idle).
+  // We only attach if a job is currently running; otherwise leave the
+  // pre-start UI in place so the admin can choose force vs not.
+  try {
+    var preview = await fetchBatchInitialEvent();
+    if (preview && preview.type !== 'idle' && preview.snapshot && preview.snapshot.completed_at == null) {
+      switchToProgressView();
+      renderBatchSnapshot(preview.snapshot);
+      subscribeBatchEvents();
+    }
+  } catch (_) { /* swallow — user can still click Start manually */ }
+}
+
+async function fetchBatchInitialEvent() {
+  // One-shot read of the SSE stream's first event, without keeping the
+  // connection open. We open, read until the first '\n\n', then abort.
+  var ctrl = new AbortController();
+  var res = await fetch('/api/batch-reviews', {
+    method: 'GET',
+    headers: { 'Accept': 'text/event-stream' },
+    signal: ctrl.signal,
+  });
+  if (!res.ok) { ctrl.abort(); return null; }
+  var reader = res.body.getReader();
+  var dec = new TextDecoder();
+  var buf = '';
+  try {
+    while (true) {
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      buf += dec.decode(chunk.value, { stream: true });
+      var idx = buf.indexOf('\n\n');
+      if (idx >= 0) {
+        var raw = buf.slice(0, idx);
+        ctrl.abort();
+        return parseSseFrame(raw);
+      }
+    }
+  } finally { try { reader.cancel(); } catch (_) {} }
+  return null;
+}
+
+function parseSseFrame(raw) {
+  var event = 'message';
+  var data = '';
+  raw.split('\n').forEach(function(line) {
+    if (line.indexOf('event:') === 0) event = line.slice(6).trim();
+    else if (line.indexOf('data:') === 0) data += (data ? '\n' : '') + line.slice(5).trim();
+  });
+  if (event === 'idle') return { type: 'idle', snapshot: null };
+  if (!data) return null;
+  try {
+    var payload = JSON.parse(data);
+    // The server sends two slightly different shapes:
+    //  - On connect to an in-flight job: event=snapshot, data=<bare Snapshot>.
+    //  - On connect to a finished job:   event=done,     data=<bare Snapshot>.
+    //  - For broadcast events:           event=started|progress|done,
+    //                                     data=<BatchEvent with .type and .snapshot>.
+    // The `payload.type` field disambiguates the bare-snapshot case.
+    if (event === 'snapshot' || (event === 'done' && !payload.type)) {
+      return { type: event, snapshot: payload };
+    }
+    return Object.assign({}, payload, { _eventName: event });
+  } catch (_) { return null; }
+}
+
+async function startBatchReview() {
+  var force = document.getElementById('batch-force').checked;
+  var startBtn = document.getElementById('batch-start-btn');
+  startBtn.disabled = true;
+  startBtn.textContent = 'Starting…';
+  try {
+    var res = await fetch('/api/batch-reviews?force=' + (force ? 'true' : 'false'), { method: 'POST' });
+    if (res.status === 403) { alert('Admin only.'); resetBatchModal(); return; }
+    if (res.status === 503) { alert('ANTHROPIC_API_KEY is not set on the server.'); resetBatchModal(); return; }
+    if (res.status === 409) {
+      // A job is already running — attach to it instead of erroring out.
+      switchToProgressView();
+      subscribeBatchEvents();
+      return;
+    }
+    if (!res.ok) throw new Error('Start failed: ' + res.status + ' ' + (await res.text()));
+    var started = await res.json();
+    switchToProgressView();
+    document.getElementById('batch-modal-meta').textContent =
+      'job ' + (started.job_id || '').slice(0, 8) + ' · ' +
+      started.total + ' CV' + (started.total === 1 ? '' : 's') +
+      (started.force ? ' · force' : '');
+    if (started.total === 0) {
+      // Empty work list: the worker will fire Done immediately, but show
+      // a friendly placeholder while we wait for the SSE event.
+      document.getElementById('batch-counts').innerHTML =
+        '<strong>Nothing to review</strong> — every CV is up to date with its latest review.';
+    }
+    subscribeBatchEvents();
+  } catch (e) {
+    alert(e.message);
+    resetBatchModal();
+  }
+}
+
+function switchToProgressView() {
+  document.getElementById('batch-prestart').style.display = 'none';
+  document.getElementById('batch-progress').style.display = '';
+  document.getElementById('batch-state-pill').textContent = 'Running';
+  document.getElementById('batch-start-btn').style.display = 'none';
+}
+
+async function subscribeBatchEvents() {
+  if (batchAbortCtrl) { try { batchAbortCtrl.abort(); } catch (_) {} }
+  batchAbortCtrl = new AbortController();
+  var ctrl = batchAbortCtrl;
+  try {
+    var res = await fetch('/api/batch-reviews', {
+      method: 'GET',
+      headers: { 'Accept': 'text/event-stream' },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error('SSE connect failed: ' + res.status);
+    var reader = res.body.getReader();
+    var dec = new TextDecoder();
+    var buf = '';
+    while (true) {
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      buf += dec.decode(chunk.value, { stream: true });
+      var idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        var raw = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        var parsed = parseSseFrame(raw);
+        if (!parsed) continue;
+        applyBatchFrame(parsed);
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') return; // user closed the modal
+    console.warn('SSE stream ended:', e);
+  } finally {
+    if (batchAbortCtrl === ctrl) batchAbortCtrl = null;
+  }
+}
+
+function applyBatchFrame(frame) {
+  if (frame.type === 'idle') {
+    // No active job — keep the pre-start UI; nothing to do.
+    return;
+  }
+  var snap = frame.snapshot || frame;
+  if (!snap || typeof snap !== 'object') return;
+  renderBatchSnapshot(snap);
+  // The Done event always carries completed_at — refresh the overview so
+  // the new scores land in the rankings tiles + lists.
+  if (snap.completed_at) {
+    document.getElementById('batch-state-pill').textContent =
+      snap.failed && snap.failed.length > 0 ? 'Done with errors' : 'Done';
+    if (typeof loadOverview === 'function') loadOverview();
+  }
+}
+
+function renderBatchSnapshot(snap) {
+  var done = snap.done || 0;
+  var total = snap.total || 0;
+  var pct = total > 0 ? Math.round((done / total) * 100) : (snap.completed_at ? 100 : 0);
+  document.getElementById('batch-bar-fill').style.width = pct + '%';
+  document.getElementById('batch-counts').innerHTML =
+    '<strong>' + done + ' / ' + total + '</strong> reviewed · ' +
+    (snap.succeeded || 0) + ' succeeded · ' +
+    ((snap.failed && snap.failed.length) || 0) + ' failed';
+
+  var current = snap.current || [];
+  var curEl = document.getElementById('batch-current-list');
+  if (current.length === 0) {
+    curEl.innerHTML = snap.completed_at
+      ? '<li class="batch-list-empty">— done —</li>'
+      : '<li class="batch-list-empty">— waiting —</li>';
+  } else {
+    curEl.innerHTML = current.map(function(cv) {
+      return '<li><span class="review-spinner"></span>' + escHtml(cv.cv_name || '(unnamed)') + '</li>';
+    }).join('');
+  }
+
+  var failed = snap.failed || [];
+  var failEl = document.getElementById('batch-failed-list');
+  if (failed.length === 0) {
+    failEl.innerHTML = '<li class="batch-list-empty">none</li>';
+  } else {
+    failEl.innerHTML = failed.map(function(f) {
+      return '<li>' + escHtml(f.cv_name || '(unnamed)') +
+             '<span class="reason">' + escHtml(f.reason || '') + '</span></li>';
+    }).join('');
+  }
+}
+
 async function runReview() {
   // Reviews are now persisted server-side and tied to a saved CV, so we
   // implicitly Save first — the editor's content lands in the DB, the
@@ -1955,6 +2232,41 @@ function applyImprovedYaml() {
       <button class="btn btn-ghost" id="review-modal-pdfbtn" onclick="exportReviewPdf()">&#8595; Export PDF</button>
       <button class="btn btn-ghost" onclick="runReview()">Re-run</button>
       <button class="btn btn-primary" onclick="closeReviewModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="review-modal-bg" id="batch-modal-bg" onclick="if(event.target===this) closeBatchModal()">
+  <div class="review-modal">
+    <div class="review-modal-header">
+      <span class="review-modal-title">Review all CVs</span>
+      <div class="review-modal-meta">
+        <span class="review-verdict-pill" id="batch-state-pill">Ready</span>
+      </div>
+    </div>
+    <div class="review-modal-body" id="batch-modal-body">
+      <div id="batch-prestart">
+        <p>This runs the cv-reviewer skill against every CV in the workspace. Each CV takes about 5–15 minutes; the job runs server-side, so closing this dialog won't cancel it.</p>
+        <p style="margin: 14px 0 6px;">
+          <label style="display: inline-flex; gap: 8px; align-items: center; cursor: pointer;">
+            <input type="checkbox" id="batch-force"> Re-score every CV (ignore the staleness filter)
+          </label>
+        </p>
+        <p style="font-size: 12px; color: var(--ui-muted);">By default we skip CVs whose latest review is newer than their last edit. Tick the box after a SKILL.md change when you want every CV graded under the new rubric.</p>
+      </div>
+      <div id="batch-progress" style="display:none;">
+        <div class="batch-counts" id="batch-counts"></div>
+        <div class="batch-bar"><div class="batch-bar-fill" id="batch-bar-fill"></div></div>
+        <div class="batch-section-title">Currently reviewing</div>
+        <ul class="batch-list" id="batch-current-list"><li class="batch-list-empty">— idle —</li></ul>
+        <div class="batch-section-title">Failed</div>
+        <ul class="batch-list batch-failed" id="batch-failed-list"><li class="batch-list-empty">none yet</li></ul>
+      </div>
+    </div>
+    <div class="review-modal-footer">
+      <span class="meta" id="batch-modal-meta"></span>
+      <button class="btn btn-primary" id="batch-start-btn" onclick="startBatchReview()">Start</button>
+      <button class="btn btn-ghost" onclick="closeBatchModal()">Close</button>
     </div>
   </div>
 </div>

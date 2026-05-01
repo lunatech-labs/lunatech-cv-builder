@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod batch_review;
 pub mod cv_reviewer;
 pub mod db;
 pub mod handlers;
@@ -8,6 +9,7 @@ pub mod seniority;
 pub mod users;
 
 pub use auth::KeycloakConfig;
+pub use batch_review::SharedBatchState;
 pub use cv_reviewer::AnthropicConfig;
 pub use db::Db;
 
@@ -22,11 +24,17 @@ use tower_http::trace::TraceLayer;
 /// optional — when either isn't configured we degrade gracefully instead of
 /// refusing to boot, so devs without those credentials can still work.
 /// `FromRef<AppState> for Db` lets existing handlers keep using `State<Db>`.
+///
+/// `batch_review` carries the in-memory state of the latest admin-triggered
+/// "Review all CVs" job. `None` until the first run, then `Some(job)`
+/// updated in place by the worker. Lost on server restart by design — see
+/// `batch_review.rs`.
 #[derive(Clone)]
 pub struct AppState {
     pub db: Db,
     pub anthropic: Option<AnthropicConfig>,
     pub keycloak: Option<KeycloakConfig>,
+    pub batch_review: SharedBatchState,
 }
 
 impl FromRef<AppState> for Db {
@@ -55,6 +63,10 @@ pub fn api_router(state: AppState, authorizer: Option<auth::Authorizer>) -> Rout
         )
         .route("/cvs/{id}/pdf", get(handlers::pdf_cv))
         .route("/cvs/{id}/reviews", post(handlers::review_cv))
+        .route(
+            "/batch-reviews",
+            post(handlers::batch_reviews_start).get(handlers::batch_reviews_events),
+        )
         .route("/review/pdf", post(handlers::review_pdf_handler))
         .with_state(state.clone());
 

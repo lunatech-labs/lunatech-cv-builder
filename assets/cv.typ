@@ -73,9 +73,14 @@
 #let sans  = ("Inter", "Poppins", "Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans", "Liberation Sans", ..symbols)
 
 #set document(title: cv-data.name + " — CV")
+// Top margin is 16mm globally so continuation pages (page 2+) start with
+// breathing room. Page 1's banner bleeds into this 16mm via a `place` call
+// below — see HEADER. We avoid a second `set page` mid-document because
+// Typst 0.14 leaks the new top margin onto page 1, pushing the first
+// project ~16mm down.
 #set page(
   paper: "a4",
-  margin: (top: 0pt, bottom: 16mm, x: 0pt),
+  margin: (top: 16mm, bottom: 16mm, x: 0pt),
   footer-descent: 6mm,
   footer: align(center, block(width: 100% - 25.4mm)[
     #line(length: 100%, stroke: 0.4pt + p.border)
@@ -93,61 +98,78 @@
 
 // ─────────── HEADER ───────────
 
-#block(
-  fill: p.header-bg,
-  width: 100%,
-  inset: (left: 12.7mm, right: 12.7mm, top: 9mm, bottom: 7mm),
+// Banner content is rendered twice: once visibly via `place` to bleed into
+// the page-1 top margin, and once via `hide` to reserve the same height in
+// flow so subsequent content lands flush against the banner's bottom edge.
+// Sharing `banner-inner` keeps the two heights identical even as the YAML
+// adds or removes title / lunatech_since / contact lines.
+#let banner-inner = grid(
+  columns: (1fr, auto),
+  column-gutter: 6mm,
+  align: (left + top, right + top),
+
+  // ── header left
   [
-    #grid(
-      columns: (1fr, auto),
-      column-gutter: 6mm,
-      align: (left + top, right + top),
+    #text(font: serif, size: 22pt, weight: 700, fill: white)[#cv-data.name]
+    #v(1.5mm)
+    #if opt(cv-data, "title") != "" [
+      #text(size: 8.5pt, weight: 300, fill: white.transparentize(20%))[#cv-data.title]
+    ]
+    #if opt(cv-data, "lunatech_since") != "" [
+      #v(0mm)
+      #text(size: 8pt, weight: 300, style: "italic", fill: white.transparentize(40%))[
+        #if opt(cv-data, "years_experience") != "" [#cv-data.years_experience years of experience #sym.dot.c ]
+        Lunatech #sym.dash.em since #cv-data.lunatech_since
+      ]
+    ]
+  ],
 
-      // ── header left
-      [
-        #text(font: serif, size: 22pt, weight: 700, fill: white)[#cv-data.name]
-        #v(1.5mm)
-        #if opt(cv-data, "title") != "" [
-          #text(size: 8.5pt, weight: 300, fill: white.transparentize(20%))[#cv-data.title]
-        ]
-        #if opt(cv-data, "lunatech_since") != "" [
-          #v(0mm)
-          #text(size: 8pt, weight: 300, style: "italic", fill: white.transparentize(40%))[
-            #if opt(cv-data, "years_experience") != "" [#cv-data.years_experience years of experience #sym.dot.c ]
-            Lunatech #sym.dash.em since #cv-data.lunatech_since
-          ]
-        ]
-      ],
-
-      // ── header right: Lunatech logo + (optional) contacts beneath it.
-      // The logo is the brand anchor and stays whether or not the YAML
-      // carries email / availability / location.
-      [
-        #set align(right)
-        #image("/lunatech-logo-alone.png", height: 14mm)
-        #set text(size: 7.5pt, weight: 300, fill: white.transparentize(15%))
-        #if opt(cv-data, "email") != "" [
-          #v(2mm)
-          #text(fill: white.transparentize(40%))[✉] #h(1mm) #cv-data.email
-        ]
-        #if opt(cv-data, "availability") != "" [
-          #linebreak()
-          #text(fill: white.transparentize(40%))[◎] #h(1mm)
-          #text(weight: 600, fill: white)[Available : #cv-data.availability]
-        ]
-        #if opt(cv-data, "location") != "" [
-          #linebreak()
-          #text(fill: white.transparentize(40%))[⌖] #h(1mm) #cv-data.location
-        ]
-      ],
-    )
+  // ── header right: Lunatech logo + (optional) contacts beneath it.
+  // The logo is the brand anchor and stays whether or not the YAML
+  // carries email / availability / location.
+  [
+    #set align(right)
+    #image("/lunatech-logo-alone.png", height: 14mm)
+    #set text(size: 7.5pt, weight: 300, fill: white.transparentize(15%))
+    #if opt(cv-data, "email") != "" [
+      #v(2mm)
+      #text(fill: white.transparentize(40%))[✉] #h(1mm) #cv-data.email
+    ]
+    #if opt(cv-data, "availability") != "" [
+      #linebreak()
+      #text(fill: white.transparentize(40%))[◎] #h(1mm)
+      #text(weight: 600, fill: white)[Available : #cv-data.availability]
+    ]
+    #if opt(cv-data, "location") != "" [
+      #linebreak()
+      #text(fill: white.transparentize(40%))[⌖] #h(1mm) #cv-data.location
+    ]
   ],
 )
 
-// From the next page break onward, give the page a real top margin so
-// continuation pages don't start flush at the paper edge. The first-page
-// banner above already bled to y=0 thanks to the initial `top: 0pt`.
-#set page(margin: (top: 16mm, bottom: 16mm, x: 0pt))
+// Visible banner — placed so it bleeds 16mm above the content area into
+// the top margin (i.e., flush with the paper's top edge). `place` with
+// `float: false` (default) doesn't take flow space, so we add a separate
+// flow reservation below.
+#place(top + left, dx: 0pt, dy: -16mm, block(
+  fill: p.header-bg,
+  width: 100%,
+  inset: (left: 12.7mm, right: 12.7mm, top: 9mm, bottom: 7mm),
+  banner-inner,
+))
+
+// In-flow reservation — same content laid out at the same width, but
+// invisible. The visible banner spans paper y=0 to y=(16+C) where C is the
+// content height. Of that, 16mm is bled into the top margin and (C) is in
+// the content area. Reserving exactly C mm of flow space puts the next
+// flow item flush against the visible banner's bottom edge. The visible
+// banner's 7mm bottom inset is dark-fill *inside* the banner — not a gap
+// below it — so we don't add it here.
+#hide(block(
+  width: 100%,
+  inset: (left: 12.7mm, right: 12.7mm, top: 0pt, bottom: 0pt),
+  banner-inner,
+))
 
 // ─────────── KEY ASSETS CAPSULE ───────────
 

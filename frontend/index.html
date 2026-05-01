@@ -42,29 +42,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .cv-status.saved { color: var(--ui-accent); font-style: normal; }
 .cv-status.dirty { color: #f9b550; }
 
-/* Toggle photo button */
-.toggle-wrap { display: flex; align-items: center; gap: 8px; }
-.toggle-label { font-size: 11px; font-weight: 400; color: var(--ui-muted); letter-spacing: .03em; white-space: nowrap; }
-.toggle-switch { position: relative; width: 34px; height: 18px; flex-shrink: 0; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
-.toggle-track {
-  position: absolute; inset: 0;
-  background: #313244;
-  border-radius: 18px;
-  cursor: pointer;
-  transition: background .2s;
-}
-.toggle-track::after {
-  content: '';
-  position: absolute;
-  top: 3px; left: 3px;
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: #6c7086;
-  transition: transform .2s, background .2s;
-}
-.toggle-switch input:checked + .toggle-track { background: #313244; }
-.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: var(--ui-accent); }
 .tab-bar { display: flex; gap: 2px; padding: 0 24px; background: var(--ui-surface); border-bottom: 1px solid var(--ui-border); flex-shrink: 0; }
 .tab { font-size: 11px; font-weight: 400; padding: 10px 16px; color: var(--ui-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; letter-spacing: .06em; text-transform: uppercase; }
 .tab:hover { color: var(--ui-text); }
@@ -245,31 +222,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .cv-contact-icon { display: inline-block; opacity: .65; margin-right: 5px; font-style: normal; }
 .cv-contact.strong { font-weight: 600; color: #fff; }
 
-/* ── PHOTO (optionnel) ── */
-.cv-photo-wrap {
-  position: absolute;
-  top: 28px; right: 48px;
-  z-index: 20; cursor: pointer;
-}
-.cv-photo-circle {
-  width: 96px; height: 96px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.85);
-  background: rgba(255,255,255,.12);
-  overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-  transition: opacity .15s;
-}
-.cv-photo-circle:hover { opacity: .85; }
-.cv-photo-circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cv-photo-placeholder { width: 48px; height: 48px; opacity: .55; fill: #fff; }
-.cv-photo-wrap:hover .cv-photo-hint { opacity: 1; }
-.cv-photo-hint {
-  position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
-  font-size: 7px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
-  color: rgba(255,255,255,.7); white-space: nowrap; opacity: 0; transition: opacity .15s;
-  pointer-events: none;
-}
-
 /* ── BODY ── */
 .cv-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 .cv-col-main { width: 60%; padding: 22px 26px 0 48px; overflow: hidden; display: flex; flex-direction: column; }
@@ -432,15 +384,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .cv-footer-safe { flex-shrink: 0; padding: 0 48px; margin-top: auto; }
 .cv-footer-line { border-top: 1px solid var(--cv-border); }
 .cv-footer-text { padding: 6px 8px 8px; font-size: 7.5px; font-weight: 400; letter-spacing: .05em; color: var(--cv-muted); text-align: center; white-space: nowrap; }
-
-/* ── TOGGLE PHOTO ── */
-.toggle-wrap { display: flex; align-items: center; gap: 8px; }
-.toggle-label { font-size: 11px; font-weight: 400; color: var(--ui-muted); letter-spacing: .03em; white-space: nowrap; }
-.toggle-switch { position: relative; width: 34px; height: 18px; flex-shrink: 0; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
-.toggle-track { position: absolute; inset: 0; background: #313244; border-radius: 18px; cursor: pointer; transition: background .2s; }
-.toggle-track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: #6c7086; transition: transform .2s, background .2s; }
-.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: var(--ui-accent); }
 
 /* ── THEME SWITCHER ── */
 .theme-switcher { display: flex; align-items: center; gap: 6px; }
@@ -827,13 +770,6 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
       <button class="theme-btn theme-btn-cosmic"          title="Cosmic"   onclick="setTheme('cosmic')"></button>
       <button class="theme-btn theme-btn-opera"           title="Opera"    onclick="setTheme('opera')"></button>
     </div>
-    <div class="toggle-wrap">
-      <span class="toggle-label">Profile photo</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="toggle-photo" onchange="togglePhoto()">
-        <span class="toggle-track"></span>
-      </label>
-    </div>
     <button class="btn btn-ghost" onclick="newCv()">+ New</button>
     <button class="btn btn-ghost" data-owner-only onclick="deleteCv()" title="Delete the currently loaded CV">Delete</button>
     <span class="cv-status" id="cv-status" data-owner-only>Unsaved</span>
@@ -1157,12 +1093,6 @@ function renderCV(data) {
           (headerContacts ? '<div class="cv-header-contacts">' + headerContacts + '</div>' : '') +
         '</div>' +
       '</div>' +
-      '<div class="cv-photo-wrap" id="cv-photo-wrap" title="Click to change photo">' +
-        '<div class="cv-photo-circle" id="cv-photo-circle">' +
-          '<svg class="cv-photo-placeholder" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>' +
-        '</div>' +
-        '<span class="cv-photo-hint">Change photo</span>' +
-      '</div>' +
     '</div>' +
     keyAssetsCapsule +
     '<div class="cv-body">' +
@@ -1179,9 +1109,6 @@ function renderCV(data) {
       '</div>' +
     '</div>' +
     '<div class="cv-footer-safe"><div class="cv-footer-line"></div><div class="cv-footer-text">' + footer + '</div></div>';
-
-  if (currentPhotoDataUrl) applyPhoto(currentPhotoDataUrl);
-  togglePhoto();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1232,37 +1159,6 @@ function setTheme(theme) {
   var active = document.querySelector('.theme-btn-' + theme);
   if (active) active.classList.add('active');
 }
-
-// ══════════════════════════════════════════════════════════
-// PHOTO TOGGLE
-// ══════════════════════════════════════════════════════════
-var photoVisible = false;
-
-function togglePhoto() {
-  photoVisible = document.getElementById('toggle-photo').checked;
-  var wrap = document.getElementById('cv-photo-wrap');
-  if (wrap) wrap.style.display = photoVisible ? '' : 'none';
-}
-var currentPhotoDataUrl = null;
-var photoInput = document.createElement('input');
-photoInput.type = 'file'; photoInput.accept = 'image/*'; photoInput.style.display = 'none';
-document.body.appendChild(photoInput);
-function applyPhoto(dataUrl) {
-  currentPhotoDataUrl = dataUrl;
-  var c = document.getElementById('cv-photo-circle');
-  if (c) c.innerHTML = '<img src="'+dataUrl+'" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;display:block;">';
-}
-photoInput.addEventListener('change', function() {
-  var file = photoInput.files && photoInput.files[0];
-  if (!file) return;
-  var r = new FileReader();
-  r.onload = function(e) { applyPhoto(e.target.result); };
-  r.readAsDataURL(file);
-  photoInput.value = '';
-});
-document.addEventListener('click', function(e) {
-  if (e.target.closest && e.target.closest('#cv-photo-wrap')) photoInput.click();
-});
 
 // ══════════════════════════════════════════════════════════
 // UPDATE / TAB / EXPORT

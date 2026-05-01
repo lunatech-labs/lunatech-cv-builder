@@ -53,9 +53,9 @@ fn build_template(review: &Review, cv_name: Option<&str>, body: &str) -> String 
     Lunatech #h(2mm) #sym.dot.c #h(2mm) France #h(2mm) #sym.dot.c #h(2mm) Netherlands
   ]),
 )
-#set text(font: ("Poppins", "Inter", "Helvetica"), size: 10pt, fill: rgb("#1a1a1a"))
+#set text(font: ("Inter", "Poppins", "Helvetica"), size: 10pt, fill: rgb("#1a1a1a"))
 #set par(leading: 0.65em, justify: false)
-#show heading.where(level: 1): set text(font: ("EB Garamond", "Georgia", "Times"), size: 22pt, weight: 700)
+#show heading.where(level: 1): set text(font: ("Source Serif 4", "EB Garamond", "Georgia", "Times"), size: 22pt, weight: 700)
 #show heading.where(level: 2): set text(size: 13pt, weight: 600, fill: rgb("#7c1818"), tracking: 0.3pt)
 #show heading.where(level: 3): set text(size: 11pt, weight: 600)
 #show table.cell.where(y: 0): strong
@@ -76,7 +76,7 @@ fn build_template(review: &Review, cv_name: Option<&str>, body: &str) -> String 
       align: (left + horizon, right + horizon),
       column-gutter: 6mm,
       [
-        #text(font: ("EB Garamond", "Georgia", "Times"), size: 22pt, weight: 700, fill: white)[{title}]
+        #text(font: ("Source Serif 4", "EB Garamond", "Georgia", "Times"), size: 22pt, weight: 700, fill: white)[{title}]
         #v(0.5mm)
         #text(size: 8pt, weight: 300, fill: white.transparentize(20%), tracking: 0.6pt)[{verdict}]
       ],

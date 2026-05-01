@@ -66,8 +66,11 @@
 // Font chains include symbol fonts at the end so glyphs like ✉ ◎ ⌖ ✦ ▸
 // fall back gracefully when the primary font lacks them.
 #let symbols = ("Apple Symbols", "Symbola", "Noto Sans Symbols 2", "Noto Sans Symbols", "DejaVu Sans")
-#let serif = ("EB Garamond", "Garamond", "Times New Roman", "Times", "DejaVu Serif", "Liberation Serif", ..symbols)
-#let sans  = ("Poppins", "Inter", "Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans", "Liberation Sans", ..symbols)
+// Bundled in assets/fonts/: Inter (sans) + Source Serif 4 (serif). The
+// system-font fallbacks come last so a missing bundle doesn't crash the
+// render — the bundle takes priority by name.
+#let serif = ("Source Serif 4", "Source Serif Pro", "EB Garamond", "Garamond", "Times New Roman", "Times", "DejaVu Serif", "Liberation Serif", ..symbols)
+#let sans  = ("Inter", "Poppins", "Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans", "Liberation Sans", ..symbols)
 
 #set document(title: cv-data.name + " — CV")
 #set page(
@@ -82,8 +85,8 @@
     ])
   ]),
 )
-#set text(font: sans, size: 9pt, fill: p.text, hyphenate: false)
-#set par(leading: 0.45em, justify: false)
+#set text(font: sans, size: 9pt, fill: p.text, hyphenate: true, lang: "en")
+#set par(leading: 0.45em, justify: true, linebreaks: "optimized")
 
 #let opt(d, k, default: "") = if k in d { d.at(k) } else { default }
 #let opt-arr(d, k) = if k in d and d.at(k) != none { d.at(k) } else { () }

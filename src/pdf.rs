@@ -19,7 +19,13 @@ struct LoadedFonts {
 fn load_fonts() -> &'static LoadedFonts {
     static FONTS: OnceLock<LoadedFonts> = OnceLock::new();
     FONTS.get_or_init(|| {
-        let f = FontSearcher::new().include_system_fonts(true).search();
+        // `assets/fonts/` ships with the binary's source tree and contains
+        // the bundled Inter + Source Serif 4 woff2 weights — Typst picks
+        // them up so the CV renders identically regardless of which fonts
+        // happen to be installed on the host.
+        let f = FontSearcher::new()
+            .include_system_fonts(true)
+            .search_with(["assets/fonts"]);
         LoadedFonts { book: f.book, fonts: f.fonts }
     })
 }

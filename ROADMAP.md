@@ -49,3 +49,15 @@ tile use a decayed value. Curve and grace period TBD — a likely starting
 shape is "no decay for the first 6 months, then -1 point per month, capped
 at -20 points". Should also surface a hint in the editor ("last reviewed
 8 months ago") so consultants know when their CV is at risk of slipping.
+
+## MCP server — connect the CV builder to Claude
+
+Expose the CV builder over the [Model Context Protocol](https://modelcontextprotocol.io)
+so Claude (Claude Code, Claude.ai, the API) can read and edit CVs
+directly without going through the HTTP API. Likely tool surface: `list_cvs`,
+`get_cv`, `update_cv`, `review_cv`, `render_pdf`, plus a resource
+endpoint for the cv-reviewer skill. Auth re-uses the existing Keycloak
+JWT (the MCP client passes a Bearer token in the transport headers) so
+ownership and admin gates continue to apply unchanged. The point is to
+turn "ask Claude to tighten the description on my Disney mission" into
+a one-shot instead of a copy-paste round trip through the editor.

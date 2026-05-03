@@ -24,3 +24,28 @@ as the system prompt and persists a structured review on the CV record
 (`overall_score`, `verdict`, `language`, `report_markdown`, `improved_yaml`).
 The frontend has a "Review with Claude" button that opens a modal with
 the markdown report rendered and an "Apply improved YAML" action.
+
+## UI redesign
+
+The frontend has grown organically from a single static HTML file. It does
+the job, but density, navigation and polish all need a pass before we
+hand it to a wider audience: the overview view crams stats, top CVs and
+the full catalog into one scroll; the editor's read-only banner mode and
+admin affordances are bolted on; the review and batch-review modals share
+CSS classes by accident rather than by design; mobile is unhandled.
+Scope to define — likely a small component framework (or a build-step
+HTML preprocessor) and a refreshed visual language, but the constraint
+that the frontend stays trivially deployable next to the Rust binary
+should hold.
+
+## Stale-CV score decay
+
+A CV that scored 90 a year ago and hasn't been touched since shouldn't
+keep ranking next to one that was reviewed last week. Add a recency
+penalty so the displayed score on the overview decays as a CV ages past
+its last edit (or last review): the raw `overall_score` stays in the
+`reviews` table for provenance, but the ranking and the "client ready"
+tile use a decayed value. Curve and grace period TBD — a likely starting
+shape is "no decay for the first 6 months, then -1 point per month, capped
+at -20 points". Should also surface a hint in the editor ("last reviewed
+8 months ago") so consultants know when their CV is at risk of slipping.

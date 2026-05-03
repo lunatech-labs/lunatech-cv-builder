@@ -4,6 +4,17 @@ A small web app for editing Lunatech consultant CVs as YAML and exporting brande
 
 The CV layout follows the 8-criteria rubric of the `cv-reviewer` Anthropic skill — every project entry should answer the questions a client naturally asks (role, team size, client interaction, contributions, value, technologies, dates, source of pride).
 
+## Screenshots
+
+| | |
+| - | - |
+| ![Overview](docs/screenshots/overview.png) | **Overview** — landing page with company-wide stats, the Top CVs ranking and the searchable "All CVs" catalog. |
+| ![Editor](docs/screenshots/editor.png) | **Editor** — YAML on the left, live HTML preview on the right. The PDF render mirrors the preview pixel-for-pixel. |
+| ![Claude review](docs/screenshots/review.png) | **Claude review** — the `cv-reviewer` skill grades each project against the 8 criteria, returns a 0–100 score and a per-section report. |
+| ![Batch review modal](docs/screenshots/batch-review.png) | **Batch review** (admin) — re-grades every CV in the workspace via SSE; live progress with succeeded / failed counts. |
+
+> Drop new screenshots into [`docs/screenshots/`](docs/screenshots/) using those exact filenames.
+
 ## Quick start
 
 ```bash

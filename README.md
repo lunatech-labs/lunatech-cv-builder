@@ -18,11 +18,34 @@ The CV layout follows the 8-criteria rubric of the `cv-reviewer` Anthropic skill
 ## Quick start
 
 ```bash
-docker-compose up -d        # Postgres on localhost:5433
-cargo run                    # app on http://127.0.0.1:3000
+make setup    # docker-compose up + cargo build (one-time)
+make dev      # runs the app on http://127.0.0.1:3000
 ```
 
-Open <http://127.0.0.1:3000>, edit the YAML on the left, watch the preview update on the right. **+ New** starts a blank CV, **Save** persists it server-side, **Export PDF** saves and opens the rendered PDF in a new tab.
+Open <http://127.0.0.1:3000>. On a freshly-cloned repo with no `.env.local`, the server boots in **dev mode** — no Keycloak, no Anthropic — and seeds three fixture CVs (Camille / Alice / Tomás) into the empty database so the overview is populated on first load. The fixtures live under [`assets/fixtures/`](assets/fixtures/) and are only seeded when **all three** are true: the `cvs` table is empty, Keycloak isn't configured, **and** `DEV_SEED_FIXTURES=1` is set (the Makefile sets it for `make dev`; production never does, so prod redeploys cannot trigger seeding even if a Keycloak env var disappeared).
+
+Edit the YAML on the left, watch the preview update on the right. **+ New** starts a blank CV, **Save** persists it server-side, **Export PDF** saves and opens the rendered PDF in a new tab.
+
+To enable Claude reviews and Keycloak login locally, copy your secrets into `.env.local` (gitignored):
+
+```
+ANTHROPIC_API_KEY=sk-ant-…
+KEYCLOAK_URL=https://keycloak.example.com
+KEYCLOAK_REALM=...
+KEYCLOAK_CLIENT_ID=...
+ADMIN_EMAILS=you@example.com,colleague@example.com
+```
+
+`make dev` sources `.env.local` automatically before `cargo run`. Useful Make targets:
+
+| Target | What it does |
+| ------ | ------------ |
+| `make setup` | First-time bootstrap: Postgres up + cargo build |
+| `make dev` | Source `.env.local` and run the server |
+| `make test` | `cargo test` (Postgres must be up) |
+| `make reset` | Drop + recreate the `cvbuilder` database (re-seeds fixtures on next `make dev`) |
+| `make db-up` / `make db-down` | Start / stop the Postgres container |
+| `make screenshots` | Capture the four README screenshots via headless Chrome (dev server must be running) |
 
 ## How it works
 

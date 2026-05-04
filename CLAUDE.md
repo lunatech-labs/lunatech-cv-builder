@@ -33,10 +33,14 @@ docker-compose.yml   Postgres service
 ## Run
 
 ```bash
-docker-compose up -d                  # Postgres on :5433
-cargo run                              # app on :3000
+make setup    # docker-compose up + cargo build (one-time)
+make dev      # boots app on :3000, sources .env.local if present
 # Then open http://127.0.0.1:3000
 ```
+
+`make dev` sets `DEV_SEED_FIXTURES=1`, which the binary reads to decide whether to seed the synthetic CVs under `assets/fixtures/` into an empty database. The seeder triple-gates on (Keycloak missing) ∧ (DB empty) ∧ (`DEV_SEED_FIXTURES=1`); production deployments don't run via the Makefile so they never set the var, which is the load-bearing safeguard against an accidental prod seed if a Keycloak env var ever disappeared.
+
+Other targets in the Makefile: `make test` (cargo test, Postgres must be up), `make reset` (drop + recreate the cvbuilder DB → next `make dev` re-seeds), `make db-up` / `make db-down`, `make screenshots` (regenerate the README screenshots — see [scripts/screenshots.mjs](scripts/screenshots.mjs)).
 
 Optional env vars:
 - `DATABASE_URL` — defaults to `postgres://cvbuilder:cvbuilder@localhost:5433/cvbuilder`
@@ -44,6 +48,7 @@ Optional env vars:
 - `ANTHROPIC_API_KEY` — enables `POST /api/review`. Without it, the route returns 503 and the rest of the API is unaffected.
 - `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` — together gate `/api/*` (except `/api/config`) behind a Bearer JWT validated against Keycloak. When **any** of the three is missing the app runs unauthenticated (dev mode, with a warning log) so contributors without Keycloak access can still work.
 - `ADMIN_EMAILS` — comma-separated allow-list (case-insensitive) of Keycloak emails who get the admin flag and can write to any CV. Empty / missing = no admins.
+- `DEV_SEED_FIXTURES=1` — only set by the Makefile's `dev` target. Required for the empty-DB fixture seeding to fire — see above.
 - `CV_DEBUG_TYPST=1` — writes the generated Typst source to `/tmp/cv-builder-debug.typ` for each PDF render
 
 ## API

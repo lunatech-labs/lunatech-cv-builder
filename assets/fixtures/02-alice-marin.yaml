@@ -1,0 +1,141 @@
+# Synthetic CV used as a dev fixture — see assets/fixtures/README.md.
+name: Alice Marin
+title: Senior Backend Engineer
+lunatech_since: "2018"
+
+client_name: Generic
+key_assets:
+  - JVM backend engineering with Scala / Akka and Java / Quarkus
+  - Event-driven and CQRS architectures on the JVM
+  - PostgreSQL and MongoDB tuning under heavy write workloads
+  - Mentoring and onboarding mid-sized engineering teams
+
+summary: >
+  Alice is a senior backend engineer with eight years on the JVM,
+  comfortable owning a service end-to-end from API design through
+  observability and on-call. She has shipped event-driven systems
+  in regulated industries (insurance, banking) and enjoys turning
+  fuzzy domain problems into clear data flows. Bilingual French /
+  English, hands-on with mentoring junior engineers.
+
+experiences:
+  - company: Sinapps Insurance
+    role: Senior Backend Engineer
+    period: "Mar 2024 - present"
+    description: >
+      Context: Sinapps is a SaaS platform orchestrating property
+      insurance claims for the French market, handling 2.8M missions
+      a year under a 3-day SLA on production incidents.
+
+      Responsibilities: senior IC on a 10-person feature squad
+      (5 dev, 3 QA, 2 PO), technical reference on the actor system
+      and on the data layer; pairs daily with two mid-level
+      engineers ramping up on Akka.
+
+      Key contributions: designed and shipped the Sinapps-Ofeli
+      bridge — a scalable gateway automating the e-invoicing
+      transition; rewrote the node-selection subsystem to cut
+      mission-routing latency from 1.2s to 220ms; led 12
+      blameless postmortems and turned the recurring patterns
+      into a hardening backlog the product team adopted.
+
+      Source of pride: the routing latency fix landed a quarter
+      ahead of plan and unblocked a partner integration that
+      had been at risk for six months.
+    tags: [Scala, Akka, Pekko, MongoDB, Kafka, HATEOAS, CQRS, EventSourcing]
+
+  - company: Banque Lefranc
+    role: Backend Engineer
+    period: "Sep 2021 - Feb 2024"
+    description: >
+      Context: a French retail bank rebuilding its online banking
+      backend for a 1.4M-customer base, under PSD2 compliance.
+
+      Responsibilities: backend IC on the payments squad, owner
+      of the SEPA Instant flow end-to-end. Direct contact with
+      the bank's compliance officer on traceability and audit
+      requirements.
+
+      Key contributions: implemented the SEPA Instant flow with
+      full idempotency and exactly-once delivery on Kafka;
+      cut the payment confirmation p99 from 2.3s to 410ms by
+      migrating a synchronous Postgres query to an in-memory
+      cache with a 30-second TTL; mentored two juniors who
+      both took on independent ownership inside a year.
+
+      Source of pride: the idempotency design held through a
+      regulator audit with no findings.
+    tags: [Scala, Cats Effect, Kafka, PostgreSQL, Akka HTTP, Docker, Kubernetes]
+
+  - company: Studio Vega
+    role: Backend Engineer
+    period: "Apr 2018 - Aug 2021"
+    description: >
+      Context: a mobile-game studio scaling its multiplayer
+      backend from 100k to 4M monthly active players.
+
+      Responsibilities: backend IC, on-call rotation across the
+      matchmaking service; daily contact with the game-design team.
+
+      Key contributions: rebuilt the matchmaking service in
+      Akka Cluster, cutting average wait time from 47s to 12s
+      at peak; designed the analytics ingestion pipeline that
+      fed the live-ops dashboards; introduced load-test gates
+      in CI that caught two production-bound regressions.
+
+      Source of pride: the matchmaking rebuild shipped on a
+      live game without a single rollback during the cutover.
+    tags: [Scala, Akka, Akka Cluster, Cassandra, Gatling, Jenkins]
+
+projects:
+  - name: streaming-jokes
+    description: >
+      Tiny Pekko-based weekend project that streams puns from a
+      curated source over WebSockets. Used as a sandbox to teach
+      backpressure to the juniors I mentor.
+    tags: [Pekko, Scala, WebSockets]
+
+skills:
+  - group: Languages
+    items:
+      - { name: Scala,      level: 5 }
+      - { name: Java,       level: 4 }
+      - { name: Kotlin,     level: 3 }
+      - { name: Python,     level: 3 }
+  - group: Frameworks
+    items:
+      - { name: Akka / Pekko, level: 5 }
+      - { name: Cats Effect,  level: 4 }
+      - { name: Quarkus,      level: 3 }
+      - { name: Spring Boot,  level: 3 }
+  - group: Data
+    items:
+      - { name: PostgreSQL, level: 5 }
+      - { name: MongoDB,    level: 4 }
+      - { name: Kafka,      level: 5 }
+      - { name: Cassandra,  level: 3 }
+  - group: Architecture
+    items:
+      - { name: Microservices, level: 5 }
+      - { name: EventSourcing, level: 4 }
+      - { name: CQRS,          level: 4 }
+      - { name: HATEOAS,       level: 3 }
+
+education:
+  - school: ENSEEIHT Toulouse
+    degree: "Diplôme d'ingénieur, Informatique"
+    year: "2018"
+
+certifications:
+  - name: Lightbend Reactive Architect
+    issuer: Lightbend
+    year: "2022"
+  - name: Confluent Certified Developer for Apache Kafka
+    issuer: Confluent
+    year: "2023"
+
+languages:
+  - language: French
+    level: Native
+  - language: English
+    level: Fluent (C1)

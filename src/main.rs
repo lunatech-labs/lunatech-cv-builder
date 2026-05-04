@@ -40,6 +40,21 @@ async fn main() -> Result<()> {
             tracing::warn!(
                 "KEYCLOAK_URL/REALM/CLIENT_ID not all set — running unauthenticated (dev mode)"
             );
+            // Dev fixtures gated on TWO conditions, in this order:
+            //   1. Keycloak isn't configured (we're already in this branch).
+            //   2. `DEV_SEED_FIXTURES=1` is explicitly set in the env.
+            // The Makefile sets the var; production deployments never do, so
+            // even if Keycloak got accidentally unset on prod the seeder
+            // still doesn't run. The seeder itself is also idempotent
+            // (no-op once the `cvs` table has any row), giving us a third
+            // line of defence.
+            if std::env::var("DEV_SEED_FIXTURES").as_deref() == Ok("1") {
+                db.seed_fixtures_if_empty("assets/fixtures").await?;
+            } else {
+                tracing::info!(
+                    "DEV_SEED_FIXTURES not set — skipping fixture seed (set =1 to enable)"
+                );
+            }
             None
         }
     };

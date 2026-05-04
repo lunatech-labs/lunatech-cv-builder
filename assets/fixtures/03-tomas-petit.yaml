@@ -1,0 +1,141 @@
+# Synthetic CV used as a dev fixture — see assets/fixtures/README.md.
+name: Tomás Petit
+title: Full-stack Engineer
+lunatech_since: "2023"
+
+client_name: Generic
+key_assets:
+  - Full-stack delivery with TypeScript, React and Node
+  - GraphQL APIs and end-to-end type safety
+  - Design-system collaboration with product designers
+  - Web performance and Core Web Vitals tuning
+
+summary: >
+  Tomás is a full-stack engineer with five years of experience
+  delivering customer-facing web applications. He moves comfortably
+  across the stack — TypeScript backends, React frontends, and the
+  build / observability glue around them — and enjoys working
+  closely with designers to ship features that feel right.
+
+experiences:
+  - company: Vivanto Health
+    role: Full-stack Engineer
+    period: "Jan 2024 - present"
+    description: >
+      Context: Vivanto is a B2C tele-health platform serving
+      150k monthly active patients across France and Belgium,
+      with a strong emphasis on accessibility and clinical UX.
+
+      Responsibilities: full-stack IC on the patient-facing
+      product team (8 engineers + 2 designers). Pairs weekly
+      with the design lead to refine flows before
+      implementation; second-line support on production
+      incidents.
+
+      Key contributions: rebuilt the appointment-booking flow
+      with optimistic UI, lifting completion rate from 71% to
+      88%; introduced React Server Components for the
+      content-heavy education hub, cutting Largest Contentful
+      Paint from 3.4s to 1.1s; shipped the GraphQL persisted-
+      query pipeline that lets the mobile app cut data usage
+      by 40%.
+
+      Source of pride: the booking-flow rework was the first
+      project where engineering, design and customer-success
+      shipped a shared metric improvement together.
+    tags: [TypeScript, React, Next.js, GraphQL, Node, PostgreSQL, Cypress]
+
+  - company: Atelier Numérique
+    role: Frontend Engineer
+    period: "Jul 2021 - Dec 2023"
+    description: >
+      Context: a Paris-based digital agency building bespoke
+      web experiences for cultural institutions (museums,
+      theatres, public archives).
+
+      Responsibilities: frontend IC across 4-6 client projects
+      in parallel, sole owner of the build and deployment for
+      the smaller ones; close contact with project managers
+      and clients on scope and trade-offs.
+
+      Key contributions: built the new public catalogue for
+      a national archive (1M+ records, faceted search, fully
+      keyboard-navigable); shipped a React Native companion
+      app for a museum's audio-guide programme; consolidated
+      the studio's 4 separate webpack configs into a single
+      shared Vite preset.
+
+      Source of pride: the museum companion app was used by
+      120k visitors in its first season and got featured in
+      a national newspaper's culture section.
+    tags: [TypeScript, React, React Native, Vite, Tailwind, Storybook]
+
+  - company: Studio Vega
+    role: Junior Frontend Developer
+    period: "Sep 2020 - Jun 2021"
+    description: >
+      Context: first job out of school, on the live-ops admin
+      tools for a mobile-game studio.
+
+      Responsibilities: junior IC, building internal dashboards
+      that the game-design team used for content tuning.
+
+      Key contributions: shipped the season-tuning dashboard
+      that replaced a daily spreadsheet handover; learned
+      hands-on testing discipline through unit and integration
+      tests required to land any change.
+
+      Source of pride: a tool I built in my first six months
+      is still in daily use four years later.
+    tags: [TypeScript, React, Redux, Jest, Webpack]
+
+projects:
+  - name: bento-css
+    description: >
+      Open-source small-CSS utility library focused on bento-style
+      grid layouts. ~600 stars, used in two production sites.
+    tags: [CSS, TypeScript, OSS]
+
+skills:
+  - group: Languages
+    items:
+      - { name: TypeScript, level: 5 }
+      - { name: JavaScript, level: 5 }
+      - { name: Python,     level: 2 }
+  - group: Frontend
+    items:
+      - { name: React,        level: 5 }
+      - { name: Next.js,      level: 4 }
+      - { name: React Native, level: 3 }
+      - { name: Vite,         level: 4 }
+      - { name: Tailwind,     level: 4 }
+  - group: Backend
+    items:
+      - { name: Node,        level: 4 }
+      - { name: GraphQL,     level: 4 }
+      - { name: PostgreSQL,  level: 3 }
+  - group: Testing
+    items:
+      - { name: Jest,        level: 4 }
+      - { name: Cypress,     level: 4 }
+      - { name: Playwright,  level: 3 }
+
+education:
+  - school: HETIC, Paris
+    degree: "Master Architecture Web"
+    year: "2020"
+
+certifications:
+  - name: Web Accessibility Specialist (WAS)
+    issuer: IAAP
+    year: "2023"
+
+languages:
+  - language: French
+    level: Native
+  - language: Portuguese
+    level: Native
+  - language: English
+    level: Fluent (C1)
+  - language: Spanish
+    level: Conversational (B2)

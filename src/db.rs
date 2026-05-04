@@ -46,6 +46,60 @@ impl Db {
         Ok(db)
     }
 
+    /// Loads every `*.yaml` under `dir` as a CV owned by the dev user.
+    /// **Only runs when the `cvs` table is empty** — this is meant for first-
+    /// boot of a freshly-cloned repo, not a production seeder. Caller is
+    /// responsible for gating on dev mode (no Keycloak); this method itself
+    /// only checks that the table is empty so it's safe to call twice.
+    pub async fn seed_fixtures_if_empty(&self, dir: &str) -> Result<usize> {
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM cvs")
+            .fetch_one(&self.pool)
+            .await?;
+        if count.0 > 0 {
+            return Ok(0);
+        }
+        let entries = match std::fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return Ok(0),
+        };
+        let mut paths: Vec<std::path::PathBuf> = entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("yaml"))
+            .collect();
+        paths.sort();
+        let mut n = 0;
+        for path in paths {
+            let yaml = std::fs::read_to_string(&path)
+                .with_context(|| format!("reading fixture {}", path.display()))?;
+            let parsed: serde_yaml::Value = serde_yaml::from_str(&yaml)
+                .with_context(|| format!("parsing fixture {}", path.display()))?;
+            let name = parsed
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let label = parsed
+                .get("label")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+            self.create(
+                crate::users::DEV_USER_ID,
+                &yaml,
+                &name,
+                label.as_deref(),
+            )
+            .await
+            .with_context(|| format!("inserting fixture {}", path.display()))?;
+            n += 1;
+        }
+        if n > 0 {
+            tracing::info!("fixtures: seeded {n} CV(s) into empty database");
+        }
+        Ok(n)
+    }
+
     pub async fn backfill_seniority(&self) -> Result<usize> {
         let rows: Vec<(Uuid, String)> =
             sqlx::query_as("SELECT id, yaml FROM cvs WHERE seniority IS NULL")

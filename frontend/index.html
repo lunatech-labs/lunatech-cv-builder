@@ -5,23 +5,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lunatech CV Builder</title>
 <link rel="icon" type="image/png" href="/assets/lunatech-logo-alone.png">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- UI: Geist (sans) + Geist Mono (code) + Instrument Serif (italic accents).
+     CV preview / PDF: Source Serif 4 + EB Garamond + Inter (unchanged). -->
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  /* ── UI theme vars — Lunatech (rouge / noir) ── */
-  --ui-bg:      #0f0f10;
-  --ui-surface: #1a1a1a;
-  --ui-border:  #2e2e32;
-  --ui-accent:  #c8102e;
-  --ui-accent-deep: #7c1818;
-  --ui-text:    #ece8e4;
-  --ui-muted:   #8a8580;
-  --ui-tab-active: #c8102e;
+  /* ── UI theme vars — Lunatech "Ferrite" palette ──────────────────────
+     Off-white chaud + accent rouille + serif italique en accent
+     éditorial. Mêmes tokens que la landing Ferrite (sister product)
+     pour que tout l'écosystème Lunatech ait la même couleur de peau.
+     Fonts : Geist (sans), Geist Mono (code/numbers), Instrument Serif
+     (italic accents). */
+  --ui-bg:           #FAFAF7;                   /* off-white chaud */
+  --ui-bg-2:         #F3F2EC;                   /* hover, secondary surface */
+  --ui-surface:      #FFFFFF;                   /* cards */
+  --ui-surface-2:    #FCFBF7;                   /* sidebar (warm-tinted white) */
+  --ui-border:       #E5E3DA;                   /* hairline */
+  --ui-border-2:     #D9D6CB;                   /* stronger border */
+  --ui-text:         #0E0E0C;                   /* near-black ink */
+  --ui-text-2:       #2A2A26;                   /* secondary ink */
+  --ui-muted:        #6B6A62;                   /* muted brown-grey */
+  --ui-muted-2:      #9B9A91;
+  --ui-accent:       oklch(0.62 0.16 35);       /* rouille */
+  --ui-accent-ink:   oklch(0.42 0.14 35);       /* terracotta deep */
+  --ui-accent-soft:  oklch(0.95 0.04 50);       /* crème */
+  --ui-good:         oklch(0.55 0.12 150);      /* green */
+  --ui-good-soft:    oklch(0.95 0.04 150);
+  --ui-warn:         oklch(0.70 0.14 75);       /* amber */
+  --ui-bad:          oklch(0.58 0.18 25);       /* red */
+  --ui-bad-soft:     oklch(0.95 0.05 25);
+  --ui-accent-deep:  oklch(0.42 0.14 35);       /* alias pour le code historique */
+  --ui-tab-active:   oklch(0.62 0.16 35);
 }
-body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(--ui-text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background .3s, color .3s; }
+body {
+  font-family: 'Geist', 'Inter', -apple-system, system-ui, sans-serif;
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background .3s, color .3s;
+}
+.serif { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: var(--ui-accent-ink); }
+.mono  { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
 .app-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; border-bottom: 1px solid var(--ui-border); flex-shrink: 0; background: var(--ui-surface); transition: background .3s, border-color .3s; }
 .app-logo { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ui-text); transition: color .3s; }
 .app-logo-mark { width: 32px; height: 32px; border-radius: 6px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
@@ -29,11 +64,16 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .app-logo-brand { font-size: 14px; font-weight: 600; letter-spacing: .08em; color: var(--ui-accent); text-transform: uppercase; }
 .app-logo-product { font-size: 11px; font-weight: 300; color: var(--ui-muted); letter-spacing: .04em; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
-.btn { font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 500; padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer; transition: all .2s; letter-spacing: .04em; }
-.btn-ghost { background: transparent; color: var(--ui-muted); border: 1px solid var(--ui-border); }
-.btn-ghost:hover { color: var(--ui-text); border-color: var(--ui-accent); }
-.btn-primary { background: var(--ui-accent); color: #fff; font-weight: 600; }
-.btn-primary:hover { filter: brightness(1.1); }
+.btn { font-family: 'Geist', 'Inter', sans-serif; font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 7px; border: 1px solid transparent; cursor: pointer; transition: all .15s; letter-spacing: -.005em; }
+/* Following the Ferrite convention: primary = near-black ink (default
+   strong action), accent = rust (reserved for review / brand moments),
+   ghost = outlined ink. */
+.btn-ghost { background: transparent; color: var(--ui-text); border: 1px solid var(--ui-border-2); }
+.btn-ghost:hover { background: var(--ui-bg-2); }
+.btn-primary { background: var(--ui-text); color: var(--ui-bg); font-weight: 500; }
+.btn-primary:hover { background: #000; }
+.btn-accent { background: var(--ui-accent); color: #fff; font-weight: 500; }
+.btn-accent:hover { filter: brightness(.95); }
 .btn-export-bundle { background: transparent; color: var(--ui-accent); border: 1px solid var(--ui-accent); font-weight: 600; }
 .btn-export-bundle:hover { background: var(--ui-accent); color: #fff; }
 
@@ -522,8 +562,8 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .review-modal-body li { margin: 3px 0; }
 .review-modal-body table { border-collapse: collapse; margin: 10px 0; font-size: 12.5px; }
 .review-modal-body th, .review-modal-body td { padding: 6px 10px; border: 1px solid var(--ui-border); text-align: left; }
-.review-modal-body th { background: rgba(255,255,255,.04); font-weight: 600; }
-.review-modal-body code { font-family: 'Fira Code', monospace; font-size: 12px; background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 3px; }
+.review-modal-body th { background: var(--ui-bg-2); font-weight: 600; }
+.review-modal-body code { font-family: 'Geist Mono', 'Fira Code', monospace; font-size: 12px; background: var(--ui-bg-2); padding: 1px 5px; border-radius: 3px; }
 .review-modal-body strong { color: var(--ui-text); }
 .review-modal-footer {
   display: flex; align-items: center; gap: 10px;
@@ -546,7 +586,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .batch-counts { font-size: 13px; color: var(--ui-muted); margin-bottom: 8px; }
 .batch-counts strong { color: var(--ui-text); font-weight: 600; }
 .batch-bar {
-  height: 8px; background: rgba(255,255,255,.06);
+  height: 8px; background: var(--ui-bg-2);
   border: 1px solid var(--ui-border); border-radius: 999px; overflow: hidden;
   margin: 0 0 16px;
 }
@@ -737,11 +777,14 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   overflow: hidden;
 }
 
-/* ── Sidebar ── */
+/* ── Sidebar ──
+   Warm-tinted surface (FCFBF7) so the sidebar sits as a soft column
+   against the off-white workspace (FAFAF7). The 1px right border is
+   the dividing line, not a colour shift. */
 .sidebar {
   width: 260px;
   flex-shrink: 0;
-  background: var(--ui-surface);
+  background: var(--ui-surface-2);
   border-right: 1px solid var(--ui-border);
   display: flex;
   flex-direction: column;
@@ -754,7 +797,7 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   border-bottom: 1px solid var(--ui-border);
   cursor: pointer;
 }
-.sidebar-brand:hover { background: rgba(255,255,255,.02); }
+.sidebar-brand:hover { background: var(--ui-bg-2); }
 .sidebar-brand img { width: 22px; height: 22px; }
 .sidebar-brand-text { display: flex; flex-direction: column; line-height: 1; }
 .sidebar-brand-mark {
@@ -813,9 +856,9 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   border-left: 2px solid transparent;
   position: relative;
 }
-.sidebar-item:hover { background: rgba(255,255,255,.03); }
+.sidebar-item:hover { background: var(--ui-bg-2); }
 .sidebar-item.active {
-  background: var(--ui-accent-soft, rgba(200,16,46,.10));
+  background: var(--ui-accent-soft);
   border-left-color: var(--ui-accent);
   color: var(--ui-text);
 }
@@ -826,9 +869,9 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   border: 1px solid var(--ui-border);
   flex-shrink: 0;
 }
-.sidebar-item-score.score-high { color: #10b981; border-color: rgba(16,185,129,.5); }
-.sidebar-item-score.score-mid  { color: #f59e0b; border-color: rgba(245,158,11,.5); }
-.sidebar-item-score.score-low  { color: #ef4444; border-color: rgba(239,68,68,.5); }
+.sidebar-item-score.score-high { color: var(--ui-good); border-color: var(--ui-good); background: var(--ui-good-soft); }
+.sidebar-item-score.score-mid  { color: var(--ui-warn); border-color: var(--ui-warn); background: var(--ui-accent-soft); }
+.sidebar-item-score.score-low  { color: var(--ui-bad);  border-color: var(--ui-bad);  background: var(--ui-bad-soft); }
 .sidebar-list-empty {
   padding: 8px 18px;
   font-size: 12px; color: var(--ui-muted); font-style: italic;
@@ -847,9 +890,9 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
   cursor: pointer; text-align: left;
   transition: background .12s, color .12s;
 }
-.sidebar-action:hover { color: var(--ui-text); background: rgba(255,255,255,.04); }
+.sidebar-action:hover { color: var(--ui-text); background: var(--ui-bg-2); }
 .sidebar-action.primary { color: var(--ui-accent); }
-.sidebar-action.primary:hover { background: var(--ui-accent-soft, rgba(200,16,46,.10)); }
+.sidebar-action.primary:hover { background: var(--ui-accent-soft); }
 .sidebar-action .glyph { width: 14px; text-align: center; }
 
 .sidebar-user {
@@ -1440,49 +1483,20 @@ function renderCV(data) {
 }
 
 // ══════════════════════════════════════════════════════════
-// THEME SWITCHER
+// THEME SWITCHER (CV preview / PDF theme only)
 // ══════════════════════════════════════════════════════════
-// UI palette per CV theme — drives the builder chrome
-var THEME_UI = {
-  lunatech: {
-    bg: '#0f0f10', surface: '#1a1a1a', border: '#2e2e32',
-    accent: '#c8102e', text: '#ece8e4', muted: '#8a8580', tab: '#c8102e'
-  },
-  luxe: {
-    bg: '#0a0905', surface: '#16130c', border: '#2e2a1e',
-    accent: '#c8a24a', text: '#f0ead8', muted: '#7a7060', tab: '#c8a24a'
-  },
-  cosmic: {
-    bg: '#0a0a14', surface: '#13131e', border: '#22223a',
-    accent: '#DB2777', text: '#e8e4f0', muted: '#7a7592', tab: '#DB2777'
-  },
-  opera: {
-    bg: '#100808', surface: '#1c1010', border: '#321818',
-    accent: '#ea212e', text: '#ede8e6', muted: '#7a6a68', tab: '#ea212e'
-  }
-};
-
+// The theme buttons in the editor toolbar select the *CV* palette
+// (lunatech red / luxe gold / cosmic magenta / opera red) which is
+// reflected in the live preview and forwarded to the PDF endpoint
+// via ?theme=. The app's own chrome stays on the Ferrite palette
+// (rouille / crème) defined at the top of <style> — independent of
+// which CV theme the user is editing.
 var currentTheme = 'lunatech';
 
 function setTheme(theme) {
   currentTheme = theme;
-
-  // ── CV template theme ──
   var root = document.getElementById('cv-root');
   if (root) root.setAttribute('data-theme', theme);
-
-  // ── UI palette ──
-  var ui = THEME_UI[theme] || THEME_UI.lunatech;
-  var docRoot = document.documentElement;
-  docRoot.style.setProperty('--ui-bg',         ui.bg);
-  docRoot.style.setProperty('--ui-surface',    ui.surface);
-  docRoot.style.setProperty('--ui-border',     ui.border);
-  docRoot.style.setProperty('--ui-accent',     ui.accent);
-  docRoot.style.setProperty('--ui-text',       ui.text);
-  docRoot.style.setProperty('--ui-muted',      ui.muted);
-  docRoot.style.setProperty('--ui-tab-active', ui.tab);
-
-  // ── Active dot ──
   document.querySelectorAll('.theme-btn').forEach(function(b) { b.classList.remove('active'); });
   var active = document.querySelector('.theme-btn-' + theme);
   if (active) active.classList.add('active');

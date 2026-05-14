@@ -82,101 +82,107 @@ body {
 .cv-status.saved { color: var(--ui-accent); font-style: normal; }
 .cv-status.dirty { color: #f9b550; }
 
-.tab-bar { display: flex; gap: 2px; padding: 0 24px; background: var(--ui-surface); border-bottom: 1px solid var(--ui-border); flex-shrink: 0; }
-.tab { font-size: 11px; font-weight: 400; padding: 10px 16px; color: var(--ui-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; letter-spacing: .06em; text-transform: uppercase; }
-.tab:hover { color: var(--ui-text); }
-.tab.active { color: var(--ui-tab-active); border-bottom-color: var(--ui-tab-active); }
 .app-body { display: flex; flex: 1; overflow: hidden; }
 
-/* ── EDITOR PANEL ── */
-.editor-panel { width: 50%; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid var(--ui-border); background: #1e1e2e; }
-.panel-header { padding: 10px 18px 8px; font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: #6c7086; border-bottom: 1px solid #313244; flex-shrink: 0; background: #181825; }
-.panel-section { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
-.panel-section.active { display: flex; }
+/* ── EDITOR PANEL ──
+   Light Ferrite-style editor: warm off-white surface, Geist Mono code,
+   per-line wrapping (long descriptions no longer overflow horizontally),
+   and CSS-counter line numbers tied to the `.line` block emitted by the
+   highlighter — so a single source line that wraps to 3 visual lines
+   still shows one number aligned with its first visual line. */
+.editor-panel {
+  width: 50%;
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--ui-border);
+  background: var(--ui-surface-2);
+}
+.panel-header {
+  padding: 10px 18px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ui-muted);
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+  flex-shrink: 0;
+}
 
-/* The highlight+textarea stack */
+/* The highlight + textarea stack. Both share font, padding, and wrap
+   behaviour so the (transparent) textarea caret stays glued to the
+   highlighted glyphs as the user types and the text wraps. */
 .editor-wrap {
   flex: 1;
   position: relative;
   overflow: auto;
   min-height: 0;
-  background: #1e1e2e;
+  background: var(--ui-surface-2);
+}
+.editor-highlight,
+.editor-textarea {
+  font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  tab-size: 2;
+  -moz-tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .editor-highlight {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  min-height: 100%;
-  padding: 14px 16px 14px 56px;
-  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-  font-size: 12.5px;
-  line-height: 1.8;
-  white-space: pre;
-  word-break: normal;
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 16px 18px 16px 12px;
   pointer-events: none;
-  color: #cdd6f4;
-  tab-size: 2;
+  color: var(--ui-text-2);
+  counter-reset: line;
+}
+.editor-highlight .line {
+  display: block;
+  position: relative;
+  padding-left: 46px;
+  min-height: 1.7em;
+}
+.editor-highlight .line::before {
+  counter-increment: line;
+  content: counter(line);
+  position: absolute;
+  left: 0; top: 0;
+  width: 36px;
+  padding-right: 8px;
+  text-align: right;
+  color: var(--ui-muted-2);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
 }
 .editor-textarea {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  min-height: 100%;
-  padding: 14px 16px 14px 56px;
-  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-  font-size: 12.5px;
-  line-height: 1.8;
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 16px 18px 16px 58px;
   background: transparent;
   color: transparent;
-  caret-color: #cba6f7;
-  border: none;
-  outline: none;
-  resize: none;
-  tab-size: 2;
-  white-space: pre;
+  caret-color: var(--ui-accent-ink);
+  border: none; outline: none; resize: none;
   overflow: hidden;
-  spellcheck: false;
   z-index: 2;
 }
-/* line numbers */
-.editor-gutter {
-  position: absolute;
-  top: 0; left: 0;
-  width: 48px;
-  padding: 14px 0;
-  background: #181825;
-  border-right: 1px solid #313244;
-  pointer-events: none;
-  z-index: 1;
-}
-.editor-gutter span {
-  display: block;
-  height: 1.8em;
-  line-height: 1.8em;
-  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-  font-size: 11px;
-  color: #45475a;
-  text-align: right;
-  padding-right: 10px;
-}
+.editor-textarea::selection { background: var(--ui-accent-soft); color: transparent; }
 
-.error-bar { padding: 7px 18px; font-size: 11px; color: #f38ba8; background: rgba(243,139,168,.08); border-top: 1px solid rgba(243,139,168,.2); display: none; flex-shrink: 0; }
+.error-bar {
+  padding: 8px 18px;
+  font-size: 12px; color: #8A2A1E;
+  background: var(--ui-bad-soft);
+  border-top: 1px solid oklch(0.85 0.08 25);
+  display: none; flex-shrink: 0;
+  font-family: 'Geist Mono', monospace;
+}
 .error-bar.visible { display: block; }
-.css-hint { padding: 10px 18px; font-size: 11px; color: #6c7086; border-bottom: 1px solid #313244; line-height: 1.6; flex-shrink: 0; }
-.css-hint strong { color: #cba6f7; font-weight: 500; }
 
-/* YAML token colours — Catppuccin Mocha */
-.hl-key     { color: #89b4fa; }
-.hl-str     { color: #a6e3a1; }
-.hl-num     { color: #fab387; }
-.hl-bool    { color: #cba6f7; font-style: italic; }
-.hl-comment { color: #6c7086; font-style: italic; }
-.hl-dash    { color: #f38ba8; }
-.hl-anchor  { color: #f5c2e7; }
-/* CSS token colours */
-.hl-sel     { color: #89dceb; }
-.hl-prop    { color: #89b4fa; }
-.hl-val     { color: #a6e3a1; }
+/* YAML token colours — light theme, on-brand */
+.hl-key     { color: #1E5F9E; }                  /* cool navy */
+.hl-str     { color: #1E6A45; }                  /* forest green */
+.hl-num     { color: var(--ui-accent-ink); }     /* terracotta */
+.hl-bool    { color: oklch(0.42 0.16 320); font-style: italic; }
+.hl-comment { color: var(--ui-muted); font-style: italic; }
+.hl-dash    { color: var(--ui-accent); font-weight: 600; }
+.hl-anchor  { color: oklch(0.42 0.16 320); }
+.hl-brace   { color: var(--ui-muted); }
 .hl-at      { color: #cba6f7; font-style: italic; }
 .hl-brace   { color: #6c7086; }
 
@@ -1211,33 +1217,14 @@ body {
   </div>
 </header>
 
-<div class="tab-bar">
-  <div class="tab active" data-tab="data" onclick="switchTab('data')">CV Data</div>
-  <div class="tab" data-tab="style" onclick="switchTab('style')">CSS Style</div>
-</div>
-
 <div class="app-body">
   <div class="editor-panel">
-
-    <div class="panel-section active" id="tab-data">
-      <div class="panel-header">Edit CV data (YAML)</div>
-      <div class="editor-wrap" id="wrap-yaml">
-        <div class="editor-gutter" id="gutter-yaml"></div>
-        <div class="editor-highlight" id="hl-yaml"></div>
-        <textarea class="editor-textarea" id="yaml-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
-      </div>
-      <div class="error-bar" id="yaml-error"></div>
+    <div class="panel-header">YAML</div>
+    <div class="editor-wrap" id="wrap-yaml">
+      <div class="editor-highlight" id="hl-yaml"></div>
+      <textarea class="editor-textarea" id="yaml-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
     </div>
-
-    <div class="panel-section" id="tab-style">
-      <div class="panel-header">Customise style</div>
-      <div class="css-hint">Edit the <strong>CSS variables</strong> to change colours. Preview updates live.</div>
-      <div class="editor-wrap" id="wrap-css">
-        <div class="editor-gutter" id="gutter-css"></div>
-        <div class="editor-highlight" id="hl-css"></div>
-        <textarea class="editor-textarea" id="css-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
-      </div>
-    </div>
+    <div class="error-bar" id="yaml-error"></div>
   </div>
 
   <div class="preview-area" id="preview-area">
@@ -1247,8 +1234,6 @@ body {
   </div>
 </div>
 
-<style id="custom-cv-styles"></style>
-
 <script>
 // ══════════════════════════════════════════════════════════
 // DEFAULT CONTENT
@@ -1256,132 +1241,87 @@ body {
 // Loaded from /assets/cv-empty.yaml at init.
 var YAML_DEFAULT = '';
 
-var CSS_DEFAULT = [
-'/* ============================',
-'   TEMPLATE VARIABLES (lunatech)',
-'   ============================ */',
-'#cv-root {',
-'  --cv-accent:       #7c1818;',
-'  --cv-accent-light: #f4e9e9;',
-'  --cv-header-bg:    #1a1a1a;',
-'  --cv-bar-fill:     #7c1818;',
-'  --cv-bar-empty:    #f0d8d8;',
-'  --cv-text:         #1a1a1a;',
-'  --cv-muted:        #6b6b6b;',
-'  --cv-body:         #2a2a2a;',
-'  --cv-border:       #d8d4d0;',
-'  --cv-bullet:       #7c1818;',
-'}',
-'',
-'/* ============================',
-'   ADD YOUR OWN RULES',
-'   ============================ */'
-].join('\n');
-
 // ══════════════════════════════════════════════════════════
 // SYNTAX HIGHLIGHTING (textarea + div overlay)
 // ══════════════════════════════════════════════════════════
+//
+// The editor renders each YAML line as its own `<div class="line">` so we
+// can (a) get line numbers for free via a CSS counter, and (b) let each
+// line wrap independently — long descriptions no longer require a
+// horizontal scroll. The textarea sits transparent on top with the same
+// font, width, and `white-space: pre-wrap`, so the caret stays aligned
+// with the highlighted text as it wraps.
+
 function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function highlightYaml(code) {
   return code.split('\n').map(function(line) {
-    // comment
-    if (/^\s*#/.test(line)) return '<span class="hl-comment">' + esc(line) + '</span>';
-    var out = '';
-    // leading dash
-    var dashMatch = line.match(/^(\s*)(- )(.*)/);
-    if (dashMatch) {
-      out += esc(dashMatch[1]);
-      out += '<span class="hl-dash">- </span>';
-      line = dashMatch[3];
+    var inner = highlightYamlLine(line);
+    // Blank lines need a zero-width-space so the line div still takes a
+    // line of height (otherwise it collapses and the line numbers shift).
+    if (inner === '') inner = '​';
+    return '<div class="line">' + inner + '</div>';
+  }).join('');
+}
+
+function highlightYamlLine(line) {
+  if (/^\s*#/.test(line)) return '<span class="hl-comment">' + esc(line) + '</span>';
+  var out = '';
+  var dashMatch = line.match(/^(\s*)(- )(.*)/);
+  if (dashMatch) {
+    out += esc(dashMatch[1]);
+    out += '<span class="hl-dash">- </span>';
+    line = dashMatch[3];
+  } else {
+    var kvMatch = line.match(/^(\s*)([^:]+?)(\s*:\s*)(.*)/);
+    if (kvMatch) {
+      out += esc(kvMatch[1]);
+      out += '<span class="hl-key">' + esc(kvMatch[2]) + '</span>';
+      out += '<span class="hl-brace">' + esc(kvMatch[3]) + '</span>';
+      line = kvMatch[4];
+    }
+  }
+  if (line !== undefined && line !== '') {
+    if (/^".*"$/.test(line.trim()) || /^'.*'$/.test(line.trim())) {
+      out += '<span class="hl-str">' + esc(line) + '</span>';
+    } else if (/^\[.*\]$/.test(line.trim())) {
+      out += '<span class="hl-brace">[</span>' +
+        line.trim().slice(1,-1).split(',').map(function(item) {
+          return '<span class="hl-str">' + esc(item) + '</span>';
+        }).join('<span class="hl-brace">,</span>') +
+        '<span class="hl-brace">]</span>';
+    } else if (/^(true|false|yes|no|null|~)$/i.test(line.trim())) {
+      out += '<span class="hl-bool">' + esc(line) + '</span>';
+    } else if (/^-?\d/.test(line.trim())) {
+      out += '<span class="hl-num">' + esc(line) + '</span>';
+    } else if (line.trim() === '>') {
+      out += '<span class="hl-anchor">' + esc(line) + '</span>';
     } else {
-      // key: value
-      var kvMatch = line.match(/^(\s*)([^:]+?)(\s*:\s*)(.*)/);
-      if (kvMatch) {
-        out += esc(kvMatch[1]);
-        out += '<span class="hl-key">' + esc(kvMatch[2]) + '</span>';
-        out += '<span class="hl-brace">' + esc(kvMatch[3]) + '</span>';
-        line = kvMatch[4];
-      }
+      out += esc(line);
     }
-    // value
-    if (line !== undefined && line !== '') {
-      if (/^".*"$/.test(line.trim()) || /^'.*'$/.test(line.trim())) {
-        out += '<span class="hl-str">' + esc(line) + '</span>';
-      } else if (/^\[.*\]$/.test(line.trim())) {
-        // inline array — highlight each item
-        out += '<span class="hl-brace">[</span>' +
-          line.trim().slice(1,-1).split(',').map(function(item) {
-            return '<span class="hl-str">' + esc(item) + '</span>';
-          }).join('<span class="hl-brace">,</span>') +
-          '<span class="hl-brace">]</span>';
-      } else if (/^(true|false|yes|no|null|~)$/i.test(line.trim())) {
-        out += '<span class="hl-bool">' + esc(line) + '</span>';
-      } else if (/^-?\d/.test(line.trim())) {
-        out += '<span class="hl-num">' + esc(line) + '</span>';
-      } else if (line.trim() === '>') {
-        out += '<span class="hl-anchor">' + esc(line) + '</span>';
-      } else {
-        out += esc(line);
-      }
-    }
-    return out;
-  }).join('\n');
+  }
+  return out;
 }
 
-function highlightCss(code) {
-  return code.split('\n').map(function(line) {
-    if (/^\s*\/\*/.test(line) || /^\s*\*/.test(line)) return '<span class="hl-comment">' + esc(line) + '</span>';
-    if (/^\s*}/.test(line)) return '<span class="hl-brace">' + esc(line) + '</span>';
-    if (/^\s*@/.test(line)) return '<span class="hl-at">' + esc(line) + '</span>';
-    var propMatch = line.match(/^(\s*)([\w-]+)(\s*:\s*)(.*)/);
-    if (propMatch) {
-      return esc(propMatch[1]) +
-        '<span class="hl-prop">' + esc(propMatch[2]) + '</span>' +
-        '<span class="hl-brace">' + esc(propMatch[3]) + '</span>' +
-        '<span class="hl-val">' + esc(propMatch[4]) + '</span>';
-    }
-    if (/{/.test(line)) return '<span class="hl-sel">' + esc(line) + '</span>';
-    return esc(line);
-  }).join('\n');
-}
-
-function buildGutter(lineCount) {
-  var html = '';
-  for (var i = 1; i <= lineCount; i++) html += '<span>' + i + '</span>';
-  return html;
-}
-
-function syncScroll(wrap, textarea, highlight, gutter) {
-  var scrollTop = textarea.scrollTop;
-  var scrollLeft = textarea.scrollLeft;
-  highlight.style.top = -scrollTop + 'px';
-  highlight.style.left = (-scrollLeft) + 'px';
-  gutter.style.top = -scrollTop + 'px';
-}
-
-function attachEditor(textareaId, highlightId, gutterId, wrapId, highlightFn, onChangeFn) {
-  var ta  = document.getElementById(textareaId);
-  var hl  = document.getElementById(highlightId);
-  var gt  = document.getElementById(gutterId);
-  var wp  = document.getElementById(wrapId);
+function attachEditor(textareaId, highlightId, wrapId, highlightFn, onChangeFn) {
+  var ta = document.getElementById(textareaId);
+  var hl = document.getElementById(highlightId);
+  var wp = document.getElementById(wrapId);
 
   function refresh() {
-    var val = ta.value;
-    var lines = val.split('\n');
-    hl.innerHTML = highlightFn(val);
-    gt.innerHTML = buildGutter(lines.length);
-    // Match textarea size to content
+    hl.innerHTML = highlightFn(ta.value);
+    // Resize the textarea to the highlight's wrapped height so the wrap
+    // container scrolls as one unit. `scrollHeight` reflects the wrapped
+    // height of the inner content; both elements have the same font /
+    // width / padding / white-space, so they wrap identically.
     ta.style.height = 'auto';
-    ta.style.height = Math.max(wp.clientHeight, ta.scrollHeight) + 'px';
-    hl.style.height  = ta.style.height;
-    gt.style.height  = ta.style.height;
+    ta.style.height = Math.max(wp.clientHeight, hl.offsetHeight) + 'px';
     if (onChangeFn) onChangeFn();
   }
 
-  ta.value = textareaId === 'yaml-editor' ? YAML_DEFAULT : CSS_DEFAULT;
+  ta.value = YAML_DEFAULT;
   ta.addEventListener('input', refresh);
   ta.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
@@ -1392,7 +1332,6 @@ function attachEditor(textareaId, highlightId, gutterId, wrapId, highlightFn, on
       refresh();
     }
   });
-  ta.addEventListener('scroll', function() { syncScroll(wp, ta, hl, gt); });
 
   refresh();
 }
@@ -1615,16 +1554,6 @@ function updateCV() {
     errBar.classList.add('visible');
   }
   refreshStatus();
-}
-
-function updateCSS() {
-  document.getElementById('custom-cv-styles').textContent = document.getElementById('css-editor').value;
-}
-
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===tab); });
-  document.querySelectorAll('.panel-section').forEach(function(s){ s.classList.remove('active'); });
-  document.getElementById('tab-'+tab).classList.add('active');
 }
 
 // ── Backend persistence ──
@@ -2285,8 +2214,7 @@ function setReadonly(yes, owner) {
     var res = await fetch('/assets/cv-empty.yaml');
     if (res.ok) YAML_DEFAULT = await res.text();
   } catch (_) {}
-  attachEditor('yaml-editor', 'hl-yaml', 'gutter-yaml', 'wrap-yaml', highlightYaml, updateCV);
-  attachEditor('css-editor',  'hl-css',  'gutter-css',  'wrap-css',  highlightCss,  updateCSS);
+  attachEditor('yaml-editor', 'hl-yaml', 'wrap-yaml', highlightYaml, updateCV);
   setTheme('lunatech');
   refreshStatus();
   // Decide which view to show based on the URL — overview is the default

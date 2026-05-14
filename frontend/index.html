@@ -57,13 +57,59 @@ body {
 }
 .serif { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: var(--ui-accent-ink); }
 .mono  { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
-.app-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; border-bottom: 1px solid var(--ui-border); flex-shrink: 0; background: var(--ui-surface); transition: background .3s, border-color .3s; }
-.app-logo { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; letter-spacing: .04em; color: var(--ui-text); transition: color .3s; }
-.app-logo-mark { width: 32px; height: 32px; border-radius: 6px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
-.app-logo-text { display: flex; flex-direction: column; line-height: 1.1; }
-.app-logo-brand { font-size: 14px; font-weight: 600; letter-spacing: .08em; color: var(--ui-accent); text-transform: uppercase; }
-.app-logo-product { font-size: 11px; font-weight: 300; color: var(--ui-muted); letter-spacing: .04em; }
-.header-actions { display: flex; gap: 8px; align-items: center; }
+/* ── Editor topbar (phase 4) ──
+   Four columns: back button · CV title (with read-only chip if any) ·
+   meta cluster (status / seniority / score) · action cluster. The
+   sidebar carries the brand and user pill, so we don't repeat them. */
+.editor-topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 22px;
+  height: 56px;
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+  flex-shrink: 0;
+}
+.editor-back {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 7px;
+  background: transparent; border: 1px solid var(--ui-border-2);
+  color: var(--ui-muted); font-size: 16px; cursor: pointer;
+  transition: color .12s, border-color .12s, background .12s;
+}
+.editor-back:hover { color: var(--ui-accent); border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+.editor-title { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.editor-title-name {
+  font-size: 14.5px; font-weight: 500; color: var(--ui-text);
+  letter-spacing: -.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.editor-title-sub {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--ui-muted);
+}
+.editor-title-sub:empty { display: none; }
+.editor-readonly-chip {
+  display: inline-flex; align-items: center;
+  padding: 1px 8px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 500; letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #7A5A14;
+  background: oklch(0.96 0.05 75);
+  border: 1px solid oklch(0.85 0.08 75);
+}
+.editor-title-owner { color: var(--ui-muted); font-family: 'Geist Mono', monospace; font-size: 11px; }
+.editor-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.editor-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* Slightly de-emphasise destructive actions next to the accent + primary. */
+.btn-danger { color: var(--ui-muted); }
+.btn-danger:hover { color: var(--ui-bad); border-color: var(--ui-bad); background: var(--ui-bad-soft); }
+.btn-accent { background: var(--ui-accent-soft); color: var(--ui-accent-ink); border: 1px solid var(--ui-accent); font-weight: 600; }
+.btn-accent:hover { background: var(--ui-accent); color: #fff; }
+.btn-accent:disabled { opacity: 0.6; cursor: wait; }
 .btn { font-family: 'Geist', 'Inter', sans-serif; font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 7px; border: 1px solid transparent; cursor: pointer; transition: all .15s; letter-spacing: -.005em; }
 /* Following the Ferrite convention: primary = near-black ink (default
    strong action), accent = rust (reserved for review / brand moments),
@@ -466,15 +512,15 @@ body {
 .cv-footer-line { border-top: 1px solid var(--cv-border); }
 .cv-footer-text { padding: 6px 8px 8px; font-size: 7.5px; font-weight: 400; letter-spacing: .05em; color: var(--cv-muted); text-align: center; white-space: nowrap; }
 
-/* ── THEME SWITCHER ── */
-.theme-switcher { display: flex; align-items: center; gap: 6px; }
-.theme-label { font-size: 11px; font-weight: 400; color: var(--ui-muted); letter-spacing: .03em; white-space: nowrap; }
+/* ── THEME SWITCHER (4 little gradient dots for the PDF theme) ── */
+.theme-switcher { display: flex; align-items: center; gap: 6px; padding-right: 4px; border-right: 1px solid var(--ui-border-2); margin-right: 4px; }
 .theme-btn {
-  width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent;
-  cursor: pointer; transition: all .15s; position: relative; flex-shrink: 0;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid transparent; box-shadow: 0 0 0 1px var(--ui-border-2);
+  cursor: pointer; transition: transform .12s, box-shadow .12s; flex-shrink: 0;
 }
-.theme-btn:hover { transform: scale(1.15); }
-.theme-btn.active { border-color: white; box-shadow: 0 0 0 1px rgba(255,255,255,.4); }
+.theme-btn:hover { transform: scale(1.12); }
+.theme-btn.active { box-shadow: 0 0 0 2px var(--ui-accent); }
 .theme-btn-lunatech { background: linear-gradient(135deg, #1a1a1a 50%, #7c1818 50%); }
 .theme-btn-luxe     { background: linear-gradient(135deg, #0B0B0B 50%, #c8a24a 50%); }
 .theme-btn-cosmic   { background: linear-gradient(135deg, #0a1e50 50%, #DB2777 50%); }
@@ -489,72 +535,84 @@ body {
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
 
-/* ── USER (Keycloak) ── */
-.user-info {
-  display: none; align-items: center; gap: 8px;
-  padding-left: 12px; margin-left: 4px;
-  border-left: 1px solid var(--ui-border);
-}
-.user-info.visible { display: inline-flex; }
-.user-name { font-size: 11px; color: var(--ui-muted); font-weight: 500; letter-spacing: .03em; }
-
-/* ── REVIEW WITH CLAUDE ── */
+/* ── REVIEW SCORE BADGE (Claude review pill in the editor topbar) ── */
 .review-score-badge {
-  display: none; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: 999px;
-  font-size: 11px; font-weight: 600; letter-spacing: .04em;
-  background: var(--ui-surface); border: 1px solid var(--ui-border);
-  color: var(--ui-text); cursor: pointer;
+  display: none; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0;
+  background: var(--ui-surface); border: 1px solid var(--ui-border-2);
+  color: var(--ui-muted); cursor: pointer;
 }
 .review-score-badge.visible { display: inline-flex; }
 .review-score-badge .score-num { font-weight: 700; }
-.review-score-badge.score-low    { border-color: #ef4444; color: #ef4444; }
-.review-score-badge.score-mid    { border-color: #f59e0b; color: #f59e0b; }
-.review-score-badge.score-high   { border-color: #10b981; color: #10b981; }
-.btn-review { background: transparent; color: var(--ui-accent); border: 1px solid var(--ui-accent); font-weight: 600; }
-.btn-review:hover { background: var(--ui-accent); color: #fff; }
-.btn-review:disabled { opacity: 0.6; cursor: wait; }
+.review-score-badge .score-of  { color: var(--ui-muted-2); }
+.review-score-badge.score-low  { border-color: oklch(0.80 0.10 25);  background: var(--ui-bad-soft);  color: #8A2A1E; }
+.review-score-badge.score-mid  { border-color: oklch(0.82 0.10 75);  background: oklch(0.96 0.05 75); color: #7A5A14; }
+.review-score-badge.score-high { border-color: oklch(0.80 0.10 150); background: var(--ui-good-soft); color: #1E6A45; }
 
+/* ── Modal → right-side slide-over (phase 4) ──
+   The two modals (CV review, batch review) now slide in from the right
+   edge as a fixed-width sheet instead of centring a card over a
+   dimmed backdrop. The sidebar stays visible on the left so the admin
+   can keep navigating while a batch is running, and the editor / CV
+   preview is still half-readable in the gap behind the dim — the
+   reader keeps their bearings instead of feeling teleported into a
+   modal context.
+
+   Open state: `.visible` slides the sheet from 100% offscreen to 0.
+   Backdrop fades in over the workspace; click-outside the sheet
+   closes it (same `if (event.target === this)` handler as before). */
 .review-modal-bg {
-  display: none; position: fixed; inset: 0; z-index: 100;
-  background: rgba(0,0,0,.6); backdrop-filter: blur(2px);
-  align-items: center; justify-content: center;
-  padding: 32px;
+  display: flex; position: fixed; inset: 0; z-index: 100;
+  background: rgba(15, 15, 12, 0);
+  justify-content: flex-end;
+  pointer-events: none;
+  transition: background .2s ease;
 }
-.review-modal-bg.visible { display: flex; }
+.review-modal-bg.visible {
+  background: rgba(15, 15, 12, .35);
+  pointer-events: auto;
+}
 .review-modal {
-  width: min(900px, 100%); max-height: calc(100vh - 64px);
+  width: min(680px, 92vw);
+  max-height: 100vh; height: 100vh;
   display: flex; flex-direction: column;
   background: var(--ui-surface); color: var(--ui-text);
-  border: 1px solid var(--ui-border); border-radius: 10px;
-  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+  border-left: 1px solid var(--ui-border);
+  box-shadow: -24px 0 60px -30px rgba(15, 15, 12, .25);
+  transform: translateX(100%);
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1);
 }
+.review-modal-bg.visible .review-modal { transform: translateX(0); }
 .review-modal-header {
   display: flex; align-items: center; gap: 14px;
-  padding: 14px 22px; border-bottom: 1px solid var(--ui-border);
+  padding: 16px 24px; border-bottom: 1px solid var(--ui-border);
   flex-shrink: 0;
 }
 .review-modal-title { font-size: 14px; font-weight: 600; letter-spacing: .04em; }
 .review-modal-meta { display: flex; gap: 10px; align-items: center; margin-left: auto; }
 .review-score-pill {
-  padding: 5px 12px; border-radius: 999px;
-  font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  font-family: 'Geist Mono', monospace;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0;
   border: 1px solid;
 }
-.review-score-pill.score-low  { color: #ef4444; border-color: #ef4444; }
-.review-score-pill.score-mid  { color: #f59e0b; border-color: #f59e0b; }
-.review-score-pill.score-high { color: #10b981; border-color: #10b981; }
+.review-score-pill.score-low  { color: #8A2A1E; border-color: oklch(0.80 0.10 25);  background: var(--ui-bad-soft); }
+.review-score-pill.score-mid  { color: #7A5A14; border-color: oklch(0.82 0.10 75);  background: oklch(0.96 0.05 75); }
+.review-score-pill.score-high { color: #1E6A45; border-color: oklch(0.80 0.10 150); background: var(--ui-good-soft); }
 .review-verdict-pill {
-  padding: 5px 12px; border-radius: 999px;
-  font-size: 11px; font-weight: 500; letter-spacing: .06em;
+  font-family: 'Geist Mono', monospace;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 11px; font-weight: 500; letter-spacing: .04em;
   text-transform: uppercase;
-  background: rgba(255,255,255,.05); color: var(--ui-muted);
-  border: 1px solid var(--ui-border);
+  background: var(--ui-bg-2); color: var(--ui-muted);
+  border: 1px solid var(--ui-border-2);
 }
 .review-modal-body {
-  padding: 18px 26px 22px;
+  padding: 22px 28px 26px;
   overflow-y: auto; flex: 1;
-  font-family: 'Poppins', sans-serif; font-size: 13px; line-height: 1.6;
+  font-family: 'Geist', 'Inter', sans-serif; font-size: 13.5px; line-height: 1.6;
   color: var(--ui-text);
 }
 .review-modal-body h1, .review-modal-body h2, .review-modal-body h3 {
@@ -845,15 +903,6 @@ body {
 }
 
 /* Read-only banner in editor when viewing someone else's CV */
-.readonly-banner {
-  display: none; align-items: center; gap: 10px;
-  padding: 8px 16px; font-size: 12px; color: #f59e0b;
-  background: rgba(245, 158, 11, .08); border-bottom: 1px solid rgba(245, 158, 11, .25);
-}
-.readonly-banner.visible { display: flex; }
-.readonly-banner .icon { font-size: 14px; }
-.btn-back-overview { background: transparent; color: var(--ui-muted); border: 1px solid var(--ui-border); }
-.btn-back-overview:hover { color: var(--ui-text); border-color: var(--ui-accent); }
 
 /* ══════════════════════════════════════════════════════════
    NEW SHELL — sidebar + workspace (phase 1 of the UI rework)
@@ -1016,18 +1065,73 @@ body {
 }
 
 /* The overview view's header is fully redundant with the sidebar; the
-   editor's header keeps its action toolbar but loses the brand and
-   user-info chunks (now in the sidebar) and the Back button (the
-   sidebar's logo and CV list make navigation obvious). */
+   editor's brand and user-info chunks moved into the sidebar too. */
 .view-overview > .ov-header { display: none; }
-.view-editor > .app-header .app-logo,
-.view-editor > .app-header .user-info,
-.view-editor > .app-header .btn-back-overview { display: none; }
 
 /* The overview view used to be a scroll container itself; with the new
    shell, .workspace is the scroller. */
 .view-overview.active { height: auto; min-height: 100%; }
 .view-editor.active { height: 100%; overflow: hidden; }
+
+/* ══════════════════════════════════════════════════════════
+   Mobile responsive (phase 4 minimum viable)
+   ══════════════════════════════════════════════════════════
+   Below 900px the sidebar becomes a left drawer (translateX(-100%)
+   off-screen, slides in via .open). A hamburger button floats at the
+   top-left of the workspace to trigger it. Below 768px the editor
+   split flips vertical so YAML sits on top of the preview. The
+   slide-over modals already collapse to ~92vw thanks to
+   `width: min(680px, 92vw)`. */
+.sidebar-toggle {
+  display: none;
+  position: fixed; top: 12px; left: 12px; z-index: 95;
+  width: 36px; height: 36px;
+  align-items: center; justify-content: center;
+  background: var(--ui-surface); border: 1px solid var(--ui-border-2);
+  border-radius: 8px; color: var(--ui-text); cursor: pointer;
+  box-shadow: 0 2px 8px -4px rgba(15,15,12,.2);
+}
+.sidebar-scrim {
+  display: none; position: fixed; inset: 0; z-index: 88;
+  background: rgba(15,15,12,.25);
+  opacity: 0; transition: opacity .2s;
+}
+.sidebar.open ~ .sidebar-scrim { display: block; opacity: 1; }
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    z-index: 90;
+    box-shadow: 4px 0 24px -12px rgba(15,15,12,.18);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .workspace { width: 100%; }
+  .sidebar-toggle { display: inline-flex; }
+  .ov-main { padding: 64px 24px 80px; }
+  .editor-topbar { padding-left: 64px; gap: 10px; }
+  .editor-meta { display: none; }  /* the meta cluster wraps badly on narrow */
+}
+
+@media (max-width: 768px) {
+  .app-body { flex-direction: column; }
+  .editor-panel { width: 100%; height: 50vh; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--ui-border); }
+  .preview-area { width: 100%; height: 50vh; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .ov-rank-row {
+    grid-template-columns: 36px 64px 1fr auto;
+    gap: 10px;
+  }
+  .ov-rank-row .ov-rank-owner,
+  .ov-rank-row .sen-chip,
+  .ov-rank-row .ov-rank-verdict,
+  .ov-rank-row .ov-rank-date { display: none; }
+  .editor-actions { gap: 6px; }
+  .editor-actions .theme-switcher { display: none; }  /* exposed in PDF export dropdown — TBD */
+  .section-head { flex-direction: column; align-items: flex-start; }
+  .ov-h1, .ov-hello { font-size: clamp(28px, 8vw, 40px); }
+}
 </style>
 </head>
 <body>
@@ -1037,6 +1141,8 @@ body {
      (the existing views live inside .workspace; their old headers
       are hidden — brand and logout moved to the sidebar)
      ══════════════════════════════════════════════════════════ -->
+<button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Open menu" title="Open menu">&#9776;</button>
+
 <div class="app-shell">
 
   <aside class="sidebar" id="sidebar">
@@ -1070,6 +1176,7 @@ body {
       <!-- Populated by renderSidebarUser() from /api/overview .me -->
     </div>
   </aside>
+  <div class="sidebar-scrim" id="sidebar-scrim" onclick="toggleSidebar(false)"></div>
 
   <main class="workspace" id="workspace">
 
@@ -1178,42 +1285,31 @@ body {
      EDITOR VIEW — opens with ?id=xxx (load) or ?new=1 (blank)
      ══════════════════════════════════════════════════════════ -->
 <div class="view view-editor" id="view-editor">
-<div class="readonly-banner" id="readonly-banner">
-  <span class="icon">&#128274;</span>
-  <span>Read-only — this CV belongs to <strong id="readonly-owner">someone else</strong>. Editing is disabled.</span>
-</div>
-<header class="app-header">
-  <div class="app-logo">
-    <img class="app-logo-mark" src="/assets/lunatech-logo-alone.png" alt="Lunatech">
-    <div class="app-logo-text">
-      <span class="app-logo-brand">Lunatech</span>
-      <span class="app-logo-product">CV Builder</span>
-    </div>
+<header class="editor-topbar">
+  <button class="editor-back" onclick="navigateTo('/')" title="Back to overview" aria-label="Back to overview">&#8592;</button>
+  <div class="editor-title">
+    <div class="editor-title-name" id="editor-title-name">CV Editor</div>
+    <div class="editor-title-sub" id="editor-title-sub"></div>
   </div>
-  <div class="header-actions">
-    <button class="btn btn-back-overview" onclick="navigateTo('/')" title="Back to overview">&#8592; Overview</button>
-    <div class="theme-switcher">
-      <span class="theme-label">Theme</span>
+  <div class="editor-meta">
+    <span class="cv-status" id="cv-status" data-owner-only>Unsaved</span>
+    <span id="editor-seniority"></span>
+    <span class="review-score-badge" id="review-score-badge" onclick="openReviewModalFromCache()" title="Open the latest Claude review">
+      <span class="score-num" id="review-score-num">—</span>
+      <span class="score-of">/ 100</span>
+    </span>
+  </div>
+  <div class="editor-actions">
+    <div class="theme-switcher" title="PDF theme — only affects the exported PDF">
       <button class="theme-btn theme-btn-lunatech active" title="Lunatech" onclick="setTheme('lunatech')"></button>
       <button class="theme-btn theme-btn-luxe"            title="Luxe"     onclick="setTheme('luxe')"></button>
       <button class="theme-btn theme-btn-cosmic"          title="Cosmic"   onclick="setTheme('cosmic')"></button>
       <button class="theme-btn theme-btn-opera"           title="Opera"    onclick="setTheme('opera')"></button>
     </div>
-    <button class="btn btn-ghost" onclick="newCv()">+ New</button>
-    <button class="btn btn-ghost" data-owner-only onclick="deleteCv()" title="Delete the currently loaded CV">Delete</button>
-    <span class="cv-status" id="cv-status" data-owner-only>Unsaved</span>
-    <span id="editor-seniority"></span>
     <button class="btn btn-ghost" onclick="copyYaml()">Copy YAML</button>
-    <span class="review-score-badge" id="review-score-badge" onclick="openReviewModalFromCache()" title="Open the latest Claude review">
-      <span class="score-num" id="review-score-num">—</span>
-      <span>/ 100</span>
-    </span>
-    <button class="btn btn-review" id="btn-review" data-owner-only onclick="runReview()" title="Save the CV, then ask Claude to review it">Save &amp; Review with Claude</button>
+    <button class="btn btn-ghost btn-danger" data-owner-only onclick="deleteCv()" title="Delete this CV">Delete</button>
+    <button class="btn btn-accent" id="btn-review" data-owner-only onclick="runReview()" title="Save the CV, then ask Claude to review it">Review</button>
     <button class="btn btn-primary" onclick="exportPDF()">&#8595; Export PDF</button>
-    <span class="user-info" id="user-info">
-      <span class="user-name" id="user-name"></span>
-      <button class="btn btn-ghost" onclick="logout()">Logout</button>
-    </span>
   </div>
 </header>
 
@@ -1710,8 +1806,18 @@ var currentOwnerId = null;  // owner of the CV currently loaded in the editor
 function navigateTo(url) {
   history.pushState({}, '', url);
   routeView();
+  // On mobile the sidebar is a drawer — close it once the user has
+  // navigated, otherwise it stays on top of the workspace.
+  toggleSidebar(false);
 }
 function navigateToHome() { navigateTo('/'); }
+
+function toggleSidebar(force) {
+  var sb = document.getElementById('sidebar');
+  if (!sb) return;
+  var want = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', want);
+}
 
 window.addEventListener('popstate', routeView);
 
@@ -1722,8 +1828,10 @@ function showView(name) {
 
 async function routeView() {
   // Sidebar gets refreshed on every navigation so the active highlight
-  // tracks the current CV. Fetches /api/overview internally (cached).
-  ensureSidebarRendered();
+  // tracks the current CV. We await this so meId / meIsAdmin are set
+  // before openCvInEditor runs — otherwise `currentOwnerId !== meId`
+  // triggers a false-positive Read-only state on the first navigation.
+  await ensureSidebarRendered();
 
   var params = new URLSearchParams(location.search);
   if (params.get('id')) {
@@ -2124,8 +2232,14 @@ function openBlankEditor() {
   savedYaml = null;
   clearReviewState();
   setEditorSeniority(null);
+  setEditorTitle('New CV');
   ta.dispatchEvent(new Event('input'));
   refreshStatus();
+}
+
+function setEditorTitle(name) {
+  var el = document.getElementById('editor-title-name');
+  if (el) el.textContent = name || 'CV Editor';
 }
 
 async function openCvInEditor(id) {
@@ -2136,6 +2250,7 @@ async function openCvInEditor(id) {
     currentCvId = cv.id;
     savedYaml = cv.yaml;
     currentOwnerId = (cv.owner && cv.owner.id) || null;
+    setEditorTitle(cv.name);
     // Admins can edit / delete / review any CV — the read-only banner only
     // applies to non-admin viewers looking at someone else's CV.
     setReadonly(!meIsAdmin && currentOwnerId !== meId, cv.owner);
@@ -2173,16 +2288,21 @@ function setEditorSeniority(report) {
 }
 
 function setReadonly(yes, owner) {
-  var banner = document.getElementById('readonly-banner');
-  banner.classList.toggle('visible', yes);
-  if (yes && owner) {
-    document.getElementById('readonly-owner').textContent =
-      owner.name || owner.email || 'another user';
+  // Read-only state is communicated via a chip in the editor title
+  // (under the CV name) instead of a separate banner — the topbar is
+  // already busy enough. Owner-only actions (Save, Delete, Review, the
+  // saved-status indicator) hide the same way as before; Export PDF and
+  // the theme switcher stay because they make sense for a read-only
+  // viewer too.
+  var sub = document.getElementById('editor-title-sub');
+  if (sub) {
+    if (yes) {
+      var who = (owner && (owner.name || owner.email)) || 'another user';
+      sub.innerHTML = '<span class="editor-readonly-chip" title="You can\'t edit this CV — only its owner or an admin can.">Read-only</span> <span class="editor-title-owner">by ' + escHtml(who) + '</span>';
+    } else {
+      sub.innerHTML = '';
+    }
   }
-  // Hide the actions that have no meaning on someone else's CV (Save,
-  // Delete, Save & Review, the saved-status indicator). Disabled greyed-out
-  // buttons would just be visual noise. Export PDF and the theme switcher
-  // stay — they make sense for a read-only viewer.
   document.querySelectorAll('[data-owner-only]').forEach(function(el) {
     el.style.display = yes ? 'none' : '';
   });
@@ -2312,10 +2432,16 @@ function installAuthFetch(kc) {
 }
 
 function setUserBadge(kc) {
+  // The user pill lives in the sidebar now (rendered by renderSidebarUser
+  // from /api/overview .me). This function used to write into the editor
+  // topbar's user badge; the badge is gone, so the function is a no-op
+  // unless legacy `#user-name` / `#user-info` elements happen to exist.
   var p = kc.tokenParsed || {};
   var name = p.name || p.preferred_username || p.email || 'Authenticated';
-  document.getElementById('user-name').textContent = name;
-  document.getElementById('user-info').classList.add('visible');
+  var nameEl = document.getElementById('user-name');
+  var infoEl = document.getElementById('user-info');
+  if (nameEl) nameEl.textContent = name;
+  if (infoEl) infoEl.classList.add('visible');
 }
 
 function logout() {

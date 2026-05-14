@@ -726,9 +726,221 @@ body { font-family: 'Poppins', sans-serif; background: var(--ui-bg); color: var(
 .readonly-banner .icon { font-size: 14px; }
 .btn-back-overview { background: transparent; color: var(--ui-muted); border: 1px solid var(--ui-border); }
 .btn-back-overview:hover { color: var(--ui-text); border-color: var(--ui-accent); }
+
+/* ══════════════════════════════════════════════════════════
+   NEW SHELL — sidebar + workspace (phase 1 of the UI rework)
+   ══════════════════════════════════════════════════════════ */
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--ui-surface);
+  border-right: 1px solid var(--ui-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid var(--ui-border);
+  cursor: pointer;
+}
+.sidebar-brand:hover { background: rgba(255,255,255,.02); }
+.sidebar-brand img { width: 22px; height: 22px; }
+.sidebar-brand-text { display: flex; flex-direction: column; line-height: 1; }
+.sidebar-brand-mark {
+  font-size: 13px; font-weight: 700; letter-spacing: .12em;
+  color: var(--ui-accent); text-transform: uppercase;
+}
+.sidebar-brand-sub {
+  font-size: 10px; font-weight: 400; letter-spacing: .04em;
+  color: var(--ui-muted); margin-top: 3px;
+}
+
+.sidebar-search {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.sidebar-search input {
+  width: 100%; box-sizing: border-box;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  padding: 7px 10px; font-size: 12px;
+  color: var(--ui-text);
+  outline: none;
+  transition: border-color .15s;
+}
+.sidebar-search input:focus { border-color: var(--ui-accent); }
+
+.sidebar-scroll {
+  flex: 1; overflow-y: auto;
+  padding: 6px 0;
+}
+.sidebar-section { padding: 8px 0 4px; }
+.sidebar-section-title {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 18px;
+  font-size: 10px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ui-muted);
+  cursor: pointer; user-select: none;
+}
+.sidebar-section-title:hover { color: var(--ui-text); }
+.sidebar-section-title .count {
+  font-weight: 500; color: var(--ui-muted);
+  background: var(--ui-bg);
+  padding: 1px 7px; border-radius: 999px; font-size: 9.5px;
+}
+.sidebar-section-title .chev { transition: transform .15s; font-size: 9px; }
+.sidebar-section.collapsed .chev { transform: rotate(-90deg); }
+.sidebar-section.collapsed .sidebar-list { display: none; }
+
+.sidebar-list { list-style: none; margin: 0; padding: 0; }
+.sidebar-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 18px;
+  cursor: pointer; user-select: none;
+  font-size: 13px; color: var(--ui-text);
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.sidebar-item:hover { background: rgba(255,255,255,.03); }
+.sidebar-item.active {
+  background: var(--ui-accent-soft, rgba(200,16,46,.10));
+  border-left-color: var(--ui-accent);
+  color: var(--ui-text);
+}
+.sidebar-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-item-score {
+  font-size: 10.5px; font-weight: 600; color: var(--ui-muted);
+  padding: 1px 6px; border-radius: 999px;
+  border: 1px solid var(--ui-border);
+  flex-shrink: 0;
+}
+.sidebar-item-score.score-high { color: #10b981; border-color: rgba(16,185,129,.5); }
+.sidebar-item-score.score-mid  { color: #f59e0b; border-color: rgba(245,158,11,.5); }
+.sidebar-item-score.score-low  { color: #ef4444; border-color: rgba(239,68,68,.5); }
+.sidebar-list-empty {
+  padding: 8px 18px;
+  font-size: 12px; color: var(--ui-muted); font-style: italic;
+}
+
+.sidebar-actions {
+  border-top: 1px solid var(--ui-border);
+  padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sidebar-action {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px; color: var(--ui-muted);
+  background: transparent; border: none; border-radius: 6px;
+  cursor: pointer; text-align: left;
+  transition: background .12s, color .12s;
+}
+.sidebar-action:hover { color: var(--ui-text); background: rgba(255,255,255,.04); }
+.sidebar-action.primary { color: var(--ui-accent); }
+.sidebar-action.primary:hover { background: var(--ui-accent-soft, rgba(200,16,46,.10)); }
+.sidebar-action .glyph { width: 14px; text-align: center; }
+
+.sidebar-user {
+  border-top: 1px solid var(--ui-border);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--ui-accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  flex-shrink: 0;
+}
+.sidebar-user-name {
+  flex: 1; min-width: 0;
+  font-size: 12.5px; color: var(--ui-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sidebar-user-logout {
+  background: transparent; border: none;
+  color: var(--ui-muted); cursor: pointer;
+  font-size: 11px; padding: 4px 6px;
+}
+.sidebar-user-logout:hover { color: var(--ui-accent); }
+
+/* ── Workspace (main area) ── */
+.workspace {
+  flex: 1;
+  background: var(--ui-bg);
+  overflow: auto;
+  position: relative;
+}
+
+/* The overview view's header is fully redundant with the sidebar; the
+   editor's header keeps its action toolbar but loses the brand and
+   user-info chunks (now in the sidebar) and the Back button (the
+   sidebar's logo and CV list make navigation obvious). */
+.view-overview > .ov-header { display: none; }
+.view-editor > .app-header .app-logo,
+.view-editor > .app-header .user-info,
+.view-editor > .app-header .btn-back-overview { display: none; }
+
+/* The overview view used to be a scroll container itself; with the new
+   shell, .workspace is the scroller. */
+.view-overview.active { height: auto; min-height: 100%; }
+.view-editor.active { height: 100%; overflow: hidden; }
 </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════════════════
+     APP SHELL — sidebar + workspace
+     (the existing views live inside .workspace; their old headers
+      are hidden — brand and logout moved to the sidebar)
+     ══════════════════════════════════════════════════════════ -->
+<div class="app-shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="navigateToHome()">
+      <img src="/assets/lunatech-logo-alone.png" alt="Lunatech">
+      <div class="sidebar-brand-text">
+        <span class="sidebar-brand-mark">Lunatech</span>
+        <span class="sidebar-brand-sub">CV Builder</span>
+      </div>
+    </div>
+
+    <div class="sidebar-search">
+      <input type="search" id="sidebar-search" placeholder="Search CVs…" autocomplete="off">
+    </div>
+
+    <div class="sidebar-scroll" id="sidebar-scroll">
+      <!-- Filled in by renderSidebar() — two sections (My CVs, Lunatech CVs)
+           with score chips per item. -->
+    </div>
+
+    <div class="sidebar-actions">
+      <button class="sidebar-action primary" onclick="newCv()">
+        <span class="glyph">+</span> New CV
+      </button>
+      <button class="sidebar-action" data-admin-only style="display:none" onclick="openBatchModal()">
+        <span class="glyph">⟳</span> Review all CVs
+      </button>
+    </div>
+
+    <div class="sidebar-user" id="sidebar-user">
+      <!-- Populated by renderSidebarUser() from /api/overview .me -->
+    </div>
+  </aside>
+
+  <main class="workspace" id="workspace">
 
 <!-- ══════════════════════════════════════════════════════════
      OVERVIEW VIEW — landing page after login
@@ -1458,6 +1670,7 @@ function navigateTo(url) {
   history.pushState({}, '', url);
   routeView();
 }
+function navigateToHome() { navigateTo('/'); }
 
 window.addEventListener('popstate', routeView);
 
@@ -1467,18 +1680,25 @@ function showView(name) {
 }
 
 async function routeView() {
+  // Sidebar gets refreshed on every navigation so the active highlight
+  // tracks the current CV. Fetches /api/overview internally (cached).
+  ensureSidebarRendered();
+
   var params = new URLSearchParams(location.search);
   if (params.get('id')) {
     showView('editor');
     await openCvInEditor(params.get('id'));
     setTimeout(scalePreview, 0);
+    highlightSidebarItem(params.get('id'));
   } else if (params.get('new') === '1') {
     showView('editor');
     openBlankEditor();
     setTimeout(scalePreview, 0);
+    highlightSidebarItem(null);
   } else {
     showView('overview');
     await renderOverview();
+    highlightSidebarItem(null);
   }
 }
 
@@ -1504,6 +1724,8 @@ async function renderOverview() {
   renderAllList(data.all_cvs || []);
   renderMyGrid(data.my_cvs || []);
   applyAdminVisibility();
+  // Keep the sidebar in sync with the overview's view of the world.
+  refreshSidebarFromOverview(data);
 }
 
 // Mirrors `data-owner-only`: hides every `[data-admin-only]` element when
@@ -1514,6 +1736,143 @@ function applyAdminVisibility() {
     el.style.display = meIsAdmin ? '' : 'none';
   });
 }
+
+// ══════════════════════════════════════════════════════════
+// SIDEBAR — persistent CV nav (phase 1 of the UI redesign)
+// ══════════════════════════════════════════════════════════
+// The sidebar fetches /api/overview once, caches it, and re-renders on
+// every navigation so the "currently editing" highlight tracks the URL.
+// We don't paginate — the workspaces this app serves are in the dozens-
+// of-CVs range, never thousands.
+
+var _sidebarOverviewCache = null;
+var _sidebarFilter = '';
+
+async function ensureSidebarRendered() {
+  if (!_sidebarOverviewCache) {
+    try {
+      _sidebarOverviewCache = await fetch('/api/overview').then(function(r) { return r.json(); });
+    } catch (e) {
+      console.warn('Sidebar: failed to load overview', e);
+      return;
+    }
+    // First load also surfaces me / admin state for the rest of the app.
+    var data = _sidebarOverviewCache;
+    meId = data.me && data.me.id;
+    meIsAdmin = !!(data.me && data.me.is_admin);
+    renderSidebarUser(data.me);
+    applyAdminVisibility();
+  }
+  renderSidebarList();
+}
+
+// Called by renderOverview() so the cache stays fresh after a save / delete.
+function refreshSidebarFromOverview(data) {
+  _sidebarOverviewCache = data;
+  renderSidebarUser(data.me);
+  renderSidebarList();
+}
+
+function renderSidebarUser(me) {
+  var el = document.getElementById('sidebar-user');
+  if (!el) return;
+  var name = (me && (me.name || me.email)) || 'Anonymous';
+  var initials = name.split(/\s+/).filter(Boolean).slice(0, 2)
+    .map(function(s) { return s[0].toUpperCase(); }).join('') || '?';
+  el.innerHTML =
+    '<div class="sidebar-user-avatar">' + escHtml(initials) + '</div>' +
+    '<span class="sidebar-user-name" title="' + escHtml(name) + '">' + escHtml(name) + '</span>' +
+    '<button class="sidebar-user-logout" onclick="logout()" title="Logout">⏻</button>';
+}
+
+function renderSidebarList() {
+  var data = _sidebarOverviewCache || { my_cvs: [], all_cvs: [] };
+  var scroll = document.getElementById('sidebar-scroll');
+  if (!scroll) return;
+
+  var myCvs = data.my_cvs || [];
+  // Exclude my own CVs from the "Lunatech" section so they don't show twice.
+  var otherCvs = (data.all_cvs || []).filter(function(cv) {
+    return cv.owner_id !== meId;
+  });
+
+  var filter = (_sidebarFilter || '').toLowerCase();
+  function matches(cv) {
+    if (!filter) return true;
+    var hay = (cv.name || '') + ' ' + (cv.owner_name || '') + ' ' + (cv.label || '');
+    return hay.toLowerCase().indexOf(filter) >= 0;
+  }
+  var mineShown = myCvs.filter(matches);
+  var othersShown = otherCvs.filter(matches);
+
+  scroll.innerHTML =
+    sidebarSection('mine', 'My CVs', mineShown, myCvs.length) +
+    sidebarSection('lunatech', 'Lunatech CVs', othersShown, otherCvs.length);
+
+  // Wire the click handlers.
+  Array.prototype.forEach.call(scroll.querySelectorAll('.sidebar-item'), function(el) {
+    el.addEventListener('click', function() {
+      var id = el.getAttribute('data-cv-id');
+      if (id) navigateTo('/?id=' + id);
+    });
+  });
+  Array.prototype.forEach.call(scroll.querySelectorAll('.sidebar-section-title'), function(el) {
+    el.addEventListener('click', function() {
+      el.parentNode.classList.toggle('collapsed');
+    });
+  });
+
+  highlightSidebarItem(currentSelectedCvId());
+}
+
+function sidebarSection(key, label, shownItems, totalCount) {
+  var rows;
+  if (totalCount === 0) {
+    rows = '<li class="sidebar-list-empty">— empty —</li>';
+  } else if (shownItems.length === 0) {
+    rows = '<li class="sidebar-list-empty">no match</li>';
+  } else {
+    rows = shownItems.map(function(cv) {
+      var score = cv.latest_score;
+      var chip = score == null
+        ? '<span class="sidebar-item-score" title="not reviewed yet">·</span>'
+        : '<span class="sidebar-item-score ' + scoreClass(score) + '">' + score + '</span>';
+      return '<li class="sidebar-item" data-cv-id="' + escHtml(cv.id) + '" title="' + escHtml(cv.name || '') + '">' +
+               '<span class="sidebar-item-name">' + escHtml(cv.name || '(unnamed)') + '</span>' +
+               chip +
+             '</li>';
+    }).join('');
+  }
+  return '<div class="sidebar-section" data-section="' + key + '">' +
+           '<div class="sidebar-section-title">' +
+             '<span><span class="chev">▾</span> ' + escHtml(label) + '</span>' +
+             '<span class="count">' + totalCount + '</span>' +
+           '</div>' +
+           '<ul class="sidebar-list">' + rows + '</ul>' +
+         '</div>';
+}
+
+function currentSelectedCvId() {
+  return new URLSearchParams(location.search).get('id');
+}
+
+function highlightSidebarItem(id) {
+  var scroll = document.getElementById('sidebar-scroll');
+  if (!scroll) return;
+  Array.prototype.forEach.call(scroll.querySelectorAll('.sidebar-item'), function(el) {
+    el.classList.toggle('active', el.getAttribute('data-cv-id') === id);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var input = document.getElementById('sidebar-search');
+  if (input) {
+    input.addEventListener('input', function(e) {
+      _sidebarFilter = e.target.value || '';
+      renderSidebarList();
+    });
+  }
+});
 
 function fillStats(prefix, s) {
   document.getElementById(prefix + '-total').textContent = s.total_cvs;
@@ -2357,6 +2716,9 @@ function applyImprovedYaml() {
     </div>
   </div>
 </div>
+
+  </main><!-- /workspace -->
+</div><!-- /app-shell -->
 
 </body>
 </html>

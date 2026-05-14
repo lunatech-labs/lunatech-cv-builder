@@ -10,8 +10,9 @@ The CV layout follows the 8-criteria rubric of the `cv-reviewer` Anthropic skill
 | - | - |
 | ![Overview](docs/screenshots/overview.png) | **Overview** — landing page with company-wide stats, the Top CVs ranking and the searchable "All CVs" catalog. |
 | ![Editor](docs/screenshots/editor.png) | **Editor** — YAML on the left, live HTML preview on the right. The PDF render mirrors the preview pixel-for-pixel. |
-| ![Claude review](docs/screenshots/review.png) | **Claude review** — the `cv-reviewer` skill grades each project against the 8 criteria, returns a 0–100 score and a per-section report. |
+| ![Claude review](docs/screenshots/review.png) | **Claude review** — the `cv-reviewer` skill grades each project against the 8 criteria, returns a 0–100 score and a per-section report. Opens as a right-side slide-over so the workspace stays in context. |
 | ![Batch review modal](docs/screenshots/batch-review.png) | **Batch review** (admin) — re-grades every CV in the workspace via SSE; live progress with succeeded / failed counts. |
+| ![Mobile drawer](docs/screenshots/mobile.png) | **Mobile** — below 900px the sidebar collapses into a left drawer with a hamburger trigger; the editor split flips to YAML-on-top-of-preview below 768px. |
 
 > Drop new screenshots into [`docs/screenshots/`](docs/screenshots/) using those exact filenames.
 

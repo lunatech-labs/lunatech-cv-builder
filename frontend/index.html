@@ -611,107 +611,185 @@ body {
 .view-editor.active { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .view-overview.active { display: block; min-height: 100vh; overflow-y: auto; background: var(--ui-bg); }
 
-/* ── OVERVIEW ── */
-.ov-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 32px; height: 60px;
-  background: var(--ui-surface); border-bottom: 1px solid var(--ui-border);
-  position: sticky; top: 0; z-index: 10;
+/* ══════════════════════════════════════════════════════════
+   OVERVIEW — Ferrite-style editorial dashboard
+   ══════════════════════════════════════════════════════════ */
+.ov-main { padding: 56px 56px 72px; max-width: 1200px; margin: 0 auto; }
+
+/* Shared "eyebrow" lockup — small caps rust label with a hairline. Pairs
+   with the section title h2 right under it, the way the Ferrite landing
+   structures every section_head. */
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ui-accent-ink);
 }
-.ov-main { padding: 32px 40px 60px; max-width: 1280px; margin: 0 auto; }
+.eyebrow::before {
+  content: ""; display: inline-block;
+  width: 14px; height: 1px; background: var(--ui-accent);
+}
+.section-title {
+  font-size: clamp(22px, 2.2vw, 28px);
+  letter-spacing: -.02em;
+  font-weight: 500;
+  margin: 10px 0 0;
+  line-height: 1.15;
+  color: var(--ui-text);
+}
+.section-title .serif { color: var(--ui-accent-ink); padding-right: 2px; }
 
-.ov-greeting { font-size: 22px; font-weight: 600; color: var(--ui-text); margin-bottom: 4px; }
-.ov-greeting strong { color: var(--ui-accent); font-weight: 700; }
-.ov-tagline { font-size: 12px; color: var(--ui-muted); margin-bottom: 24px; letter-spacing: .04em; }
+.section-head { margin: 0 0 22px; }
+.section-head-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+  margin-top: 8px;
+}
+.section-head-row .section-title { margin: 0; }
+.section-head-stats {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  font-size: 12.5px; color: var(--ui-muted);
+}
+.section-head-stats b { color: var(--ui-text); font-weight: 500; }
+.section-head-stats .sep { color: var(--ui-muted-2); }
+.ov-section { margin-bottom: 56px; }
 
-.ov-stats-row {
+/* Hero ─ editorial greeting at the top of the dashboard */
+.ov-hero { margin: 0 0 56px; }
+.ov-hello {
+  font-size: clamp(34px, 4.4vw, 52px);
+  letter-spacing: -.03em;
+  font-weight: 500;
+  line-height: 1.05;
+  margin: 14px 0 14px;
+  color: var(--ui-text);
+}
+.ov-hello strong { font-weight: 500; color: var(--ui-accent-ink); }
+.ov-lede {
+  font-size: 16px; line-height: 1.55;
+  color: var(--ui-muted); max-width: 620px;
+  margin: 0;
+}
+
+/* KPI tiles — four cards with a small caps label and a big mono number */
+.kpi-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
-  margin-bottom: 32px;
 }
-.ov-stat {
+.kpi {
   background: var(--ui-surface); border: 1px solid var(--ui-border);
-  border-radius: 8px; padding: 18px 20px;
+  border-radius: 10px; padding: 16px 18px 14px;
+  position: relative; overflow: hidden;
 }
-.ov-stat-num { font-size: 28px; font-weight: 700; color: var(--ui-text); line-height: 1.1; }
-.ov-stat-num.accent { color: var(--ui-accent); }
-.ov-stat-label { font-size: 10.5px; font-weight: 500; color: var(--ui-muted); letter-spacing: .12em; text-transform: uppercase; margin-top: 6px; }
+.kpi h6 {
+  margin: 0 0 10px; font-size: 11px; font-weight: 500;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ui-muted);
+}
+.kpi .v {
+  font-size: 30px; letter-spacing: -.02em; font-weight: 500;
+  color: var(--ui-text); line-height: 1; font-variant-numeric: tabular-nums;
+}
+.kpi .v.accent { color: var(--ui-accent-ink); }
+.kpi-sub {
+  margin-top: 8px; display: block;
+  font-size: 11px; color: var(--ui-muted-2);
+  font-family: 'Geist Mono', monospace; letter-spacing: -.005em;
+}
 
-.ov-section-title {
-  font-size: 13px; font-weight: 600; color: var(--ui-text); letter-spacing: .12em;
-  text-transform: uppercase; margin: 0 0 14px; display: flex; align-items: center; gap: 10px;
-}
-.ov-section-title .icon { font-size: 16px; }
-.ov-section { margin-bottom: 36px; }
-.ov-subsection-title {
-  font-size: 11px; font-weight: 600; color: var(--ui-muted); letter-spacing: .14em;
-  text-transform: uppercase; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px;
-}
-.ov-subsection-title .icon { font-size: 14px; }
-.ov-subsection-toolbar {
-  display: flex; align-items: center; gap: 12px; margin: 0 0 12px;
-}
-.ov-subsection-toolbar .ov-subsection-title { margin: 0; }
+/* Inline search input (catalog section) */
 .ov-search {
   flex: 1; max-width: 360px;
   padding: 7px 12px;
-  font-family: 'Poppins', sans-serif; font-size: 12px;
+  font: inherit; font-size: 13px;
   background: var(--ui-surface); color: var(--ui-text);
-  border: 1px solid var(--ui-border); border-radius: 6px;
+  border: 1px solid var(--ui-border-2); border-radius: 7px;
   outline: none; transition: border-color .15s;
 }
 .ov-search:focus { border-color: var(--ui-accent); }
-.ov-search::placeholder { color: var(--ui-muted); }
-.ov-search-count { font-size: 11px; color: var(--ui-muted); white-space: nowrap; }
-
-/* Top ranking — list rows */
-.ov-rank-list { display: flex; flex-direction: column; gap: 6px; }
-.ov-rank-row {
-  display: grid; grid-template-columns: 36px 64px 1fr auto auto auto auto auto;
-  gap: 12px; align-items: center;
-  padding: 12px 16px; background: var(--ui-surface); border: 1px solid var(--ui-border);
-  border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s;
-  text-decoration: none; color: inherit;
+.ov-search::placeholder { color: var(--ui-muted-2); }
+.ov-search-count {
+  font-size: 11px; color: var(--ui-muted); white-space: nowrap;
 }
-.ov-rank-row.no-rank-num { grid-template-columns: 64px 1fr auto auto auto auto auto; }
+
+/* Ranking / catalog tables — flat list of horizontal rows, mono numbers,
+   pill-style score chips coloured by the new semantic vars. */
+.ov-rank-list {
+  display: flex; flex-direction: column;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border); border-radius: 10px;
+  overflow: hidden;
+}
+.ov-rank-row {
+  display: grid; grid-template-columns: 36px 72px 1fr auto auto auto auto auto;
+  gap: 14px; align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--ui-border);
+  text-decoration: none; color: inherit; cursor: pointer;
+  transition: background .12s;
+}
+.ov-rank-row:last-child { border-bottom: none; }
+.ov-rank-row.no-rank-num { grid-template-columns: 72px 1fr auto auto auto auto auto; }
+.ov-rank-row:hover { background: var(--ui-bg-2); }
+.ov-rank-num {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12.5px; color: var(--ui-muted-2); text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ov-rank-num.gold   { color: #b6781f; font-weight: 600; }
+.ov-rank-num.silver { color: #8b8b8b; font-weight: 600; }
+.ov-rank-num.bronze { color: #a06234; font-weight: 600; }
+.ov-rank-score {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px; font-weight: 600;
+  padding: 3px 10px; border-radius: 999px;
+  text-align: center; border: 1px solid;
+  font-variant-numeric: tabular-nums;
+}
+.ov-rank-score.score-high { color: var(--ui-good); border-color: var(--ui-good); background: var(--ui-good-soft); }
+.ov-rank-score.score-mid  { color: var(--ui-warn); border-color: var(--ui-warn); background: var(--ui-accent-soft); }
+.ov-rank-score.score-low  { color: var(--ui-bad);  border-color: var(--ui-bad);  background: var(--ui-bad-soft); }
+.ov-rank-name {
+  font-size: 13.5px; font-weight: 500; color: var(--ui-text);
+  display: inline-flex; align-items: center;
+}
+.ov-rank-owner { font-size: 11.5px; color: var(--ui-muted); white-space: nowrap; font-family: 'Geist Mono', monospace; }
+.ov-rank-verdict {
+  font-size: 10.5px; color: var(--ui-muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  white-space: nowrap;
+}
+.ov-rank-date {
+  font-size: 11.5px; color: var(--ui-muted); white-space: nowrap;
+  font-family: 'Geist Mono', monospace;
+}
 .ov-rank-dl {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 6px;
-  border: 1px solid var(--ui-border); color: var(--ui-muted);
-  background: transparent; cursor: pointer; font-size: 14px; line-height: 1;
-  transition: all .15s;
+  width: 28px; height: 28px; border-radius: 7px;
+  border: 1px solid var(--ui-border-2); color: var(--ui-muted);
+  background: var(--ui-surface); cursor: pointer; font-size: 14px; line-height: 1;
+  transition: all .12s;
 }
-.ov-rank-dl:hover { color: var(--ui-accent); border-color: var(--ui-accent); }
+.ov-rank-dl:hover { color: var(--ui-accent-ink); border-color: var(--ui-accent); background: var(--ui-accent-soft); }
 .ov-rank-dl:disabled { opacity: 0.4; cursor: wait; }
-.ov-rank-row:hover { border-color: var(--ui-accent); background: rgba(255,255,255,.03); }
-.ov-rank-num { font-size: 13px; font-weight: 700; color: var(--ui-muted); text-align: center; }
-.ov-rank-num.gold   { color: #f5b400; }
-.ov-rank-num.silver { color: #b8c1cc; }
-.ov-rank-num.bronze { color: #c98246; }
-.ov-rank-score {
-  font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 4px;
-  text-align: center; border: 1px solid;
+.ov-rank-empty {
+  padding: 20px; background: var(--ui-surface);
+  border: 1px dashed var(--ui-border-2); border-radius: 10px;
+  color: var(--ui-muted); font-size: 13px; text-align: center; font-style: italic;
 }
-.ov-rank-score.score-low  { color: #ef4444; border-color: #ef4444; }
-.ov-rank-score.score-mid  { color: #f59e0b; border-color: #f59e0b; }
-.ov-rank-score.score-high { color: #10b981; border-color: #10b981; }
-.ov-rank-name { font-size: 13.5px; font-weight: 500; color: var(--ui-text); }
-.ov-rank-owner { font-size: 11px; color: var(--ui-muted); white-space: nowrap; }
-.ov-rank-verdict { font-size: 10px; color: var(--ui-muted); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
-.ov-rank-date { font-size: 11px; color: var(--ui-muted); font-style: italic; white-space: nowrap; }
-.ov-rank-empty { padding: 20px; background: var(--ui-surface); border: 1px dashed var(--ui-border); border-radius: 8px; color: var(--ui-muted); font-size: 12px; text-align: center; font-style: italic; }
 
-/* Seniority chip — small color-coded label by level */
+/* Seniority chip — keep level colour coding (separate semantic axis from
+   review scores). Tones adjusted to read on a light background. */
 .sen-chip {
   display: inline-flex; align-items: center;
   padding: 2px 8px; border-radius: 999px;
   font-size: 10px; font-weight: 600; letter-spacing: .04em;
   white-space: nowrap; border: 1px solid;
+  font-family: 'Geist Mono', monospace;
 }
-.sen-chip.sen-junior    { color: #9ca3af; border-color: #4b5563; background: rgba(156,163,175,.06); }
-.sen-chip.sen-mid       { color: #60a5fa; border-color: #2563eb; background: rgba(96,165,250,.08); }
-.sen-chip.sen-senior    { color: #c084fc; border-color: #9333ea; background: rgba(192,132,252,.08); }
-.sen-chip.sen-staff     { color: #f5b400; border-color: #b45309; background: rgba(245,180,0,.08); }
-.sen-chip.sen-principal { color: #ef4444; border-color: #b91c1c; background: rgba(239,68,68,.08); }
+.sen-chip.sen-junior    { color: #6b6b6b; border-color: #c5c5c5; background: #f5f4ef; }
+.sen-chip.sen-mid       { color: #1e5fa4; border-color: #b4c8e3; background: #eef3fa; }
+.sen-chip.sen-senior    { color: #7a3fb0; border-color: #d9c5ec; background: #f4ecfa; }
+.sen-chip.sen-staff     { color: #a4791e; border-color: #e7d49d; background: #faf2dd; }
+.sen-chip.sen-principal { color: #9b2424; border-color: #e3b4b4; background: #fae8e8; }
 .sen-chip-detail { font-size: 11px; padding: 3px 10px; cursor: help; }
 
 /* Client label chip — neutral pill that travels with the CV name */
@@ -720,41 +798,45 @@ body {
   padding: 2px 8px; border-radius: 4px;
   font-size: 10px; font-weight: 600; letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--ui-accent); background: rgba(200, 16, 46, .08);
-  border: 1px solid var(--ui-accent-deep);
+  color: var(--ui-accent-ink); background: var(--ui-accent-soft);
+  border: 1px solid var(--ui-accent);
   white-space: nowrap;
 }
-/* In rank rows the chip sits inline after the name span — needs spacing. */
 .ov-rank-name .cv-label-chip { margin-left: 8px; }
 
-/* My CVs grid */
+/* My CVs — card grid */
 .ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
 .ov-cv-card {
   background: var(--ui-surface); border: 1px solid var(--ui-border);
-  border-radius: 8px; padding: 16px 18px; cursor: pointer;
-  transition: border-color .15s, background .15s;
-  display: flex; flex-direction: column; gap: 8px;
+  border-radius: 10px; padding: 18px 20px; cursor: pointer;
+  transition: border-color .15s, background .15s, transform .15s;
+  display: flex; flex-direction: column; gap: 10px;
   text-decoration: none; color: inherit;
+  box-shadow: 0 1px 0 rgba(15,15,12,.02);
 }
-.ov-cv-card:hover { border-color: var(--ui-accent); background: rgba(255,255,255,.03); }
+.ov-cv-card:hover { border-color: var(--ui-accent); background: var(--ui-surface-2); transform: translateY(-1px); }
 .ov-cv-card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .ov-cv-card-title { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; flex-wrap: wrap; padding-top: 2px; }
-.ov-cv-card-name { font-size: 14px; font-weight: 600; color: var(--ui-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.ov-cv-card-score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.ov-cv-card-name { font-size: 14.5px; font-weight: 500; color: var(--ui-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; letter-spacing: -.01em; }
+.ov-cv-card-score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
 .ov-cv-card-verdict {
   font-size: 10px; font-weight: 500; letter-spacing: .04em;
-  color: var(--ui-muted); white-space: nowrap;
+  color: var(--ui-muted); white-space: nowrap; text-transform: uppercase;
 }
-.ov-cv-card-verdict.score-low  { color: #ef4444; }
-.ov-cv-card-verdict.score-mid  { color: #f59e0b; }
-.ov-cv-card-verdict.score-high { color: #10b981; }
-.ov-cv-card-meta { font-size: 11px; color: var(--ui-muted); font-style: italic; }
+.ov-cv-card-verdict.score-high { color: var(--ui-good); }
+.ov-cv-card-verdict.score-mid  { color: var(--ui-warn); }
+.ov-cv-card-verdict.score-low  { color: var(--ui-bad);  }
+.ov-cv-card-meta { font-size: 11.5px; color: var(--ui-muted); font-family: 'Geist Mono', monospace; }
 .ov-cv-card-add {
   display: flex; align-items: center; justify-content: center;
-  background: transparent; border: 1px dashed var(--ui-border);
+  background: transparent; border: 1px dashed var(--ui-border-2);
   color: var(--ui-muted); font-weight: 500;
+  box-shadow: none;
 }
-.ov-cv-card-add:hover { color: var(--ui-accent); border-color: var(--ui-accent); border-style: solid; background: rgba(255,255,255,.02); }
+.ov-cv-card-add:hover {
+  color: var(--ui-accent-ink); border-color: var(--ui-accent); border-style: solid;
+  background: var(--ui-accent-soft); transform: none;
+}
 
 /* Read-only banner in editor when viewing someone else's CV */
 .readonly-banner {
@@ -1004,69 +1086,85 @@ body {
   </header>
 
   <main class="ov-main">
-    <div class="ov-greeting">Welcome back, <strong id="ov-me-name">there</strong></div>
-    <div class="ov-tagline">Lunatech CV builder — write, review with Claude, ship.</div>
 
+    <!-- Hero — editorial greeting. The `serif` span pulls Instrument Serif
+         italic so the accent word reads as a typographic flourish, the way
+         the Ferrite landing handles its h1 phrases. -->
+    <header class="ov-hero">
+      <span class="eyebrow">Dashboard</span>
+      <h1 class="ov-hello">
+        <span class="serif">Bonjour</span> <strong id="ov-me-name">there</strong>,
+      </h1>
+      <p class="ov-lede">Écrivez, faites reviewer par Claude, exportez en PDF — un atelier pour tailler les CVs Lunatech.</p>
+    </header>
+
+    <!-- Workspace KPI tiles (the four "company" stats from /api/overview).
+         Big mono numbers, small all-caps label, Ferrite-style. -->
     <section class="ov-section">
-      <h2 class="ov-section-title"><span class="icon">&#128100;</span> My CVs</h2>
-      <div class="ov-stats-row">
-        <div class="ov-stat">
-          <div class="ov-stat-num" id="ov-mine-total">—</div>
-          <div class="ov-stat-label">My CVs</div>
+      <div class="section-head">
+        <span class="eyebrow">Workspace</span>
+        <h2 class="section-title">Le catalogue <span class="serif">en chiffres</span></h2>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><h6>Total CVs</h6>      <div class="v mono" id="ov-co-total">—</div></div>
+        <div class="kpi"><h6>Reviewed</h6>       <div class="v mono" id="ov-co-reviewed">—</div></div>
+        <div class="kpi"><h6>Avg score</h6>      <div class="v mono accent" id="ov-co-avg">—</div></div>
+        <div class="kpi"><h6>Client-ready</h6>   <div class="v mono" id="ov-co-ready">—</div>
+          <span class="kpi-sub" title="CVs whose latest Claude review verdict is 'client ready' — sendable as-is.">verdict client_ready</span>
         </div>
-        <div class="ov-stat">
-          <div class="ov-stat-num" id="ov-mine-reviewed">—</div>
-          <div class="ov-stat-label">Reviewed</div>
-        </div>
-        <div class="ov-stat">
-          <div class="ov-stat-num accent" id="ov-mine-avg">—</div>
-          <div class="ov-stat-label">Avg score</div>
-        </div>
-        <div class="ov-stat">
-          <div class="ov-stat-num" id="ov-mine-ready">—</div>
-          <div class="ov-stat-label" title="CVs whose latest Claude review verdict is 'client ready' — sendable as-is. CVs with a high score but a 'minor improvements' verdict are not counted.">Client-ready</div>
+      </div>
+    </section>
+
+    <!-- My CVs — caller-owned, inline header stats, card grid. -->
+    <section class="ov-section">
+      <div class="section-head">
+        <span class="eyebrow">My CVs</span>
+        <div class="section-head-row">
+          <h2 class="section-title"><span class="serif">Vos</span> CVs</h2>
+          <span class="section-head-stats mono">
+            <span><b id="ov-mine-total">—</b> total</span>
+            <span class="sep">·</span>
+            <span><b id="ov-mine-reviewed">—</b> reviewed</span>
+            <span class="sep">·</span>
+            <span><b id="ov-mine-avg">—</b> avg</span>
+            <span class="sep">·</span>
+            <span><b id="ov-mine-ready">—</b> client-ready</span>
+          </span>
         </div>
       </div>
       <div id="ov-my-grid" class="ov-grid"></div>
     </section>
 
+    <!-- Top-ranked Lunatech CVs (admin batch button drops in here). -->
     <section class="ov-section">
-      <div class="ov-section-head">
-        <h2 class="ov-section-title"><span class="icon">&#127970;</span> Lunatech CVs</h2>
-        <button class="btn btn-ghost ov-batch-btn" data-admin-only id="ov-batch-btn"
-                style="display:none"
-                onclick="openBatchModal()"
-                title="Run the cv-reviewer skill against every CV that hasn't been reviewed since its last edit">
-          ⟳ Review all CVs
-        </button>
-      </div>
-      <div class="ov-stats-row">
-        <div class="ov-stat">
-          <div class="ov-stat-num" id="ov-co-total">—</div>
-          <div class="ov-stat-label">Total CVs</div>
-        </div>
-        <div class="ov-stat">
-          <div class="ov-stat-num" id="ov-co-reviewed">—</div>
-          <div class="ov-stat-label">Reviewed</div>
-        </div>
-        <div class="ov-stat">
-          <div class="ov-stat-num accent" id="ov-co-avg">—</div>
-          <div class="ov-stat-label">Avg score</div>
-        </div>
-        <div class="ov-stat">
-          <div class="ov-stat-num" id="ov-co-ready">—</div>
-          <div class="ov-stat-label" title="CVs whose latest Claude review verdict is 'client ready' — sendable as-is. CVs with a high score but a 'minor improvements' verdict are not counted.">Client-ready</div>
+      <div class="section-head">
+        <span class="eyebrow">Ranking</span>
+        <div class="section-head-row">
+          <h2 class="section-title"><span class="serif">Top</span> CVs Lunatech</h2>
+          <button class="btn btn-ghost ov-batch-btn" data-admin-only id="ov-batch-btn"
+                  style="display:none"
+                  onclick="openBatchModal()"
+                  title="Run the cv-reviewer skill against every CV that hasn't been reviewed since its last edit">
+            ⟳ Review all CVs
+          </button>
         </div>
       </div>
-      <h3 class="ov-subsection-title"><span class="icon">&#127942;</span> Top CVs</h3>
       <div id="ov-top-list" class="ov-rank-list"></div>
-      <div class="ov-subsection-toolbar">
-        <h3 class="ov-subsection-title"><span class="icon">&#128203;</span> All CVs</h3>
-        <input type="search" class="ov-search" id="ov-all-search" placeholder="Search by name or owner…" autocomplete="off">
-        <span class="ov-search-count" id="ov-all-count"></span>
+    </section>
+
+    <!-- Full catalog with inline search. -->
+    <section class="ov-section">
+      <div class="section-head">
+        <span class="eyebrow">Catalog</span>
+        <div class="section-head-row">
+          <h2 class="section-title"><span class="serif">Tous</span> les CVs</h2>
+          <input type="search" class="ov-search" id="ov-all-search" placeholder="Search by name or owner…" autocomplete="off">
+          <span class="ov-search-count mono" id="ov-all-count"></span>
+        </div>
       </div>
       <div id="ov-all-list" class="ov-rank-list"></div>
     </section>
+
   </main>
 </div>
 

@@ -1546,6 +1546,17 @@ function renderCV(data) {
            '</div>';
   }).join('');
 
+  // ── Noteworthy ──
+  var noteworthy = (data.noteworthy||[]).map(function(p) {
+    var headline = '<span>' + (p.name||'') + '</span>' +
+                   (p.subtitle ? '<span class="cv-block-sep">—</span><span class="cv-block-sub">' + p.subtitle + '</span>' : '');
+    return '<div class="cv-block">' +
+             '<div class="cv-block-title">' + headline + '</div>' +
+             (p.description ? '<div class="cv-block-desc">' + descParagraphs(p.description) + '</div>' : '') +
+             tagsHtml(p.tags) +
+           '</div>';
+  }).join('');
+
   // ── Certifications ──
   var certifications = (data.certifications||[]).map(function(c) {
     var meta = [c.subtitle, c.issuer, c.year].filter(Boolean).join(' · ');
@@ -1607,6 +1618,7 @@ function renderCV(data) {
       '<div class="cv-col-side">' +
         (skillsHtml ? '<div class="cv-section"><div class="cv-section-title">Skills</div>' + skillsHtml + '</div>' : '') +
         (projects ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Personal Project</div>' + projects + '</div>' : '') +
+        (noteworthy ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Noteworthy</div>' + noteworthy + '</div>' : '') +
         (certifications ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Certifications</div>' + certifications + '</div>' : '') +
         (education ? '<div class="cv-section"><div class="cv-section-title bullet-diamond">Education</div>' + education + '</div>' : '') +
         (languages ? '<div class="cv-section"><div class="cv-section-title">Languages</div>' + languages + '</div>' : '') +

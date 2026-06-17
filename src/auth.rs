@@ -138,3 +138,76 @@ fn bearer_token(headers: &HeaderMap) -> Option<&str> {
         .ok()?
         .strip_prefix("Bearer ")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
+
+    // Regression guard for the jsonwebtoken 10 upgrade: the crate no longer
+    // enables a crypto backend by default, and the missing-provider error only
+    // surfaces at sign/verify time (not at compile time). A token round-trip
+    // exercises that path, so this fails loudly if the `rust_crypto` (or
+    // `aws_lc_rs`) feature is ever dropped from Cargo.toml again.
+    #[test]
+    fn jwt_round_trip_has_a_crypto_provider() {
+        let secret = b"regression-test-secret";
+        let claims = serde_json::json!({
+            "sub": "user-123",
+            "email": "user@example.com",
+            "exp": 9_999_999_999u64,
+        });
+        let token = encode(
+            &Header::new(Algorithm::HS256),
+            &claims,
+            &EncodingKey::from_secret(secret),
+        )
+        .expect("encoding a JWT must not panic on a missing crypto provider");
+
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.validate_aud = false;
+        let data = decode::<Claims>(&token, &DecodingKey::from_secret(secret), &validation)
+            .expect("decoding a JWT must not panic on a missing crypto provider");
+
+        assert_eq!(data.claims.sub, "user-123");
+    }
+
+    // Exercises the real Keycloak algorithm (RS256) end to end: sign with an RSA
+    // private key, verify with the public key. This proves the chosen crypto
+    // backend actually performs RSA verification — the HS256 test above only
+    // covers HMAC, which is a different code path inside the provider.
+    #[test]
+    fn rs256_sign_and_verify_round_trip() {
+        let priv_pem = include_bytes!("../tests/fixtures/jwt_test_rsa_priv.pem");
+        let pub_pem = include_bytes!("../tests/fixtures/jwt_test_rsa_pub.pem");
+
+        let issuer = "https://keycloak.example.com/realms/lunatech";
+        let claims = serde_json::json!({
+            "sub": "abc-123",
+            "name": "Ada Lovelace",
+            "email": "ada@example.com",
+            "iss": issuer,
+            "aud": "account",
+            "exp": 9_999_999_999u64,
+        });
+        let token = encode(
+            &Header::new(Algorithm::RS256),
+            &claims,
+            &EncodingKey::from_rsa_pem(priv_pem).expect("loading RSA private key"),
+        )
+        .expect("signing an RS256 JWT must not panic on a missing crypto provider");
+
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.set_issuer(&[issuer]);
+        validation.set_audience(&["account"]);
+        let data = decode::<Claims>(
+            &token,
+            &DecodingKey::from_rsa_pem(pub_pem).expect("loading RSA public key"),
+            &validation,
+        )
+        .expect("verifying an RS256 JWT must succeed with the rust_crypto backend");
+
+        assert_eq!(data.claims.sub, "abc-123");
+        assert_eq!(data.claims.name.as_deref(), Some("Ada Lovelace"));
+    }
+}

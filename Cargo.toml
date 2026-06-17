@@ -22,7 +22,10 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
-jsonwebtoken = "10"
+# jsonwebtoken 10 dropped the built-in crypto backend: exactly one of
+# `rust_crypto` / `aws_lc_rs` must be enabled or sign/verify panics at runtime.
+# We pick `rust_crypto` (pure Rust, no C toolchain) — it covers Keycloak's RS256.
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 pulldown-cmark = { version = "0.13", default-features = false }
 regex = "1"
 

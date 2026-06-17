@@ -2822,14 +2822,19 @@ async function exportReviewPdf() {
   }
 }
 
-function applyImprovedYaml() {
+async function applyImprovedYaml() {
   var review = window.__currentReview;
   if (!review || !review.improved_yaml) return;
-  if (!confirm('Replace the editor with the improved YAML? You can still Save or undo by reloading.')) return;
+  if (!confirm('Replace the editor with the improved YAML and save it? The previous version will be overwritten.')) return;
   var ta = document.getElementById('yaml-editor');
   ta.value = review.improved_yaml;
   ta.dispatchEvent(new Event('input'));
-  closeReviewModal();
+  // Persist immediately. Applying used to only fill the editor, leaving the
+  // change unsaved — so the improved YAML never reached the DB and any later
+  // review still ran against the original. Save it through so "apply" means
+  // applied, not just previewed.
+  var ok = await saveCv();
+  if (ok) closeReviewModal();
 }
 
 </script>

@@ -11,7 +11,7 @@ Web app that lets Lunatech recruiters edit consultant CVs as YAML, persists them
 - **Backend**: Rust (edition 2024), `axum` 0.8, `sqlx` 0.8 with Postgres, `tokio`, `tower-http`
 - **PDF**: `typst` 0.14 + `typst-pdf` + `typst-kit` (used as a library, not the CLI)
 - **Frontend**: single static HTML page (`frontend/index.html`) — no framework, no build step. Uses `js-yaml` from a CDN for client-side YAML parsing
-- **DB**: Postgres 16 in Docker (`docker-compose.yml`), exposed on `localhost:5433`
+- **DB**: Postgres 18 in Docker (`docker-compose.yml`), exposed on `localhost:5433`
 - **Migrations**: SQL files in `migrations/`, run by `sqlx::migrate!` at startup
 
 ## Layout

@@ -22,7 +22,7 @@ jobs:
     # as a superuser so #[sqlx::test] can CREATE DATABASE for its scratch DBs.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: cvbuilder
           POSTGRES_PASSWORD: cvbuilder

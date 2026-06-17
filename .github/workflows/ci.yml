@@ -1,0 +1,52 @@
+name: CI
+
+# Run the full test suite on every pull request (and on pushes to main) so a
+# PR cannot be merged unless all tests are green.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: ubuntu-latest
+
+    # Postgres for the sqlx integration tests. Exposed on 5433 to match the
+    # DATABASE_URL baked into .cargo/config.toml. The cvbuilder user is created
+    # as a superuser so #[sqlx::test] can CREATE DATABASE for its scratch DBs.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cvbuilder
+          POSTGRES_PASSWORD: cvbuilder
+          POSTGRES_DB: cvbuilder
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U cvbuilder -d cvbuilder"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://cvbuilder:cvbuilder@localhost:5433/cvbuilder
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --all-targets --locked

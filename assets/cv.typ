@@ -425,6 +425,12 @@
         v(2mm)
       }
 
+      if opt-arr(cv-data, "noteworthy").len() > 0 {
+        section-title("Noteworthy", bullet: "★")
+        for item in cv-data.noteworthy { project-block(item) }
+        v(2mm)
+      }
+
       if opt-arr(cv-data, "certifications").len() > 0 {
         section-title("Certifications", bullet: "★")
         for c in cv-data.certifications { cert-block(c) }

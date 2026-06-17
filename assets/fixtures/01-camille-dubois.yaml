@@ -142,6 +142,24 @@ projects:
       a reference on several client missions.
     tags: [Prometheus, Grafana, YAML]
 
+# ── NOTEWORTHY ───────────────────────────────
+noteworthy:
+  - name: KubeCon Europe 2024
+    subtitle: Speaker
+    description: >
+      Presented "eBPF-powered SLOs at Scale" to an audience of 400+,
+      covering lessons learned from instrumenting multi-tenant
+      Kubernetes clusters without modifying application code.
+    tags: [eBPF, Cilium, Kubernetes, SLOs]
+
+  - name: CNCF TAG Observability
+    subtitle: Contributor
+    description: >
+      Regular contributor to the CNCF Technical Advisory Group on
+      Observability — reviewed proposals, authored a best-practices
+      note on cardinality management in Prometheus-based stacks.
+    tags: [CNCF, OpenTelemetry, Prometheus]
+
 # ── SKILLS ───────────────────────────────────
 skills:
   - group: Cloud Platforms

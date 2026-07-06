@@ -1,6 +1,6 @@
 # Feature Spec: Conferences / Speaker section
 
-> Status: PLANNED
+> Status: DONE
 > Spec folder: specs/001-conferences-section/
 
 ## 1. Mission / Why
@@ -166,7 +166,7 @@ one task (never one renderer alone). See plan.md for file:line edit points.
   that renders the fixture YAML through `pdf::render` and asserts `%PDF-`.
   `verifies: AC7, AC8` `depends_on: T1`
 
-- **T5 — Full-suite regression + doc update.** Run `docker-compose up -d` then
+- [x] **T5 — Full-suite regression + doc update.** Run `docker-compose up -d` then
   `cargo test`; confirm the whole suite (including existing `src/pdf.rs` unit
   tests and `tests/api.rs`) passes and only the intended fixture change is
   present (`git diff`). Append a "Final shape" note to

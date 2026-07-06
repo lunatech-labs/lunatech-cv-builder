@@ -136,3 +136,20 @@ Append-only log of decisions, drift, and critic verdicts.
   `name` (and the unescaped `client_name` at index.html:1603) across all sections
   of `renderCV`. Recommend a dedicated spec/issue (e.g. 002-escape-cv-fields).
   This is a real cross-user stored XSS given the shared-visibility trust model.
+
+## T5 — critic PASS (after one FAIL, fixed)
+
+- Full suite re-run by critic: 51 lib + 32 api (DB-backed, genuinely ran) + 13
+  conferences = 96 tests, 0 failures. No regression. AC8 met.
+- Cumulative branch diff touches only: assets/cv.typ, frontend/index.html,
+  tests/conferences.rs, assets/fixtures/01-camille-dubois.yaml, docker-compose.yml
+  (approved infra), docs/, specs/. src/*, migrations/, other fixtures, reviewer
+  skill all unchanged vs main.
+- First critic pass FAILED: T5's authored doc prose used em dashes, violating the
+  org no-em-dash rule. Fixed: de-em-dashed all authored prose in the doc (kept
+  only the code-fence literals: fixture `subtitle: Workshop — ...` lines and the
+  real `<span class="cv-block-sep">—</span>` JS snippet). Re-verified PASS.
+- Doc "Final shape (as built)" section records the three keys, defaults,
+  placement behaviour, MOVE decision, no-serialiser-change, and test locations.
+
+## DONE — all tasks complete (T1-T5 critic PASS)

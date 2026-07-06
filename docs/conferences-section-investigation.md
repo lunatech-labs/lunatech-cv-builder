@@ -74,7 +74,7 @@ Transformation notes:
   card (rather than inventing `conf 1` / `conf 2` keys).
 - The workshop/talk title moves to `subtitle` (the italic sub-line the renderers
   show next to the name).
-- Participant counts stay in `description` — there is no dedicated field for them.
+- Participant counts stay in `description`: there is no dedicated field for them.
 
 If you add a *dedicated* `conferences:` section instead of reusing `noteworthy`,
 use the exact same per-entry shape (`name` / `subtitle` / `description` / `tags`)
@@ -82,7 +82,7 @@ and wire the two renderers as described below.
 
 ## How sections work across the stack
 
-Sections are all optional and independent — each renderer guards on the key being
+Sections are all optional and independent. Each renderer guards on the key being
 present, so an absent section simply does not render (see the `noteworthy` guards
 below).
 
@@ -107,12 +107,12 @@ below).
       tags: [eBPF, Cilium, Kubernetes, SLOs]
   ```
 
-### 2. HTML preview — `frontend/index.html`
+### 2. HTML preview (`frontend/index.html`)
 
 `renderCV(data)` builds each section into a string variable, then concatenates
 the ones that are non-empty into `root.innerHTML`.
 
-- The `noteworthy` map block to copy — `frontend/index.html:1550`:
+- The `noteworthy` map block to copy (`frontend/index.html:1550`):
 
   ```js
   var noteworthy = (data.noteworthy||[]).map(function(p) {
@@ -126,7 +126,7 @@ the ones that are non-empty into `root.innerHTML`.
   }).join('');
   ```
 
-- The side-column injection line to copy — `frontend/index.html:1621`:
+- The side-column injection line to copy (`frontend/index.html:1621`):
 
   ```js
   (noteworthy ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Noteworthy</div>' + noteworthy + '</div>' : '') +
@@ -141,14 +141,14 @@ To add conferences: add a `var conferences = (data.conferences||[]).map(...)`
 block (copy `1550`) and one injection line in the side column (copy `1621`),
 pointing the section title at "Conferences".
 
-### 3. Typst PDF template — `assets/cv.typ`
+### 3. Typst PDF template (`assets/cv.typ`)
 
 Same shape: a `project-block` helper renders name/subtitle/description/tags, and
 each side-column section is an `if opt-arr(...).len() > 0 { ... }` guard.
 
-- The shared helper — `assets/cv.typ:331` (`project-block`, reads `name`,
+- The shared helper (`assets/cv.typ:331`) (`project-block`, reads `name`,
   `subtitle`, `description`, `tags`).
-- The `noteworthy` render to copy — `assets/cv.typ:428`:
+- The `noteworthy` render to copy (`assets/cv.typ:428`):
 
   ```typst
   if opt-arr(cv-data, "noteworthy").len() > 0 {
@@ -162,29 +162,29 @@ each side-column section is an `if opt-arr(...).len() > 0 { ... }` guard.
   (`assets/cv.typ:405`–`457`).
 
 To add conferences: paste a copy of `428`–`432` into the side column, pointing
-at `cv-data.conferences` and titled "Conferences". No new helper needed —
+at `cv-data.conferences` and titled "Conferences". No new helper needed,
 `project-block` already handles the fields.
 
 > Two-renderer rule (`CLAUDE.md`): the HTML preview and the Typst template are
 > independent renderers of the same schema. Any visual change must land in both.
 
-### 4. Rust serialiser — `src/pdf.rs` (no change needed)
+### 4. Rust serialiser (`src/pdf.rs`, no change needed)
 
 `render()` (`src/pdf.rs:105`) parses the YAML into `serde_yaml::Value`, then
 `write_value()` (`src/pdf.rs:130`) recursively serialises **every** mapping
-key/value into a Typst dict literal — the Mapping arm iterates all pairs with no
+key/value into a Typst dict literal. The Mapping arm iterates all pairs with no
 hardcoded key names. The only special-cased key is `theme`. A new `conferences:`
 key therefore appears automatically as `cv-data.conferences` in the generated
 Typst source with no serialiser edit.
 
-### 5. Seniority scoring — `src/seniority.rs` (optional change)
+### 5. Seniority scoring (`src/seniority.rs`, optional change)
 
 `score_yaml()` (`src/seniority.rs:95`) only reads `experiences`, `projects`, and
 `title`. It does not read `noteworthy` or any other side-column section.
 
 `score_external()` (`src/seniority.rs:409`) builds a text blob from **project**
 names/descriptions and **experience** descriptions only, then counts hits against
-`EXTERNAL_KEYWORDS` — which already includes `"conference"`, `"speaker"`,
+`EXTERNAL_KEYWORDS`, which already includes `"conference"`, `"speaker"`,
 `"talk"`, `"keynote"`, `"presented"`, etc.
 
 Implication: a new `conferences` section will **not** boost the external-signals
@@ -194,11 +194,11 @@ If conferences should count, add a loop over the `conferences` sequence in
 `score_external` mirroring the projects loop at `src/seniority.rs:414`. This is
 the only Rust behavioural change worth considering, and it is optional.
 
-### 6. cv-reviewer skill — `assets/skills/cv-reviewer/SKILL.md` (no change needed)
+### 6. cv-reviewer skill (`assets/skills/cv-reviewer/SKILL.md`, no change needed)
 
 The rubric does not mention conferences, speaking, or talks. Its 8 criteria are
 project/mission-focused. A new `conferences` section requires no skill change to
-function — the reviewer will simply ignore it. If we want Claude to critique
+function, the reviewer will simply ignore it. If we want Claude to critique
 speaking history, the skill would need a new criterion.
 
 ## Summary
@@ -208,10 +208,75 @@ speaking history, the skill would need a new criterion.
 | YAML | fixtures / `assets/cv-empty.yaml` | Optional: add a `conferences:` example |
 | HTML preview | `frontend/index.html:1550`, `:1621` | Add a map block + one injection line (copy `noteworthy`) |
 | Typst PDF | `assets/cv.typ:428` | Add one `if/for` block (reuse `project-block`) |
-| Rust serialiser | `src/pdf.rs` | None — generic pass-through |
-| Seniority | `src/seniority.rs:409` | Optional — only if conferences should score |
+| Rust serialiser | `src/pdf.rs` | None (generic pass-through) |
+| Seniority | `src/seniority.rs:409` | Optional, only if conferences should score |
 | Reviewer skill | `assets/skills/cv-reviewer/SKILL.md` | None |
 
 Cheapest correct implementation: model `conferences` exactly on `noteworthy`
 (`name` / `subtitle` / `description` / `tags`), touching only
 `frontend/index.html` and `assets/cv.typ`.
+
+## Final shape (as built)
+
+This section records what was actually implemented under spec
+`specs/001-conferences-section/`, which slightly extends the investigation above
+(it adds an optional main-column placement and a configurable title). Where an
+earlier section assumed a side-only mini section, treat this note as
+authoritative.
+
+### Keys
+
+Three top-level YAML keys:
+
+- `conferences`: a list of entries. Each entry has the same shape as a
+  `noteworthy` entry: `name`, optional `subtitle`, optional `description`,
+  optional `tags`. No new field names were introduced.
+- `conferences_placement`: optional string, `main` or `side`. Default `side`.
+- `conferences_title`: optional string, section heading. Default "Conferences".
+
+### Placement behaviour
+
+- Exactly `main` (case-sensitive) renders conferences as a full section in the
+  MAIN column, styled like Experience.
+- Anything else (absent, empty, or any unrecognised value such as `bogus`)
+  renders conferences as a compact mini section in the SIDE column, styled like
+  Noteworthy. `side` is therefore both the default and the safe fallback.
+- If the `conferences` list is absent or empty, nothing renders in either
+  column (no empty heading, no error), and every other section is unchanged.
+
+### Dubois fixture MOVE decision
+
+The four talk/workshop entries were MOVED out of the Camille Dubois fixture's
+`noteworthy` block into the new `conferences` block (moved, not duplicated, so
+nothing displays twice). The KubeCon Speaker entry and the CNCF Contributor
+entry stayed in `noteworthy`. The fixture uses side placement with a custom
+title (`conferences_title: Speaking & Workshops`), so it demonstrates both the
+default side placement and the title override.
+
+### What did NOT change
+
+No `src/pdf.rs` (serialiser) change was needed. The YAML to Typst pass-through
+is generic, so the three new keys reach the Typst source as
+`cv-data.conferences`, `cv-data.conferences_placement`, and
+`cv-data.conferences_title` with no serialiser edit. Seniority scoring
+(`src/seniority.rs`) and the cv-reviewer skill were also left untouched (see the
+out-of-scope list in the spec).
+
+### Tests
+
+Automated coverage lives in `tests/conferences.rs`, exercising the Typst/PDF
+path through the production seam `cv_builder::pdf::render(yaml, theme)`: side
+default, `main` placement, `bogus` and empty placement fallback, custom title
+(side and main), full entry, name-only entry, absent key, empty list, and the
+Dubois fixture. Each case asserts the output starts with `%PDF-`. The HTML
+renderer (`frontend/index.html`) has no automated test (it is a single static
+file with no JS harness), so its two placements, title, fallback, and
+absent-section behaviour were verified manually in the browser preview.
+
+### Full-suite regression (T5)
+
+`cargo test` (Postgres up) passes with no failures and no regressions: 51
+lib/unit tests (including the `src/pdf.rs` tests), 32 `tests/api.rs` integration
+tests, and 13 `tests/conferences.rs` tests, for 96 total. The only working-tree
+change from this feature is the intended edits to `assets/cv.typ`,
+`frontend/index.html`, the Dubois fixture, and `tests/conferences.rs`.

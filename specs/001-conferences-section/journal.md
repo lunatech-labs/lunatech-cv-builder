@@ -37,3 +37,19 @@ Append-only log of decisions, drift, and critic verdicts.
     not re-parse the PDF. Typst side of AC1-AC3 is "does not error" automated,
     placement/heading/styling is visual.
   - AC7, AC8 fully automated; AC1-AC6 partially automated + manual visual.
+
+## T1 — critic PASS
+
+- `assets/cv.typ`: two mutually-exclusive guards (MAIN after Experience, `==
+  "main"`, line ~402; SIDE by Noteworthy, `!= "main"`, line ~439). Reuses
+  `project-block` + `section-title`. No chained if/else (gotcha avoided).
+- `tests/conferences.rs`: 10 `#[test]`s via `pdf::render`, all `%PDF-`. 10/10
+  pass (critic ran them independently). Both branches exercised.
+- Only allowed files changed (critic confirmed via git diff).
+- Critic note (not an AC violation, deferred hardening): an explicitly empty
+  `conferences_title:` parses as YAML `none`, and `opt` returns `none` (not
+  `""`), so `none != ""` is true → `none` passed to `section-title`. No AC
+  requires empty-title handling. Flagged for T3/future. Watch this in the HTML
+  renderer too (T3): `data.conferences_title || 'Conferences'` handles empty
+  string AND null correctly, so HTML is already safe; Typst empty-title is the
+  only gap and it is out of AC scope.

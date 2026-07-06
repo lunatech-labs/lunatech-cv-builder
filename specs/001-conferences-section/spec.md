@@ -120,7 +120,7 @@ Sequential today; `depends_on` records true dependencies for later parallelism.
 Two-renderer rule: each visual behaviour is delivered in BOTH renderers within
 one task (never one renderer alone). See plan.md for file:line edit points.
 
-- **T1 — Typst side + main placement with title, plus automated PDF test.**
+- [x] **T1 — Typst side + main placement with title, plus automated PDF test.**
   Edit `assets/cv.typ`: add the SIDE-column conferences guard (next to
   Noteworthy, ~line 428) and the MAIN-column conferences guard (after the
   Experience loop, ~line 401), each reading `conferences_placement`

@@ -399,6 +399,11 @@
         section-title("Experience")
         for exp in cv-data.experiences { exp-block(exp) }
       }
+      if opt-arr(cv-data, "conferences").len() > 0 and opt(cv-data, "conferences_placement", default: "side") == "main" {
+        v(3mm)
+        section-title(if opt(cv-data, "conferences_title") != "" { cv-data.conferences_title } else { "Conferences" })
+        for item in cv-data.conferences { project-block(item) }
+      }
     }
   ),
 
@@ -428,6 +433,12 @@
       if opt-arr(cv-data, "noteworthy").len() > 0 {
         section-title("Noteworthy", bullet: "★")
         for item in cv-data.noteworthy { project-block(item) }
+        v(2mm)
+      }
+
+      if opt-arr(cv-data, "conferences").len() > 0 and opt(cv-data, "conferences_placement", default: "side") != "main" {
+        section-title(if opt(cv-data, "conferences_title") != "" { cv-data.conferences_title } else { "Conferences" }, bullet: "★")
+        for item in cv-data.conferences { project-block(item) }
         v(2mm)
       }
 

@@ -53,3 +53,15 @@ Append-only log of decisions, drift, and critic verdicts.
   renderer too (T3): `data.conferences_title || 'Conferences'` handles empty
   string AND null correctly, so HTML is already safe; Typst empty-title is the
   only gap and it is out of AC scope.
+
+## T2 — critic PASS
+
+- `tests/conferences.rs`: +2 tests (`no_conferences_key_renders_unchanged`
+  with other sections present, `empty_conferences_list_renders_unchanged`).
+  12/12 pass (critic re-ran). No template change needed/made.
+- Red-capability real: absent-key test would fail if guard regressed, because
+  the guard body does a direct `cv-data.conferences` access that errors on a
+  missing key. `opt-arr` (cv.typ:97) returns `()` for absent key. Empty-list
+  test is the weaker complementary boundary case.
+- AC4 Typst half covered; "skipped branch cannot emit a heading" is a sound
+  proxy for "no empty heading". HTML half remains for T3.

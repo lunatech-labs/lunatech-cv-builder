@@ -187,4 +187,65 @@ conferences:
     assert_is_pdf(&bytes, "name-only entry (main)");
 }
 
+/// AC4 (absent section): a CV YAML with NO `conferences` key renders unchanged.
+/// No conferences heading appears in either column and all other sections
+/// (summary, experiences, skills, noteworthy, certifications) render without a
+/// compile error.
+///
+/// Red-capable: both conferences guards in `assets/cv.typ` gate on
+/// `opt-arr(cv-data, "conferences").len() > 0`. If that guard were removed so a
+/// branch ran unconditionally, the `for item in cv-data.conferences` loop would
+/// access a key that does not exist on `cv-data` and Typst would raise a compile
+/// error — `render` would return `Err` and this `.expect(...)` would panic. So
+/// this pins AC4 rather than passing vacuously.
+#[test]
+fn no_conferences_key_renders_unchanged() {
+    let yaml = r#"
+name: Camille Dubois
+title: Senior Platform Engineer
+summary: Builds and operates distributed platforms.
+experiences:
+  - company: Lunatech
+    role: Platform Engineer
+    period: 2021 - present
+    description: Led the migration to Kubernetes.
+    technologies: [Rust, Kubernetes, Postgres]
+skills:
+  - name: Backend
+    items:
+      - name: Rust
+        level: 5
+      - name: Scala
+        level: 4
+noteworthy:
+  - name: KubeCon Speaker
+    subtitle: 2023
+certifications:
+  - name: CKA
+    subtitle: Certified Kubernetes Administrator
+"#;
+    let bytes = render(yaml, "lunatech").expect("CV with no conferences key should render");
+    assert_is_pdf(&bytes, "no conferences key");
+}
+
+/// AC4 (absent section): an explicit empty `conferences: []` list renders
+/// nothing and does not error. The `opt-arr(...).len() > 0` guard treats an
+/// empty list the same as an absent key, so neither column emits a heading.
+#[test]
+fn empty_conferences_list_renders_unchanged() {
+    let yaml = r#"
+name: Camille Dubois
+title: Senior Platform Engineer
+summary: Builds and operates distributed platforms.
+experiences:
+  - company: Lunatech
+    role: Platform Engineer
+    period: 2021 - present
+    description: Led the migration to Kubernetes.
+conferences: []
+"#;
+    let bytes = render(yaml, "lunatech").expect("CV with empty conferences list should render");
+    assert_is_pdf(&bytes, "empty conferences list");
+}
+
 use cv_builder::pdf::render;

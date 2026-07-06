@@ -134,7 +134,7 @@ one task (never one renderer alone). See plan.md for file:line edit points.
   (Typst path; column/heading placement is compile-verified, visual detail in
   T3). `depends_on: none`
 
-- **T2 — Typst absent-section safety.** Confirm (and add a test case in
+- [x] **T2 — Typst absent-section safety.** Confirm (and add a test case in
   `tests/conferences.rs`) that YAML with NO `conferences` key renders unchanged
   via `pdf::render` (no empty heading, no compile error). No new template code
   expected beyond T1's `opt-arr(...).len() > 0` guards; this task pins the

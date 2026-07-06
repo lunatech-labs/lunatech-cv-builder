@@ -22,3 +22,18 @@ Append-only log of decisions, drift, and critic verdicts.
   investigation doc (`docs/conferences-section-investigation.md`) and the four
   conference entries currently in the Dubois fixture's `noteworthy` block (they
   will be moved into `conferences` during IMPLEMENT).
+
+## Gate 2 — PLANNED (approved)
+
+- plan.md written; spec.md section 6 filled with 5 tasks (T1-T5).
+- Approach: reuse existing block helpers (noteworthy/project-block), no
+  src/pdf.rs change, placement seam collapses absent/empty/bogus → side.
+- User decision at Gate 2: fixture demonstrates `conferences_placement: side`
+  (the default variant), not `main`.
+- Coverage limitation acknowledged by user at Gate 2:
+  - HTML renderer has NO automated test harness (single static file, no build
+    step) — HTML half of AC1-AC6 is manual-browser verification only.
+  - PDF tests assert `%PDF-` (compiles + reached), not visual correctness; we do
+    not re-parse the PDF. Typst side of AC1-AC3 is "does not error" automated,
+    placement/heading/styling is visual.
+  - AC7, AC8 fully automated; AC1-AC6 partially automated + manual visual.

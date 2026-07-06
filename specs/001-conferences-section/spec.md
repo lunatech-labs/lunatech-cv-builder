@@ -1,6 +1,6 @@
 # Feature Spec: Conferences / Speaker section
 
-> Status: SPECIFIED
+> Status: PLANNED
 > Spec folder: specs/001-conferences-section/
 
 ## 1. Mission / Why
@@ -116,7 +116,63 @@ and no existing CV changes.
 
 ## 6. Task Breakdown
 
-<!-- Filled in by sdd-planner, approved by the user at Gate 2. -->
+Sequential today; `depends_on` records true dependencies for later parallelism.
+Two-renderer rule: each visual behaviour is delivered in BOTH renderers within
+one task (never one renderer alone). See plan.md for file:line edit points.
+
+- **T1 — Typst side + main placement with title, plus automated PDF test.**
+  Edit `assets/cv.typ`: add the SIDE-column conferences guard (next to
+  Noteworthy, ~line 428) and the MAIN-column conferences guard (after the
+  Experience loop, ~line 401), each reading `conferences_placement`
+  (default/fallback `side`) and `conferences_title` (default "Conferences"),
+  reusing `project-block` + `section-title`. Create `tests/conferences.rs` that
+  calls `cv_builder::pdf::render(yaml, "lunatech")` for: no-placement (side),
+  `placement: main`, `placement: bogus`, empty placement, custom
+  `conferences_title`, a full entry, and a name-only entry — each asserting the
+  output starts with `%PDF-`. Verified at the production seam (`pdf::render`, the
+  same fn the PDF handler calls). `verifies: AC1, AC2, AC3, AC5, AC6, AC7`
+  (Typst path; column/heading placement is compile-verified, visual detail in
+  T3). `depends_on: none`
+
+- **T2 — Typst absent-section safety.** Confirm (and add a test case in
+  `tests/conferences.rs`) that YAML with NO `conferences` key renders unchanged
+  via `pdf::render` (no empty heading, no compile error). No new template code
+  expected beyond T1's `opt-arr(...).len() > 0` guards; this task pins the
+  behaviour with a red-capable test. `verifies: AC4` (Typst path).
+  `depends_on: T1`
+
+- **T3 — HTML renderer: both placements, title, fallback, absent.** Edit
+  `frontend/index.html` `renderCV`: add the `conferences` map block (copy the
+  `noteworthy` block ~line 1550), read `conferences_title` and
+  `conferences_placement` (anything not exactly `'main'` → side), add the
+  main-column injection after Experience (~line 1616) and the side-column
+  injection near Noteworthy (~line 1621), each gated so exactly one column
+  renders. Verify by loading a CV in the browser preview: side default with
+  "Conferences" heading (AC1), `main` in main column styled like Experience
+  (AC2), custom title (AC3), no `conferences` key → nothing renders, no empty
+  heading, other sections intact (AC4), `bogus`/empty placement → side (AC5),
+  four-field entry shows all four and name-only entry renders clean (AC6).
+  Manual visual verification only — no JS test harness exists (see plan.md
+  coverage limitations). `verifies: AC1, AC2, AC3, AC4, AC5, AC6` (HTML path).
+  `depends_on: none`
+
+- **T4 — Move conference entries in the Dubois fixture.** Edit
+  `assets/fixtures/01-camille-dubois.yaml`: check `git diff` first (file is
+  already dirty at branch start), then move the four workshop/talk entries out of
+  `noteworthy` (~lines 163-191) into a new top-level `conferences:` block
+  (after `noteworthy`, before `skills`), leaving KubeCon Speaker + CNCF
+  Contributor in `noteworthy`. Add `conferences_placement:` (recommend `side`)
+  and optionally `conferences_title:`. Extend `tests/conferences.rs` with a case
+  that renders the fixture YAML through `pdf::render` and asserts `%PDF-`.
+  `verifies: AC7, AC8` `depends_on: T1`
+
+- **T5 — Full-suite regression + doc update.** Run `docker-compose up -d` then
+  `cargo test`; confirm the whole suite (including existing `src/pdf.rs` unit
+  tests and `tests/api.rs`) passes and only the intended fixture change is
+  present (`git diff`). Append a "Final shape" note to
+  `docs/conferences-section-investigation.md` recording the chosen keys, the
+  MOVE decision, and the side default/fallback. `verifies: AC8`
+  `depends_on: T1, T2, T3, T4`
 
 ## 7. Open Questions
 

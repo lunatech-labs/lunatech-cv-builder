@@ -156,7 +156,7 @@ one task (never one renderer alone). See plan.md for file:line edit points.
   coverage limitations). `verifies: AC1, AC2, AC3, AC4, AC5, AC6` (HTML path).
   `depends_on: none`
 
-- **T4 — Move conference entries in the Dubois fixture.** Edit
+- [x] **T4 — Move conference entries in the Dubois fixture.** Edit
   `assets/fixtures/01-camille-dubois.yaml`: check `git diff` first (file is
   already dirty at branch start), then move the four workshop/talk entries out of
   `noteworthy` (~lines 163-191) into a new top-level `conferences:` block

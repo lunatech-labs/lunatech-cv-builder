@@ -248,4 +248,15 @@ conferences: []
     assert_is_pdf(&bytes, "empty conferences list");
 }
 
+/// AC7 / AC8 (fixture compiles): the real Camille Dubois fixture, after the four
+/// workshop/talk entries were moved out of `noteworthy` into a `conferences`
+/// section, renders through the production seam without a Typst compile error.
+/// The fixture is pulled in at compile time so this test tracks the shipped file.
+#[test]
+fn dubois_fixture_with_conferences_renders() {
+    let yaml = include_str!("../assets/fixtures/01-camille-dubois.yaml");
+    let bytes = render(yaml, "lunatech").expect("Dubois fixture with conferences should render");
+    assert_is_pdf(&bytes, "Dubois fixture with conferences");
+}
+
 use cv_builder::pdf::render;

@@ -160,6 +160,12 @@ noteworthy:
       note on cardinality management in Prometheus-based stacks.
     tags: [CNCF, OpenTelemetry, Prometheus]
 
+# ── CONFERENCES & WORKSHOPS ──────────────────
+# Rendered in the side column by default. Set conferences_placement to main
+# to show it as a full main-column section styled like Experience.
+conferences_placement: side
+conferences_title: Speaking & Workshops
+conferences:
   - name: DevQuest Niort 2026 / Agile Pays Basque 2025
     subtitle: Workshop — Agile Product Delivery
     description: >

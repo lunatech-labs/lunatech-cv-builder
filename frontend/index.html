@@ -643,6 +643,38 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── PDF preview modal ──────────────────────────────────────────────
+   Reuses the review-modal slide-over mechanics (`.review-modal-bg`,
+   `.visible`), but the panel is wider so the A4 pages are readable and
+   its body is a full-bleed <iframe> pointed at a blob: URL of the real
+   multi-page PDF (browser-native viewer, so every page is scrollable).
+   No PDF library is needed: the /pdf route already serves the bytes
+   inline as application/pdf. */
+.pdf-modal {
+  width: min(920px, 96vw);
+  max-height: 100vh; height: 100vh;
+  display: flex; flex-direction: column;
+  background: var(--ui-surface); color: var(--ui-text);
+  border-left: 1px solid var(--ui-border);
+  box-shadow: -24px 0 60px -30px rgba(15, 15, 12, .25);
+  transform: translateX(100%);
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1);
+}
+.review-modal-bg.visible .pdf-modal { transform: translateX(0); }
+.pdf-modal-body {
+  flex: 1; position: relative;
+  background: var(--ui-bg-2);
+  overflow: hidden;
+}
+.pdf-modal-body iframe {
+  width: 100%; height: 100%; border: 0; display: block;
+}
+.pdf-modal-loading {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; color: var(--ui-muted); font-size: 13px;
+}
+
 /* ── Batch review (admin) — section header, modal progress bar/lists ── */
 .ov-section-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .ov-section-head .ov-section-title { margin: 0; }
@@ -1309,6 +1341,7 @@ body {
     <button class="btn btn-ghost" onclick="copyYaml()">Copy YAML</button>
     <button class="btn btn-ghost btn-danger" data-owner-only onclick="deleteCv()" title="Delete this CV">Delete</button>
     <button class="btn btn-accent" id="btn-review" data-owner-only onclick="runReview()" title="Save the CV, then ask Claude to review it">Review</button>
+    <button class="btn btn-ghost" onclick="previewPDF()" title="Preview the rendered PDF (all pages) in the browser">Preview PDF</button>
     <button class="btn btn-primary" onclick="exportPDF()">&#8595; Export PDF</button>
   </div>
 </header>
@@ -1788,6 +1821,61 @@ async function exportPDF() {
     if (typeof data.name === 'string') name = data.name;
   } catch (_) {}
   await downloadCvPdf(currentCvId, name, null, currentTheme);
+}
+
+// Blob URL currently shown in the preview iframe, so we can revoke it on
+// close (and before loading a fresh one) and never leak object URLs.
+var pdfPreviewBlobUrl = null;
+
+// Preview the rendered PDF (all pages) in-browser without downloading. Saves
+// first when I have write access (same rule as exportPDF), then fetches the
+// PDF through the auth-wrapped fetch (so the Bearer token lands, exactly like
+// downloadCvPdf) and points the modal's <iframe> at a blob: URL. The browser's
+// native PDF viewer renders every page, scrollable.
+async function previewPDF() {
+  var canWrite = currentCvId == null || currentOwnerId == null
+              || currentOwnerId === meId || meIsAdmin;
+  if (canWrite) {
+    var ok = await saveCv();
+    if (!ok || !currentCvId) return;
+  } else if (!currentCvId) {
+    return;
+  }
+  var frame = document.getElementById('pdf-preview-frame');
+  var loading = document.getElementById('pdf-preview-loading');
+  // Open the modal immediately with the spinner, then swap in the PDF.
+  frame.style.display = 'none';
+  loading.style.display = 'flex';
+  document.getElementById('pdf-preview-modal-bg').classList.add('visible');
+  try {
+    var t = currentTheme || 'lunatech';
+    var res = await fetch('/api/cvs/' + currentCvId + '/pdf?theme=' + encodeURIComponent(t));
+    if (!res.ok) throw new Error(await res.text());
+    var blob = await res.blob();
+    if (pdfPreviewBlobUrl) URL.revokeObjectURL(pdfPreviewBlobUrl);
+    pdfPreviewBlobUrl = URL.createObjectURL(blob);
+    frame.src = pdfPreviewBlobUrl;
+    frame.style.display = 'block';
+    loading.style.display = 'none';
+  } catch (e) {
+    loading.textContent = 'Preview failed: ' + e.message;
+  }
+}
+
+function closePdfPreview() {
+  document.getElementById('pdf-preview-modal-bg').classList.remove('visible');
+  var frame = document.getElementById('pdf-preview-frame');
+  // Detach the iframe and revoke the blob so we don't leak object URLs or
+  // keep a stale render around for the next open.
+  frame.src = 'about:blank';
+  frame.style.display = 'none';
+  if (pdfPreviewBlobUrl) {
+    URL.revokeObjectURL(pdfPreviewBlobUrl);
+    pdfPreviewBlobUrl = null;
+  }
+  var loading = document.getElementById('pdf-preview-loading');
+  loading.textContent = 'Rendering PDF...';
+  loading.style.display = 'flex';
 }
 
 function copyYaml() {
@@ -2874,6 +2962,24 @@ async function applyImprovedYaml() {
       <button class="btn btn-ghost" id="review-modal-pdfbtn" onclick="exportReviewPdf()">&#8595; Export PDF</button>
       <button class="btn btn-ghost" onclick="runReview()">Re-run</button>
       <button class="btn btn-primary" onclick="closeReviewModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF preview modal: a slide-over holding an <iframe> pointed at a blob:
+     URL of the real multi-page PDF (browser-native viewer). Fetched through
+     the auth-wrapped fetch so the Bearer token lands, same as downloadCvPdf. -->
+<div class="review-modal-bg" id="pdf-preview-modal-bg" onclick="if(event.target===this) closePdfPreview()">
+  <div class="pdf-modal">
+    <div class="review-modal-header">
+      <span class="review-modal-title">PDF Preview</span>
+      <div class="review-modal-meta">
+        <button class="btn btn-ghost" onclick="closePdfPreview()">Close</button>
+      </div>
+    </div>
+    <div class="pdf-modal-body" id="pdf-preview-body">
+      <div class="pdf-modal-loading" id="pdf-preview-loading"><span class="review-spinner"></span>Rendering PDF...</div>
+      <iframe id="pdf-preview-frame" title="CV PDF preview" style="display:none"></iframe>
     </div>
   </div>
 </div>

@@ -153,3 +153,92 @@ Append-only log of decisions, drift, and critic verdicts.
   placement behaviour, MOVE decision, no-serialiser-change, and test locations.
 
 ## DONE — all tasks complete (T1-T5 critic PASS)
+
+## Post-DONE addition: in-browser PDF preview (T6)
+
+### Why (user decision)
+
+- After the conferences feature was DONE, the user wanted to visually verify the
+  new render across ALL pages of a CV before opening the PR, WITHOUT having to
+  download a PDF file each time. The existing UI only had "Export PDF", which
+  forces a file download (fetch to blob to synthetic `<a download>` click), so
+  checking the render meant a download per iteration.
+- Investigation confirmed the cheapest correct path: the `/api/cvs/{id}/pdf`
+  route already serves `Content-Disposition: inline` (src/handlers.rs:213) and
+  the Typst template already produces true multi-page PDFs, so the browser's
+  native viewer can show every page. No backend change and no PDF library are
+  needed. The only real constraint is auth: an `<iframe src="/api/...">` cannot
+  carry the Bearer JWT, so we reuse the SAME fetch-to-blob pattern that
+  `downloadCvPdf` already uses (index.html:2195) and point the iframe at the
+  `blob:` URL instead of triggering a download.
+- USER DECISIONS:
+  - UI = modal viewer: a "Preview PDF" button next to "Export PDF" opens a
+    slide-over modal (cloned from the review-modal pattern) containing an
+    `<iframe>` of the full multi-page PDF. Editor stays visible behind it.
+  - Scope = add to THIS branch (spec/001-conferences-section); ship conferences
+    and the preview together in one PR.
+- Motivation is explicitly a testing/QA affordance for the conferences render
+  (see the modal viewer so all pages are visible in-browser), but it is a
+  general feature that works for any CV.
+
+### Scope (T6)
+
+- Frontend-only (`frontend/index.html`): CSS for a `.pdf-modal` (reusing
+  `.review-modal-bg` / `.visible` mechanics, wider panel, full-bleed iframe),
+  modal markup with an `<iframe>`, a `previewPDF()` handler
+  (save-if-writable then fetch-to-blob then set iframe src then open) and
+  `closePdfPreview()` (revoke the blob URL and clear the iframe on close), and a
+  "Preview PDF" trigger button in the editor toolbar.
+- NO backend change (route already serves inline), NO new dependency (browser
+  native PDF viewer), NO change to the conferences feature.
+
+### Acceptance criteria (T6)
+
+- [x] T6-AC1: A "Preview PDF" control is present in the editor toolbar and opens
+  a modal showing the CV's PDF rendered in-browser (no file download triggered).
+- [x] T6-AC2: The preview shows ALL pages of a multi-page CV (scrollable), not
+  just page one, and reflects the currently selected theme.
+- [x] T6-AC3: Closing the modal revokes the object URL (no blob leak) and clears
+  the iframe; reopening works repeatedly.
+- [x] T6-AC4: Auth-safe — the PDF is fetched through the auth-wrapped fetch (same
+  as downloadCvPdf), so it works in Keycloak mode; no plain `<iframe src=/api>`.
+- [x] T6-AC5: No regression — existing Export PDF still downloads; the full test
+  suite still passes (frontend is a single static file, so JS behaviour is
+  verified by driving the running dev server, not an automated JS test).
+
+### Verification plan (critic MUST verify)
+
+- This addition goes through the SAME critic gate as T1-T5, adapted for a
+  frontend-only change with no JS test harness:
+  1. Diff scope: only `frontend/index.html` (+ this journal / spec) changed; no
+     backend, no new CDN script tag, no dependency.
+  2. Live drive against the running dev server (currently on 127.0.0.1:3001,
+     alt PG on 5434 per the user's port request): open the modal on a CV,
+     confirm the PDF renders in the iframe, confirm multi-page scroll, confirm
+     the correct theme, confirm NO download is triggered, confirm close revokes
+     the blob URL (e.g. iframe src cleared / performance.getEntriesByType or a
+     re-open works), confirm Export PDF still downloads.
+  3. Regression: `cargo test` still green (unchanged; no backend touched).
+  4. Report PASS/FAIL with evidence (screenshots or DOM/network observations).
+
+### T6 — critic PASS (verified live in headless Chrome)
+
+- Stage A (diff/code): only `frontend/index.html` (+ journal) changed. No
+  backend, no new CDN `<script src=>`, no dependency. `previewPDF()` uses the
+  auth-wrapped `fetch('/api/cvs/{id}/pdf?theme='+currentTheme)` (same path as
+  downloadCvPdf), consumes `res.blob()` and sets `iframe.src` to a blob URL (no
+  `<a download>`, no `<iframe src="/api">`). `closePdfPreview()` revokes the blob
+  and resets to about:blank. Save-if-writable guard matches exportPDF.
+- Stage B (live drive): clicked the real "Preview PDF" button on Camille Dubois.
+  Modal opened with `.visible`; iframe src = `blob:...`; NO download fired
+  (`downloadWillBegin` never triggered). Blob is `application/pdf`, `%PDF-`,
+  198 KB, `/Count 2` (2 pages). Chrome native viewer rendered both pages ("1 / 2"
+  pager + thumbnail rail), showing the branded CV incl. the conferences render.
+  On close: iframe = about:blank, old blob URL revoked (`fetch(oldUrl)` rejects),
+  tracker nulled; re-open produced a fresh, different blob URL (no stale state).
+  Export PDF button + exportPDF/downloadCvPdf still present/functions.
+- Stage C (regression): `cargo test --test conferences` 13/13 pass; no backend
+  touched.
+- All T6-AC1..AC5 satisfied.
+
+## DONE — conferences (T1-T5) + in-browser PDF preview (T6), all critic PASS

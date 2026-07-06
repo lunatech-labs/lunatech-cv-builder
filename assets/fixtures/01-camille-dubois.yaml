@@ -160,6 +160,36 @@ noteworthy:
       note on cardinality management in Prometheus-based stacks.
     tags: [CNCF, OpenTelemetry, Prometheus]
 
+  - name: DevQuest Niort 2026 / Agile Pays Basque 2025
+    subtitle: Workshop — Agile Product Delivery
+    description: >
+      Hands-on session (10-30 participants) focusing on the role of the
+      PO, backlog refinement, and bridging the gap between vision and
+      technical execution.
+    tags: [Agile, Product Ownership, Facilitation]
+
+  - name: DevQuest Niort 2025 / Pix Event 2024
+    subtitle: Workshop — Agile Transformation
+    description: >
+      Strategies for organizational change (20-65 participants), used
+      both as a public talk and as an internal training program for new
+      Scrum Masters.
+    tags: [Agile, Transformation, Coaching]
+
+  - name: Le Camping des Speakers 2023
+    subtitle: Talk — The Scrum Master Role
+    description: >
+      Talk (40 participants) on human-centric leadership, revitalizing
+      team rituals, and the transition from developer to facilitator.
+    tags: [Scrum, Leadership]
+
+  - name: Sunny Tech Montpellier 2022 / Le Camping des Speakers 2022
+    subtitle: Workshop — Agile Discovery
+    description: >
+      Collaborative techniques (15-20 participants) to define product
+      value and user needs before entering the development cycle.
+    tags: [Agile, Discovery, Product]
+
 # ── SKILLS ───────────────────────────────────
 skills:
   - group: Cloud Platforms

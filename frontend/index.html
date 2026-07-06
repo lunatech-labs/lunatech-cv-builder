@@ -1565,8 +1565,8 @@ function renderCV(data) {
   var confTitle = data.conferences_title || 'Conferences';
   var confPlacement = (data.conferences_placement === 'main') ? 'main' : 'side';
   var conferences = (data.conferences||[]).map(function(p) {
-    var headline = '<span>' + (p.name||'') + '</span>' +
-                   (p.subtitle ? '<span class="cv-block-sep">—</span><span class="cv-block-sub">' + p.subtitle + '</span>' : '');
+    var headline = '<span>' + esc(p.name||'') + '</span>' +
+                   (p.subtitle ? '<span class="cv-block-sep">—</span><span class="cv-block-sub">' + esc(p.subtitle) + '</span>' : '');
     return '<div class="cv-block">' +
              '<div class="cv-block-title">' + headline + '</div>' +
              (p.description ? '<div class="cv-block-desc">' + descParagraphs(p.description) + '</div>' : '') +

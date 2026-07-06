@@ -141,7 +141,7 @@ one task (never one renderer alone). See plan.md for file:line edit points.
   behaviour with a red-capable test. `verifies: AC4` (Typst path).
   `depends_on: T1`
 
-- **T3 — HTML renderer: both placements, title, fallback, absent.** Edit
+- [x] **T3 — HTML renderer: both placements, title, fallback, absent.** Edit
   `frontend/index.html` `renderCV`: add the `conferences` map block (copy the
   `noteworthy` block ~line 1550), read `conferences_title` and
   `conferences_placement` (anything not exactly `'main'` → side), add the

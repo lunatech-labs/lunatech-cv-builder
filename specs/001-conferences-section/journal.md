@@ -65,3 +65,20 @@ Append-only log of decisions, drift, and critic verdicts.
   test is the weaker complementary boundary case.
 - AC4 Typst half covered; "skipped branch cannot emit a heading" is a sound
   proxy for "no empty heading". HTML half remains for T3.
+
+## T3 — critic PASS
+
+- `frontend/index.html` only: conferences map block (copy of noteworthy),
+  `confTitle = data.conferences_title || 'Conferences'`, `confPlacement =
+  (=== 'main') ? 'main' : 'side'`, main injection (plain title, after
+  Experience) + side injection (bullet-spark, near Noteworthy), mutually
+  exclusive.
+- Verification is static/scripted string inspection (no JS test harness exists;
+  documented accepted limitation). Critic independently reproduced HTML strings
+  for AC1/AC2/AC4/AC5; all 6 HTML ACs PASS.
+- Two-renderer consistency confirmed vs cv.typ: placement decision, main/side
+  styling (plain vs star bullet), and "Conferences" default all match. No drift.
+- `esc(confTitle)` applied to user title (more careful than existing unescaped
+  `client_name` at line 1603 — noted, not in scope to fix here). Empty-title
+  handled correctly in HTML (falsy → fallback), so the Typst empty-title `none`
+  gap from T1 does NOT exist on the HTML side.

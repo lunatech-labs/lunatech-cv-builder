@@ -1557,6 +1557,23 @@ function renderCV(data) {
            '</div>';
   }).join('');
 
+  // ── Conferences ──
+  // Same entry shape as Noteworthy (name / subtitle / description / tags).
+  // Placement is chosen by conferences_placement: exactly 'main' renders a
+  // full main-column section (styled like Experience); anything else (absent,
+  // empty, or unrecognised) falls back to the side mini section.
+  var confTitle = data.conferences_title || 'Conferences';
+  var confPlacement = (data.conferences_placement === 'main') ? 'main' : 'side';
+  var conferences = (data.conferences||[]).map(function(p) {
+    var headline = '<span>' + (p.name||'') + '</span>' +
+                   (p.subtitle ? '<span class="cv-block-sep">—</span><span class="cv-block-sub">' + p.subtitle + '</span>' : '');
+    return '<div class="cv-block">' +
+             '<div class="cv-block-title">' + headline + '</div>' +
+             (p.description ? '<div class="cv-block-desc">' + descParagraphs(p.description) + '</div>' : '') +
+             tagsHtml(p.tags) +
+           '</div>';
+  }).join('');
+
   // ── Certifications ──
   var certifications = (data.certifications||[]).map(function(c) {
     var meta = [c.subtitle, c.issuer, c.year].filter(Boolean).join(' · ');
@@ -1614,11 +1631,13 @@ function renderCV(data) {
       '<div class="cv-col-main">' +
         (data.summary ? '<div class="cv-section"><div class="cv-section-title">Profile</div><div class="cv-summary">' + data.summary + '</div></div>' : '') +
         (experiences ? '<div class="cv-section"><div class="cv-section-title">Experience</div>' + experiences + '</div>' : '') +
+        (conferences && confPlacement === 'main' ? '<div class="cv-section"><div class="cv-section-title">' + esc(confTitle) + '</div>' + conferences + '</div>' : '') +
       '</div>' +
       '<div class="cv-col-side">' +
         (skillsHtml ? '<div class="cv-section"><div class="cv-section-title">Skills</div>' + skillsHtml + '</div>' : '') +
         (projects ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Personal Project</div>' + projects + '</div>' : '') +
         (noteworthy ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Noteworthy</div>' + noteworthy + '</div>' : '') +
+        (conferences && confPlacement !== 'main' ? '<div class="cv-section"><div class="cv-section-title bullet-spark">' + esc(confTitle) + '</div>' + conferences + '</div>' : '') +
         (certifications ? '<div class="cv-section"><div class="cv-section-title bullet-spark">Certifications</div>' + certifications + '</div>' : '') +
         (education ? '<div class="cv-section"><div class="cv-section-title bullet-diamond">Education</div>' + education + '</div>' : '') +
         (languages ? '<div class="cv-section"><div class="cv-section-title">Languages</div>' + languages + '</div>' : '') +

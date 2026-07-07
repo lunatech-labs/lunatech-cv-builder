@@ -1826,6 +1826,9 @@ async function exportPDF() {
 // Blob URL currently shown in the preview iframe, so we can revoke it on
 // close (and before loading a fresh one) and never leak object URLs.
 var pdfPreviewBlobUrl = null;
+// Monotonic counter bumped on every open and on close, so an in-flight
+// previewPDF() fetch can tell if it has been superseded or cancelled.
+var pdfPreviewGen = 0;
 
 // Preview the rendered PDF (all pages) in-browser without downloading. Saves
 // first when I have write access (same rule as exportPDF), then fetches the
@@ -1843,6 +1846,11 @@ async function previewPDF() {
   }
   var frame = document.getElementById('pdf-preview-frame');
   var loading = document.getElementById('pdf-preview-loading');
+  // Guard against races: if the modal is closed or Preview is clicked again
+  // while this fetch is in flight, the awaited continuation must not touch the
+  // DOM or leak a blob URL. Each call takes a generation number; only the
+  // latest call, with the modal still open, is allowed to apply its result.
+  var myGen = ++pdfPreviewGen;
   // Open the modal immediately with the spinner, then swap in the PDF.
   // Rebuild the spinner markup on every open: the error path replaces the
   // element's contents with a plain text message, so restore spinner + text
@@ -1856,17 +1864,24 @@ async function previewPDF() {
     var res = await fetch('/api/cvs/' + currentCvId + '/pdf?theme=' + encodeURIComponent(t));
     if (!res.ok) throw new Error(await res.text());
     var blob = await res.blob();
+    // Superseded by a newer call, or the modal was closed while we waited:
+    // discard this result without mutating the DOM or the shared blob URL.
+    if (myGen !== pdfPreviewGen) return;
     if (pdfPreviewBlobUrl) URL.revokeObjectURL(pdfPreviewBlobUrl);
     pdfPreviewBlobUrl = URL.createObjectURL(blob);
     frame.src = pdfPreviewBlobUrl;
     frame.style.display = 'block';
     loading.style.display = 'none';
   } catch (e) {
+    if (myGen !== pdfPreviewGen) return;
     loading.textContent = 'Preview failed: ' + e.message;
   }
 }
 
 function closePdfPreview() {
+  // Invalidate any in-flight previewPDF() fetch so its continuation won't
+  // resurrect a blob URL or write to the now-hidden iframe after we close.
+  pdfPreviewGen++;
   document.getElementById('pdf-preview-modal-bg').classList.remove('visible');
   var frame = document.getElementById('pdf-preview-frame');
   // Detach the iframe and revoke the blob so we don't leak object URLs or

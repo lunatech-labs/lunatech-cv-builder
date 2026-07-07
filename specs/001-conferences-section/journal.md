@@ -53,6 +53,9 @@ Append-only log of decisions, drift, and critic verdicts.
   renderer too (T3): `data.conferences_title || 'Conferences'` handles empty
   string AND null correctly, so HTML is already safe; Typst empty-title is the
   only gap and it is out of AC scope.
+  - **RESOLVED in 604df8c** (post-Copilot review): the Typst `none` gap is now
+    fixed via the `conf-title(cv-data)` helper + a regression test. See the
+    "Copilot PR review" section below. No longer open.
 
 ## T2 — critic PASS
 

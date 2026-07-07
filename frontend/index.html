@@ -1844,7 +1844,11 @@ async function previewPDF() {
   var frame = document.getElementById('pdf-preview-frame');
   var loading = document.getElementById('pdf-preview-loading');
   // Open the modal immediately with the spinner, then swap in the PDF.
+  // Rebuild the spinner markup on every open: the error path replaces the
+  // element's contents with a plain text message, so restore spinner + text
+  // here rather than assuming the original <span> survived a prior open.
   frame.style.display = 'none';
+  loading.innerHTML = '<span class="review-spinner"></span>Rendering PDF...';
   loading.style.display = 'flex';
   document.getElementById('pdf-preview-modal-bg').classList.add('visible');
   try {
@@ -1866,16 +1870,14 @@ function closePdfPreview() {
   document.getElementById('pdf-preview-modal-bg').classList.remove('visible');
   var frame = document.getElementById('pdf-preview-frame');
   // Detach the iframe and revoke the blob so we don't leak object URLs or
-  // keep a stale render around for the next open.
+  // keep a stale render around for the next open. The spinner is restored by
+  // previewPDF() on the next open, so no need to reset it here.
   frame.src = 'about:blank';
   frame.style.display = 'none';
   if (pdfPreviewBlobUrl) {
     URL.revokeObjectURL(pdfPreviewBlobUrl);
     pdfPreviewBlobUrl = null;
   }
-  var loading = document.getElementById('pdf-preview-loading');
-  loading.textContent = 'Rendering PDF...';
-  loading.style.display = 'flex';
 }
 
 function copyYaml() {

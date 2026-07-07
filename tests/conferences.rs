@@ -259,4 +259,60 @@ fn dubois_fixture_with_conferences_renders() {
     assert_is_pdf(&bytes, "Dubois fixture with conferences");
 }
 
+/// Regression (empty `conferences_title:`): an explicitly empty title in YAML
+/// parses as `none`, which must fall back to "Conferences" the same as a missing
+/// key. Before the `conf-title` fix, `none` reached `section-title` -> `upper`
+/// and rendered a blank heading (it did NOT crash, so a plain `%PDF-` check
+/// would miss the bug).
+///
+/// A `%PDF-` assertion alone cannot see the heading text (it is compressed in
+/// the PDF stream, and we deliberately avoid a PDF-parsing dependency). Instead
+/// we assert the *behavioural equivalence* the fix guarantees: empty-title and
+/// missing-title must produce identical output (both render "Conferences"),
+/// while a custom title must differ. If the `none` fallback regresses, the
+/// empty-title render diverges from missing-title and this fails.
+#[test]
+fn conferences_empty_title_falls_back_to_default() {
+    let empty = r#"
+name: Camille Dubois
+title: Engineer
+conferences_title:
+conferences:
+  - name: Devoxx France
+    subtitle: Speaker
+"#;
+    let missing = r#"
+name: Camille Dubois
+title: Engineer
+conferences:
+  - name: Devoxx France
+    subtitle: Speaker
+"#;
+    let custom = r#"
+name: Camille Dubois
+title: Engineer
+conferences_title: Speaking & Workshops
+conferences:
+  - name: Devoxx France
+    subtitle: Speaker
+"#;
+    let empty_pdf = render(empty, "lunatech").expect("empty title should render, not crash");
+    let missing_pdf = render(missing, "lunatech").expect("missing title should render");
+    let custom_pdf = render(custom, "lunatech").expect("custom title should render");
+    assert_is_pdf(&empty_pdf, "empty conferences_title");
+
+    // Empty title falls back to the same heading as a missing key.
+    assert_eq!(
+        empty_pdf, missing_pdf,
+        "empty conferences_title should render identically to a missing one (both 'Conferences'); \
+         a difference means the none-fallback regressed to a blank heading"
+    );
+    // Sanity: a real custom title actually changes the output, so the equality
+    // above is meaningful and not trivially true for any input.
+    assert_ne!(
+        custom_pdf, missing_pdf,
+        "a custom conferences_title should change the rendered heading"
+    );
+}
+
 use cv_builder::pdf::render;

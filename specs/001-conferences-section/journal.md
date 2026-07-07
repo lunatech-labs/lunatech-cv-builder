@@ -241,4 +241,31 @@ Append-only log of decisions, drift, and critic verdicts.
   touched.
 - All T6-AC1..AC5 satisfied.
 
-## DONE — conferences (T1-T5) + in-browser PDF preview (T6), all critic PASS
+## Copilot PR review (PR #23) — 4 comments, all addressed
+
+Reviewed each Copilot inline comment; verified claims empirically before acting.
+
+- **#1 & #2 (assets/cv.typ empty `conferences_title`)**: Copilot claimed it can
+  *fail the PDF render*. Empirically it does NOT crash (both side and main render
+  valid PDFs), but it DID render a BLANK heading instead of falling back to
+  "Conferences" (empty-title PDF was ~5KB smaller than missing-title). Real but
+  cosmetic bug (the same `none` gap the T1 critic flagged). FIXED: added a
+  `conf-title(cv-data)` helper that treats both `none` and `""` as missing and
+  falls back to "Conferences"; both guards now call it. (`opt` returns `""` for a
+  missing key and `none` for a present-but-empty key; the helper covers both.)
+- **#4 (tests/conferences.rs regression test)**: ADDED
+  `conferences_empty_title_falls_back_to_default`. A plain `%PDF-` assertion would
+  NOT catch the blank-heading bug (the buggy version also compiled), and the
+  heading text is compressed in the PDF stream (no PDF-parsing dep in scope).
+  Instead the test asserts behavioural equivalence: empty-title output ==
+  missing-title output (both "Conferences"), and != a custom title. With the fix
+  those two are byte-identical (verified diff=0); a regression would diverge them.
+- **#3 (frontend/index.html spinner)**: real minor bug. The error/close paths set
+  `loading.textContent`, destroying the spinner `<span>`, so the 2nd+ open showed
+  no spinner. FIXED: `previewPDF()` now rebuilds `loading.innerHTML` (spinner +
+  text) on every open; removed the redundant `textContent` reset in
+  `closePdfPreview()`. Verified live in headless Chrome: spinner present on both
+  open#1 and open#2, PDF loads both times.
+- Result: `cargo test --test conferences` 14/14 pass (was 13, +1 regression test).
+
+## DONE — conferences (T1-T5) + in-browser PDF preview (T6) + Copilot fixes, all verified

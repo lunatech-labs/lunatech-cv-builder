@@ -203,6 +203,15 @@
 
 // ─────────── BODY HELPERS ───────────
 
+// Conferences heading: honour `conferences_title` when it is a non-empty
+// string, else fall back to "Conferences". An empty `conferences_title:` in
+// YAML parses as `none`, which must fall back too (otherwise `none` reaches
+// `section-title` -> `upper(none)` and the heading renders blank).
+#let conf-title(cv-data) = {
+  let t = opt(cv-data, "conferences_title")
+  if t != none and t != "" { t } else { "Conferences" }
+}
+
 #let section-title(name, bullet: "◆") = block(below: 2.5mm, sticky: true, [
   #grid(columns: (auto, 1fr), column-gutter: 2mm, align: (left + horizon, left + horizon),
     text(size: 8pt, weight: 600, fill: p.bullet)[#bullet],
@@ -401,7 +410,7 @@
       }
       if opt-arr(cv-data, "conferences").len() > 0 and opt(cv-data, "conferences_placement", default: "side") == "main" {
         v(3mm)
-        section-title(if opt(cv-data, "conferences_title") != "" { cv-data.conferences_title } else { "Conferences" })
+        section-title(conf-title(cv-data))
         for item in cv-data.conferences { project-block(item) }
       }
     }
@@ -437,7 +446,7 @@
       }
 
       if opt-arr(cv-data, "conferences").len() > 0 and opt(cv-data, "conferences_placement", default: "side") != "main" {
-        section-title(if opt(cv-data, "conferences_title") != "" { cv-data.conferences_title } else { "Conferences" }, bullet: "★")
+        section-title(conf-title(cv-data), bullet: "★")
         for item in cv-data.conferences { project-block(item) }
         v(2mm)
       }

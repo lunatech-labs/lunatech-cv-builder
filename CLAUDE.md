@@ -95,6 +95,12 @@ The user resolution lives in [`src/users.rs`](src/users.rs) as a Tower middlewar
 
 Everyone in the realm can see everyone's reviewed CVs in the ranking — that's the point. Edit / delete / re-review remain owner-only. The frontend lives in a single `index.html` with two views toggled by query string: `/` → overview, `/?id=xxx` → editor (read-only when `cv.owner.id !== me.id`), `/?new=1` → blank editor.
 
+## Editor save and the unsaved-changes guard
+
+The editor has a dedicated **Save** button (`onSaveClick()`, calling `saveCv()` directly), plus three actions that save implicitly as a side effect: **Review** (the server-side review endpoint reads the stored YAML with no request body, so a row has to exist first), and **Preview PDF** / **Export PDF** (so the rendered PDF matches what is on screen and the URL stays stable across a refresh). There is no autosave on typing.
+
+Leaving the editor while dirty (the back arrow, the sidebar brand/logo, or picking a different CV from the sidebar list) all funnel through `navigateTo()`, which checks `hasUnsavedChanges()` and, if there are unsaved edits, awaits a small custom modal (`#unsaved-modal-bg`, driven by `promptUnsavedChanges()` / `resolveUnsavedPrompt()`) offering **Save & leave**, **Discard**, or **Cancel**. `deleteCv()` opts out via `navigateTo(url, {skipGuard: true})` since it already ran its own delete confirmation and the in-editor content no longer corresponds to anything worth keeping. Tab close/refresh is covered separately by a `beforeunload` handler using the browser's native prompt, since custom buttons aren't allowed there.
+
 ## Seniority
 
 [`src/seniority.rs`](src/seniority.rs) is a Rust port of `seniority_score.py` — a transparent 0-100 grade derived from the YAML CV. Five dimensions add up to 100: years of experience (30), leadership signals (25), scope of contributions (20), external signals (15), title bonus (10). Total is bucketed into Junior / Mid-level / Senior / Staff / Tech Lead / Principal. The grid lives in constants at the top of the module — tune them to match Lunatech's house calibration.
@@ -117,7 +123,7 @@ When any `KEYCLOAK_*` var is missing the backend starts unauthenticated (warning
 
 `POST /api/cvs/{id}/reviews` is the entry point. The CV must already be saved and owned by the caller — the server reads the stored YAML (no body), calls Claude (`claude-opus-4-7`, adaptive thinking + `effort: high`) with [`assets/skills/cv-reviewer/SKILL.md`](assets/skills/cv-reviewer/SKILL.md) as the system prompt, and persists the structured response in `reviews` alongside a snapshot of the YAML at review time (so a later edit on the CV doesn't silently change "what we critiqued"). Output is constrained by a JSON schema (`overall_score`, `verdict`, `language`, `report_markdown`, `improved_yaml`). Wall time is typically 20-60s; the reqwest client has a 5-min timeout, no streaming. The skill file is the single source of truth for the rubric — edit it to tune the review.
 
-The "Save & Review with Claude" button in the frontend implicitly saves the CV first (so review-able means save-able). On `GET /api/cvs/{id}` the server includes the most recent review under `latest_review` + `latest_review_at`, so the score badge is populated as soon as the CV loads — no extra round-trip.
+The **Review** button in the frontend implicitly saves the CV first (so review-able means save-able); the editor also has a standalone **Save** button for saving without triggering a review. On `GET /api/cvs/{id}` the server includes the most recent review under `latest_review` + `latest_review_at`, so the score badge is populated as soon as the CV loads, with no extra round-trip.
 
 `POST /api/review/pdf` accepts `{review, cv_name?}` and returns a Lunatech-branded PDF rendering of the report. The body's `report_markdown` is converted to Typst via [`src/review_pdf.rs`](src/review_pdf.rs) (using `pulldown-cmark` for the markdown→Typst syntax mapping — headings, lists, tables, bold/italic, code), then compiled through the same shared `pdf::compile` helper as the CV. The route is stateless: nothing in the DB, no Claude call. Triggered from the "↓ Export PDF" button in the review modal once a review is in memory.
 

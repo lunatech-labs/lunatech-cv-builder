@@ -240,6 +240,59 @@ pub async fn get_config(State(state): State<AppState>) -> Json<PublicConfig> {
     })
 }
 
+/// Liveness/readiness payload. `status` is the single field a monitor should
+/// alert on; `database` and `detail` exist so a human reading the response can
+/// tell *why* without needing platform log access.
+#[derive(Serialize)]
+pub struct HealthPayload {
+    pub status: &'static str,
+    pub database: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
+/// `GET /api/health` — public, unauthenticated, and deliberately outside the
+/// JWT layer so it stays answerable when Keycloak is unreachable too.
+///
+/// Three outcomes, distinguished because they need different responses:
+///   - 200 `ok`       — migrations done and the database answers a ping.
+///   - 503 `starting` — bound and serving, migrations still running. Expected
+///                      briefly on every boot; only alarming if it persists.
+///   - 503 `degraded` — the database is unreachable. This is the state that
+///                      used to be an invisible 504 on every route.
+///
+/// The ping is a live round-trip rather than a cached flag, so a database that
+/// disappears *after* a healthy boot still reports honestly.
+pub async fn get_health(State(state): State<AppState>) -> (StatusCode, Json<HealthPayload>) {
+    match state.db.ping().await {
+        Ok(()) if state.db.is_ready() => (
+            StatusCode::OK,
+            Json(HealthPayload {
+                status: "ok",
+                database: "up",
+                detail: None,
+            }),
+        ),
+        // Reachable but migrations haven't finished: serving, not yet ready.
+        Ok(()) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(HealthPayload {
+                status: "starting",
+                database: "up",
+                detail: Some("running database migrations".into()),
+            }),
+        ),
+        Err(e) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(HealthPayload {
+                status: "degraded",
+                database: "down",
+                detail: Some(format!("{e:#}")),
+            }),
+        ),
+    }
+}
+
 /// Landing-page payload — bundles everything the Overview view needs in one
 /// round-trip: the caller's identity, platform-wide stats, the caller's CVs
 /// (for the editing entry points), the cross-user ranking, and the flat

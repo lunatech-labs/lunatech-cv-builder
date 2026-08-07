@@ -35,7 +35,7 @@ languages:
 fn router_with(pool: PgPool) -> axum::Router {
     api_router(
         AppState {
-            db: Db { pool },
+            db: Db::from_pool(pool),
             anthropic: None,
             keycloak: None,
             batch_review: Arc::new(RwLock::new(None)),
@@ -86,6 +86,83 @@ async fn create(app: &axum::Router, yaml: &str) -> uuid::Uuid {
     let json = body_json(resp).await;
     let id_str = json["id"].as_str().expect("missing id field");
     uuid::Uuid::parse_str(id_str).unwrap()
+}
+
+// ─────────────────────────── HEALTH ───────────────────────────
+
+#[sqlx::test]
+async fn health_reports_ok_when_the_database_is_reachable(pool: PgPool) {
+    let app = router_with(pool);
+    let resp = app
+        .oneshot(empty_request("GET", "/health"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = body_json(resp).await;
+    assert_eq!(json["status"], "ok");
+    assert_eq!(json["database"], "up");
+}
+
+/// Health must not sit behind the auth layer — a check that needs a JWT can't
+/// tell "app down" from "Keycloak down", which is the ambiguity it exists to
+/// resolve. `router_with` supplies no authorizer, so this pins the route's
+/// placement on the public router rather than re-testing the handler.
+#[sqlx::test]
+async fn health_is_reachable_without_authentication(pool: PgPool) {
+    let app = router_with(pool);
+    let resp = app
+        .oneshot(empty_request("GET", "/health"))
+        .await
+        .unwrap();
+    assert_ne!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+/// The regression this branch is about: an unreachable database must produce a
+/// served 503 that *names the problem*, not a hang. Points the pool at a
+/// closed port, so nothing is listening.
+#[tokio::test]
+async fn health_reports_degraded_when_the_database_is_unreachable() {
+    let db = Db::lazy("postgres://cvbuilder:cvbuilder@127.0.0.1:1/cvbuilder")
+        .expect("lazy pool should build without dialling Postgres");
+    let app = api_router(
+        AppState {
+            db,
+            anthropic: None,
+            keycloak: None,
+            batch_review: Arc::new(RwLock::new(None)),
+        },
+        None,
+    );
+
+    let started = std::time::Instant::now();
+    let resp = app
+        .oneshot(empty_request("GET", "/health"))
+        .await
+        .unwrap();
+    // Must answer well inside a gateway timeout. Without the ping's own cap it
+    // would block on the pool's 30s acquire timeout and 504 like everything
+    // else — defeating the point of a health endpoint.
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(10),
+        "health took {:?}; it must answer before a proxy gives up",
+        started.elapsed()
+    );
+    assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let json = body_json(resp).await;
+    assert_eq!(json["status"], "degraded");
+    assert_eq!(json["database"], "down");
+    assert!(
+        json["detail"].as_str().is_some_and(|d| !d.is_empty()),
+        "degraded health should explain itself, got: {json}"
+    );
+}
+
+/// `Db::lazy` must not touch the network — that property is what lets `main`
+/// reach its `bind` call when Postgres is unreachable. Needs a Tokio runtime
+/// because the pool spawns its idle reaper on construction.
+#[tokio::test]
+async fn lazy_pool_builds_against_an_unreachable_database() {
+    assert!(Db::lazy("postgres://nobody:nobody@127.0.0.1:1/nothing").is_ok());
 }
 
 // ─────────────────────────── LIST ───────────────────────────

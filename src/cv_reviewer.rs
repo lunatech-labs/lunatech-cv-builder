@@ -106,6 +106,85 @@ fn output_schema() -> Value {
     })
 }
 
+/// Accumulated state of one SSE stream.
+///
+/// Separated from the HTTP loop so the event handling — in particular the
+/// truncation guard, which changes user-visible behaviour — can be exercised
+/// against synthetic events without a network or an API key.
+#[derive(Default)]
+struct StreamState {
+    text: String,
+    current_block_type: Option<String>,
+    stop_reason: Option<String>,
+}
+
+impl StreamState {
+    /// Applies one decoded SSE event. Unknown event types are ignored, per the
+    /// API's versioning policy; an `error` event fails the stream.
+    fn apply(&mut self, event: &Value) -> Result<()> {
+        match event.get("type").and_then(Value::as_str) {
+            Some("content_block_start") => {
+                self.current_block_type = event
+                    .pointer("/content_block/type")
+                    .and_then(Value::as_str)
+                    .map(String::from);
+            }
+            Some("content_block_delta") => {
+                // Only the text block carries the schema-constrained output;
+                // `thinking_delta`s are intentionally dropped.
+                let delta_type = event.pointer("/delta/type").and_then(Value::as_str);
+                if delta_type == Some("text_delta")
+                    && self.current_block_type.as_deref() == Some("text")
+                {
+                    if let Some(t) = event.pointer("/delta/text").and_then(Value::as_str) {
+                        self.text.push_str(t);
+                    }
+                }
+            }
+            Some("content_block_stop") => {
+                self.current_block_type = None;
+            }
+            Some("message_delta") => {
+                // `stop_reason` arrives here, not on `message_stop` — that
+                // event carries no payload beyond its own type.
+                if let Some(r) = event.pointer("/delta/stop_reason").and_then(Value::as_str) {
+                    self.stop_reason = Some(r.to_string());
+                }
+            }
+            Some("error") => {
+                let msg = event
+                    .pointer("/error/message")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown stream error");
+                return Err(anyhow!("Anthropic stream error: {msg}"));
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// Validates a finished stream and yields the accumulated JSON text.
+    ///
+    /// The stop reason is checked before the caller parses: a truncated
+    /// response is still syntactically "some JSON", so serde would report an
+    /// EOF deep in a string rather than the budget exhaustion that caused it.
+    fn finish(self) -> Result<String> {
+        if self.stop_reason.as_deref() == Some("max_tokens") {
+            return Err(anyhow!(
+                "Anthropic response was truncated at max_tokens ({MAX_TOKENS}); \
+                 the CV is too long to review and rewrite in a single request"
+            ));
+        }
+        if self.text.is_empty() {
+            return Err(anyhow!(
+                "Anthropic streaming response had no text content block (stop_reason: {})",
+                self.stop_reason.as_deref().unwrap_or("none")
+            ));
+        }
+        Ok(self.text)
+    }
+}
+
 pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
     // System prompt is stable across requests — mark it for prompt caching.
     // Below the 4096-token Opus 4.7 minimum the cache silently no-ops, which
@@ -161,17 +240,10 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
     }
 
     // Consume the SSE stream. Each event is one or more lines terminated by
-    // `\n`, with the JSON payload on a `data: ...` line. We track which
-    // content block is currently open and accumulate `text_delta`s on the
-    // text block (where the JSON-schema-constrained structured output lands)
-    // — `thinking_delta`s on the thinking block are intentionally dropped.
+    // `\n`, with the JSON payload on a `data: ...` line. Framing is handled
+    // here; what each event means is `StreamState`'s job.
     let mut buf: Vec<u8> = Vec::new();
-    let mut text_accum = String::new();
-    let mut current_block_type: Option<String> = None;
-    // Carried on `message_delta`. Without it a response cut short by the token
-    // budget is indistinguishable from a complete one, and surfaces as an
-    // opaque JSON parse error instead of the thing that actually went wrong.
-    let mut stop_reason: Option<String> = None;
+    let mut state = StreamState::default();
 
     while let Some(chunk) = resp
         .chunk()
@@ -193,61 +265,12 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
                 continue;
             };
 
-            match event.get("type").and_then(Value::as_str) {
-                Some("content_block_start") => {
-                    current_block_type = event
-                        .pointer("/content_block/type")
-                        .and_then(Value::as_str)
-                        .map(String::from);
-                }
-                Some("content_block_delta") => {
-                    let delta_type = event.pointer("/delta/type").and_then(Value::as_str);
-                    if delta_type == Some("text_delta")
-                        && current_block_type.as_deref() == Some("text")
-                    {
-                        if let Some(t) = event.pointer("/delta/text").and_then(Value::as_str) {
-                            text_accum.push_str(t);
-                        }
-                    }
-                }
-                Some("content_block_stop") => {
-                    current_block_type = None;
-                }
-                Some("message_delta") => {
-                    if let Some(r) = event.pointer("/delta/stop_reason").and_then(Value::as_str) {
-                        stop_reason = Some(r.to_string());
-                    }
-                }
-                Some("error") => {
-                    let msg = event
-                        .pointer("/error/message")
-                        .and_then(Value::as_str)
-                        .unwrap_or("unknown stream error");
-                    return Err(anyhow!("Anthropic stream error: {msg}"));
-                }
-                _ => {}
-            }
+            state.apply(&event)?;
         }
     }
 
-    // Check the stop reason before parsing: a truncated response is still
-    // syntactically "some JSON", so serde would report an EOF deep in a string
-    // rather than the budget exhaustion that actually caused it.
-    if stop_reason.as_deref() == Some("max_tokens") {
-        return Err(anyhow!(
-            "Anthropic response was truncated at max_tokens ({MAX_TOKENS}); \
-             the CV is too long to review and rewrite in a single request"
-        ));
-    }
-
-    if text_accum.is_empty() {
-        return Err(anyhow!(
-            "Anthropic streaming response had no text content block (stop_reason: {})",
-            stop_reason.as_deref().unwrap_or("none")
-        ));
-    }
-
-    serde_json::from_str::<Review>(&text_accum).context("parsing Review JSON from Claude")
+    let text = state.finish()?;
+    serde_json::from_str::<Review>(&text).context("parsing Review JSON from Claude")
 }
 
 #[cfg(test)]
@@ -279,6 +302,89 @@ mod tests {
         let back: Review = serde_json::from_str(&s).unwrap();
         assert_eq!(back.overall_score, 7);
         assert_eq!(back.verdict, "minor_improvements");
+    }
+
+    /// Feeds a slice of SSE event payloads through `StreamState`, in order.
+    fn drive(events: &[Value]) -> Result<String> {
+        let mut state = StreamState::default();
+        for e in events {
+            state.apply(e)?;
+        }
+        state.finish()
+    }
+
+    /// A well-formed stream, shaped like the documented event flow: thinking
+    /// block, then text block, then `message_delta` carrying `stop_reason`,
+    /// then `message_stop`.
+    fn stream_with(stop_reason: &str, text: &str) -> Vec<Value> {
+        vec![
+            json!({"type": "message_start", "message": {"stop_reason": null}}),
+            json!({"type": "content_block_start", "index": 0, "content_block": {"type": "thinking"}}),
+            json!({"type": "content_block_delta", "index": 0, "delta": {"type": "thinking_delta", "thinking": "pondering"}}),
+            json!({"type": "content_block_stop", "index": 0}),
+            json!({"type": "content_block_start", "index": 1, "content_block": {"type": "text"}}),
+            json!({"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": text}}),
+            json!({"type": "content_block_stop", "index": 1}),
+            json!({"type": "message_delta", "delta": {"stop_reason": stop_reason, "stop_sequence": null}, "usage": {"output_tokens": 15}}),
+            json!({"type": "message_stop"}),
+        ]
+    }
+
+    #[test]
+    fn complete_stream_yields_the_accumulated_text() {
+        let out = drive(&stream_with("end_turn", r#"{"overall_score":72}"#)).unwrap();
+        assert_eq!(out, r#"{"overall_score":72}"#);
+    }
+
+    /// The guard this PR adds. `stop_reason` is carried on `message_delta`;
+    /// `message_stop` has no payload beyond its own type, so reading it there
+    /// would leave the guard dead and truncation would surface as an opaque
+    /// JSON parse error — which is the bug being fixed.
+    #[test]
+    fn truncated_stream_fails_before_parsing() {
+        // Deliberately valid-looking but incomplete JSON, as a real truncation
+        // would produce.
+        let err = drive(&stream_with("max_tokens", r#"{"overall_score":72,"verd"#)).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(msg.contains("max_tokens"), "unexpected error: {msg}");
+        assert!(msg.contains(&MAX_TOKENS.to_string()), "unexpected error: {msg}");
+    }
+
+    #[test]
+    fn thinking_deltas_are_not_accumulated() {
+        // The thinking block in the fixture emits "pondering"; only the text
+        // block's content may survive.
+        let out = drive(&stream_with("end_turn", "kept")).unwrap();
+        assert_eq!(out, "kept");
+    }
+
+    #[test]
+    fn stream_error_event_fails() {
+        let events = vec![
+            json!({"type": "message_start", "message": {}}),
+            json!({"type": "error", "error": {"type": "overloaded_error", "message": "Overloaded"}}),
+        ];
+        let err = drive(&events).unwrap_err();
+        assert!(format!("{err:#}").contains("Overloaded"));
+    }
+
+    #[test]
+    fn stream_without_a_text_block_reports_its_stop_reason() {
+        let events = vec![
+            json!({"type": "message_start", "message": {}}),
+            json!({"type": "message_delta", "delta": {"stop_reason": "refusal"}}),
+            json!({"type": "message_stop"}),
+        ];
+        let err = drive(&events).unwrap_err();
+        assert!(format!("{err:#}").contains("refusal"));
+    }
+
+    #[test]
+    fn unknown_event_types_are_ignored() {
+        let mut events = stream_with("end_turn", "ok");
+        events.insert(1, json!({"type": "ping"}));
+        events.insert(2, json!({"type": "some_future_event", "whatever": true}));
+        assert_eq!(drive(&events).unwrap(), "ok");
     }
 
     #[test]

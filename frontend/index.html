@@ -675,6 +675,29 @@ body {
   gap: 10px; color: var(--ui-muted); font-size: 13px;
 }
 
+/* ── Unsaved-changes confirm — small centered dialog, not a slide-over.
+   Offers the fix (Save & leave) alongside Discard/Cancel instead of a
+   plain confirm(), which can only ever say yes/no. */
+.confirm-modal-bg {
+  display: flex; position: fixed; inset: 0; z-index: 200;
+  align-items: center; justify-content: center;
+  background: rgba(15, 15, 12, 0);
+  pointer-events: none;
+  transition: background .15s ease;
+}
+.confirm-modal-bg.visible { background: rgba(15, 15, 12, .35); pointer-events: auto; }
+.confirm-modal {
+  width: min(360px, 90vw);
+  background: var(--ui-surface); color: var(--ui-text);
+  border: 1px solid var(--ui-border); border-radius: 10px;
+  box-shadow: 0 24px 60px -20px rgba(15, 15, 12, .35);
+  transform: translateY(8px) scale(.98); opacity: 0;
+  transition: transform .15s ease, opacity .15s ease;
+}
+.confirm-modal-bg.visible .confirm-modal { transform: translateY(0) scale(1); opacity: 1; }
+.confirm-modal-body { padding: 20px 22px 4px; font-size: 13.5px; line-height: 1.5; }
+.confirm-modal-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 16px 22px 20px; }
+
 /* ── Batch review (admin) — section header, modal progress bar/lists ── */
 .ov-section-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .ov-section-head .ov-section-title { margin: 0; }
@@ -1339,6 +1362,7 @@ body {
       <button class="theme-btn theme-btn-opera"           title="Opera"    onclick="setTheme('opera')"></button>
     </div>
     <button class="btn btn-ghost" onclick="copyYaml()">Copy YAML</button>
+    <button class="btn btn-ghost" id="btn-save" data-owner-only onclick="onSaveClick()" title="Save the CV">Save</button>
     <button class="btn btn-ghost btn-danger" data-owner-only onclick="deleteCv()" title="Delete this CV">Delete</button>
     <button class="btn btn-accent" id="btn-review" data-owner-only onclick="runReview()" title="Save the CV, then ask Claude to review it">Review</button>
     <button class="btn btn-ghost" onclick="previewPDF()" title="Preview the rendered PDF (all pages) in the browser">Preview PDF</button>
@@ -1779,9 +1803,16 @@ async function saveCv() {
   }
 }
 
+async function onSaveClick() {
+  var ok = await saveCv();
+  if (!ok) return;
+  var btn = document.getElementById('btn-save');
+  var orig = btn.textContent;
+  btn.textContent = 'Saved!';
+  setTimeout(function(){ btn.textContent = orig; }, 1200);
+}
+
 function newCv() {
-  var current = document.getElementById('yaml-editor').value;
-  if (savedYaml !== current && !confirm('Discard unsaved changes and start a new CV?')) return;
   navigateTo('/?new=1');
 }
 
@@ -1796,8 +1827,9 @@ async function deleteCv() {
     clearReviewState();
     // Back to the overview — the deleted CV obviously doesn't make sense to
     // keep editing, and routeView re-fetches /api/overview which carries
-    // the refreshed listings.
-    navigateTo('/');
+    // the refreshed listings. skipGuard: already confirmed above, and the
+    // in-editor content no longer corresponds to anything worth keeping.
+    navigateTo('/', { skipGuard: true });
   } catch (e) {
     alert('Delete failed: ' + e.message);
   }
@@ -1939,7 +1971,36 @@ var meId = null;            // resolved Keycloak `sub` UUID, set after /api/over
 var meIsAdmin = false;      // admin flag from the same response
 var currentOwnerId = null;  // owner of the CV currently loaded in the editor
 
-function navigateTo(url) {
+// True while the editor holds content that differs from the last saved
+// baseline (or, for a never-saved draft, from the starting template) — the
+// single source of truth for both the in-app nav guard and beforeunload.
+function hasUnsavedChanges() {
+  if (!document.getElementById('view-editor').classList.contains('active')) return false;
+  var current = document.getElementById('yaml-editor').value;
+  var baseline = savedYaml !== null ? savedYaml : YAML_DEFAULT;
+  return current !== baseline;
+}
+
+// Resolved by resolveUnsavedPrompt() with 'save' / 'discard' / 'cancel'.
+var unsavedPromptResolve = null;
+function promptUnsavedChanges() {
+  return new Promise(function(resolve) {
+    unsavedPromptResolve = resolve;
+    document.getElementById('unsaved-modal-bg').classList.add('visible');
+  });
+}
+function resolveUnsavedPrompt(choice) {
+  document.getElementById('unsaved-modal-bg').classList.remove('visible');
+  if (unsavedPromptResolve) { unsavedPromptResolve(choice); unsavedPromptResolve = null; }
+}
+
+async function navigateTo(url, opts) {
+  opts = opts || {};
+  if (!opts.skipGuard && hasUnsavedChanges()) {
+    var choice = await promptUnsavedChanges();
+    if (choice === 'cancel') return;
+    if (choice === 'save' && !(await saveCv())) return; // saveCv() already alerted on failure
+  }
   history.pushState({}, '', url);
   routeView();
   // On mobile the sidebar is a drawer — close it once the user has
@@ -1947,6 +2008,12 @@ function navigateTo(url) {
   toggleSidebar(false);
 }
 function navigateToHome() { navigateTo('/'); }
+
+window.addEventListener('beforeunload', function(e) {
+  if (!hasUnsavedChanges()) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 function toggleSidebar(force) {
   var sb = document.getElementById('sidebar');
@@ -2979,6 +3046,20 @@ async function applyImprovedYaml() {
       <button class="btn btn-ghost" id="review-modal-pdfbtn" onclick="exportReviewPdf()">&#8595; Export PDF</button>
       <button class="btn btn-ghost" onclick="runReview()">Re-run</button>
       <button class="btn btn-primary" onclick="closeReviewModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Unsaved-changes confirm: shown by navigateTo() when leaving the editor
+     with a dirty YAML. Resolves the promise promptUnsavedChanges() is
+     awaiting with 'save' / 'discard' / 'cancel'. -->
+<div class="confirm-modal-bg" id="unsaved-modal-bg" onclick="if(event.target===this) resolveUnsavedPrompt('cancel')">
+  <div class="confirm-modal">
+    <div class="confirm-modal-body">You have unsaved changes. Save them before leaving?</div>
+    <div class="confirm-modal-footer">
+      <button class="btn btn-ghost" onclick="resolveUnsavedPrompt('cancel')">Cancel</button>
+      <button class="btn btn-ghost btn-danger" onclick="resolveUnsavedPrompt('discard')">Discard</button>
+      <button class="btn btn-accent" onclick="resolveUnsavedPrompt('save')">Save &amp; leave</button>
     </div>
   </div>
 </div>

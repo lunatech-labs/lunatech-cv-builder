@@ -25,7 +25,7 @@ make dev      # runs the app on http://127.0.0.1:3000
 
 Open <http://127.0.0.1:3000>. On a freshly-cloned repo with no `.env.local`, the server boots in **dev mode** — no Keycloak, no Anthropic — and seeds three fixture CVs (Camille / Alice / Tomás) into the empty database so the overview is populated on first load. The fixtures live under [`assets/fixtures/`](assets/fixtures/) and are only seeded when **all three** are true: the `cvs` table is empty, Keycloak isn't configured, **and** `DEV_SEED_FIXTURES=1` is set (the Makefile sets it for `make dev`; production never does, so prod redeploys cannot trigger seeding even if a Keycloak env var disappeared).
 
-Edit the YAML on the left, watch the preview update on the right. **+ New** starts a blank CV, **Save** persists it server-side, **Export PDF** saves and opens the rendered PDF in a new tab.
+Edit the YAML on the left, watch the preview update on the right. **+ New** starts a blank CV, **Save** persists it server-side, **Export PDF** saves and opens the rendered PDF in a new tab. Leaving the editor with unsaved changes (back button, switching CVs from the sidebar) prompts you to save, discard, or cancel.
 
 To enable Claude reviews and Keycloak login locally, copy your secrets into `.env.local` (gitignored):
 

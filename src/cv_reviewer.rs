@@ -11,18 +11,18 @@ use std::time::Duration;
 const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODEL: &str = "claude-opus-4-7";
-// Covers *both* adaptive thinking and the response body. Measured against a
-// 12-entry CV (9 experiences + 3 projects, ~19k chars of input YAML): the
-// rewritten `improved_yaml` runs 4.5-5.5k tokens and `report_markdown` about
-// 5k, so ~10k of output before a single thinking token is spent. At 16000 that
-// left ~6k for `effort: high` thinking, which was not enough — the response was
-// cut mid-string and the truncated JSON failed to parse.
+// Applies to each of the two calls separately, and covers *both* adaptive
+// thinking and the response body. Measured against a 12-entry CV (9
+// experiences + 3 projects, ~19k chars of input YAML): `report_markdown` runs
+// about 5k tokens and the rewritten `improved_yaml` 4.5-5.5k. When both shared
+// one request that was ~10k of body before a single thinking token was spent,
+// and at 16000 the remainder was not enough for `effort: high` — the response
+// was cut mid-string and the truncated JSON failed to parse.
 //
 // A ceiling, not a spend: only generated tokens are billed. Kept at 32000
 // rather than higher because output-token rate limits reserve against
 // `max_tokens` at request time, and `batch_review` dispatches reviews
-// concurrently. If a longer CV trips the max_tokens guard below, split
-// `improved_yaml` into its own request rather than raising this further.
+// concurrently.
 const MAX_TOKENS: u32 = 32000;
 // Streaming keeps the connection alive while Claude works through a long CV
 // (8+ experiences with effort: high routinely take 5-15 minutes). Without
@@ -70,12 +70,28 @@ pub struct Review {
     pub improved_yaml: String,
 }
 
-/// JSON schema sent to Claude via `output_config.format`. Constrains the
-/// response so we can deserialize it directly without prose-parsing.
-fn output_schema() -> Value {
-    // Note: the Anthropic structured-outputs API rejects numerical constraints
-    // (minimum/maximum/multipleOf) and string-length constraints. The 1-10 bound
-    // is enforced via the description instead — Claude respects it reliably.
+/// Call 1's payload: the analysis, without the rewritten CV.
+#[derive(Debug, Deserialize)]
+struct ReportPart {
+    overall_score: u8,
+    verdict: String,
+    language: String,
+    report_markdown: String,
+}
+
+/// Call 2's payload: the rewritten CV on its own.
+#[derive(Debug, Deserialize)]
+struct RewritePart {
+    improved_yaml: String,
+}
+
+// Note: the Anthropic structured-outputs API rejects numerical constraints
+// (minimum/maximum/multipleOf) and string-length constraints. The 0-100 bound
+// is enforced via the description instead — Claude respects it reliably.
+
+/// Schema for call 1 (Steps 1-3 of the skill): score, verdict, language and
+/// the per-project analysis.
+fn report_schema() -> Value {
     json!({
         "type": "object",
         "properties": {
@@ -95,21 +111,118 @@ fn output_schema() -> Value {
             "report_markdown": {
                 "type": "string",
                 "description": "Full per-project analysis report in markdown, in the CV's language."
-            },
+            }
+        },
+        "required": ["overall_score", "verdict", "language", "report_markdown"],
+        "additionalProperties": false
+    })
+}
+
+/// Schema for call 2 (Step 4 of the skill): the rewritten CV alone.
+fn rewrite_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
             "improved_yaml": {
                 "type": "string",
                 "description": "Rewritten CV in the same YAML schema as the input, with [TO COMPLETE: ...] placeholders. Empty string if not applicable."
             }
         },
-        "required": ["overall_score", "verdict", "language", "report_markdown", "improved_yaml"],
+        "required": ["improved_yaml"],
         "additionalProperties": false
     })
 }
 
+/// Reviews a CV in two requests: the analysis, then the rewrite.
+///
+/// They were one request until a long CV exhausted the token budget mid-JSON.
+/// `report_markdown` and `improved_yaml` are each several thousand tokens, and
+/// both had to fit alongside `effort: high` thinking under a single
+/// `max_tokens`. Split, each call gets the whole budget.
+///
+/// The rewrite is sequential rather than concurrent on purpose: it is given the
+/// report, so it rewrites against the weaknesses the analysis just identified
+/// instead of forming its own opinion of them.
+///
+/// A failed rewrite degrades rather than fails. The report is the load-bearing
+/// half of a review and is worth returning on its own; callers see an empty
+/// `improved_yaml`, which the schema already documents as valid.
 pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
+    let report_json = stream_json(
+        cfg,
+        report_schema(),
+        format!(
+            "The CV below is provided in YAML format. Apply Steps 1-3 of the \
+             cv-reviewer skill to it (analysis, scoring and the per-project \
+             report) and return your structured review. Do not rewrite the CV \
+             yet — that is a separate request.\n\n```yaml\n{yaml}\n```"
+        ),
+        "review report",
+    )
+    .await?;
+
+    let report: ReportPart =
+        serde_json::from_str(&report_json).context("parsing Review JSON from Claude")?;
+
+    let improved_yaml = match rewrite(cfg, yaml, &report.report_markdown).await {
+        Ok(y) => y,
+        Err(e) => {
+            // Deliberately not fatal — see the doc comment above.
+            tracing::warn!("CV rewrite failed, returning report only: {:#}", e);
+            String::new()
+        }
+    };
+
+    Ok(Review {
+        overall_score: report.overall_score,
+        verdict: report.verdict,
+        language: report.language,
+        report_markdown: report.report_markdown,
+        improved_yaml,
+    })
+}
+
+/// Call 2: Step 4 of the skill, handed the CV and the report that call 1 just
+/// produced.
+async fn rewrite(cfg: &AnthropicConfig, yaml: &str, report_markdown: &str) -> Result<String> {
+    let rewrite_json = stream_json(
+        cfg,
+        rewrite_schema(),
+        format!(
+            "Below are a CV in YAML format and the review report already \
+             produced for it. Apply Step 4 of the cv-reviewer skill: return the \
+             improved CV in the same YAML schema as the input, trimmed to the \
+             150-200 words per entry the skill requires, addressing the \
+             weaknesses the report identifies, and marking genuine gaps with \
+             [TO COMPLETE: ...] placeholders. Keep the CV's original \
+             language.\n\n```yaml\n{yaml}\n```\n\n## Review report\n\n{report_markdown}"
+        ),
+        "CV rewrite",
+    )
+    .await?;
+
+    let part: RewritePart =
+        serde_json::from_str(&rewrite_json).context("parsing rewritten CV JSON from Claude")?;
+    Ok(part.improved_yaml)
+}
+
+/// Runs one schema-constrained streaming request and returns the raw JSON text
+/// of the response. Owns the SSE protocol, the truncation check and error
+/// mapping, so the two call sites above stay declarative.
+///
+/// `label` names the call in error messages, since a failure now has two
+/// possible origins.
+async fn stream_json(
+    cfg: &AnthropicConfig,
+    schema: Value,
+    user_content: String,
+    label: &str,
+) -> Result<String> {
     // System prompt is stable across requests — mark it for prompt caching.
     // Below the 4096-token Opus 4.7 minimum the cache silently no-ops, which
-    // is fine; if the skill grows, caching kicks in automatically.
+    // is fine; if the skill grows, caching kicks in automatically. With two
+    // calls per review the cache now earns its keep either way: the second
+    // request reuses the first's cached system prompt.
     let body = json!({
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
@@ -119,7 +232,7 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
             "effort": "high",
             "format": {
                 "type": "json_schema",
-                "schema": output_schema(),
+                "schema": schema,
             }
         },
         "system": [{
@@ -129,9 +242,7 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
         }],
         "messages": [{
             "role": "user",
-            "content": format!(
-                "The CV below is provided in YAML format. Apply the cv-reviewer skill to it and return your structured review.\n\n```yaml\n{yaml}\n```"
-            )
+            "content": user_content
         }]
     });
 
@@ -230,40 +341,84 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
         }
     }
 
-    // Check the stop reason before parsing: a truncated response is still
-    // syntactically "some JSON", so serde would report an EOF deep in a string
-    // rather than the budget exhaustion that actually caused it.
+    // Check the stop reason before returning: a truncated response is still
+    // syntactically "some JSON", so the caller's serde error would report an
+    // EOF deep in a string rather than the budget exhaustion that caused it.
     if stop_reason.as_deref() == Some("max_tokens") {
         return Err(anyhow!(
-            "Anthropic response was truncated at max_tokens ({MAX_TOKENS}); \
-             the CV is too long to review and rewrite in a single request"
+            "Anthropic response for the {label} was truncated at max_tokens ({MAX_TOKENS})"
         ));
     }
 
     if text_accum.is_empty() {
         return Err(anyhow!(
-            "Anthropic streaming response had no text content block (stop_reason: {})",
+            "Anthropic streaming response for the {} had no text content block (stop_reason: {})",
+            label,
             stop_reason.as_deref().unwrap_or("none")
         ));
     }
 
-    serde_json::from_str::<Review>(&text_accum).context("parsing Review JSON from Claude")
+    Ok(text_accum)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn required_of(schema: &Value) -> Vec<String> {
+        schema
+            .get("required")
+            .and_then(Value::as_array)
+            .unwrap()
+            .iter()
+            .filter_map(Value::as_str)
+            .map(String::from)
+            .collect()
+    }
+
     #[test]
-    fn schema_lists_all_required_fields() {
-        let schema = output_schema();
-        let required = schema.get("required").and_then(Value::as_array).unwrap();
-        let names: Vec<_> = required.iter().filter_map(Value::as_str).collect();
-        assert!(names.contains(&"overall_score"));
-        assert!(names.contains(&"verdict"));
-        assert!(names.contains(&"language"));
-        assert!(names.contains(&"report_markdown"));
-        assert!(names.contains(&"improved_yaml"));
+    fn report_schema_lists_all_required_fields() {
+        let names = required_of(&report_schema());
+        assert!(names.contains(&"overall_score".to_string()));
+        assert!(names.contains(&"verdict".to_string()));
+        assert!(names.contains(&"language".to_string()));
+        assert!(names.contains(&"report_markdown".to_string()));
+    }
+
+    #[test]
+    fn rewrite_schema_lists_only_the_improved_yaml() {
+        assert_eq!(required_of(&rewrite_schema()), vec!["improved_yaml"]);
+    }
+
+    /// The split exists to keep each response inside one token budget. If
+    /// `improved_yaml` ever creeps back into the report schema the two calls
+    /// would both carry it and the original failure returns.
+    #[test]
+    fn report_schema_excludes_the_rewritten_cv() {
+        let names = required_of(&report_schema());
+        assert!(!names.contains(&"improved_yaml".to_string()));
+        assert!(
+            report_schema()
+                .pointer("/properties/improved_yaml")
+                .is_none()
+        );
+    }
+
+    /// The two schemas together must still cover every field of `Review`,
+    /// otherwise assembly in `review()` silently loses one.
+    #[test]
+    fn the_two_schemas_together_cover_every_review_field() {
+        let mut names = required_of(&report_schema());
+        names.extend(required_of(&rewrite_schema()));
+        for field in [
+            "overall_score",
+            "verdict",
+            "language",
+            "report_markdown",
+            "improved_yaml",
+        ] {
+            assert!(names.contains(&field.to_string()), "missing {field}");
+        }
     }
 
     #[test]

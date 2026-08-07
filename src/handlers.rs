@@ -401,8 +401,11 @@ pub async fn review_cv(
                 }
             }
             Err(e) => {
-                tracing::error!("cv_reviewer::review failed: {e}");
-                serde_json::json!({ "error": e.to_string() })
+                // `{:#}` keeps the source chain. This is the path the review
+                // button actually takes, so it is the one that has to carry
+                // the real cause to the browser.
+                tracing::error!("cv_reviewer::review failed: {:#}", e);
+                serde_json::json!({ "error": format!("{e:#}") })
             }
         };
 

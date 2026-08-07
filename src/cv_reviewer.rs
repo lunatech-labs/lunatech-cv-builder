@@ -11,7 +11,19 @@ use std::time::Duration;
 const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODEL: &str = "claude-opus-4-7";
-const MAX_TOKENS: u32 = 16000;
+// Covers *both* adaptive thinking and the response body. Measured against a
+// 12-entry CV (9 experiences + 3 projects, ~19k chars of input YAML): the
+// rewritten `improved_yaml` runs 4.5-5.5k tokens and `report_markdown` about
+// 5k, so ~10k of output before a single thinking token is spent. At 16000 that
+// left ~6k for `effort: high` thinking, which was not enough — the response was
+// cut mid-string and the truncated JSON failed to parse.
+//
+// A ceiling, not a spend: only generated tokens are billed. Kept at 32000
+// rather than higher because output-token rate limits reserve against
+// `max_tokens` at request time, and `batch_review` dispatches reviews
+// concurrently. If a longer CV trips the max_tokens guard below, split
+// `improved_yaml` into its own request rather than raising this further.
+const MAX_TOKENS: u32 = 32000;
 // Streaming keeps the connection alive while Claude works through a long CV
 // (8+ experiences with effort: high routinely take 5-15 minutes). Without
 // streaming we'd hit the reqwest timeout *and* Anthropic's own ~10-minute
@@ -156,6 +168,10 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
     let mut buf: Vec<u8> = Vec::new();
     let mut text_accum = String::new();
     let mut current_block_type: Option<String> = None;
+    // Carried on `message_delta`. Without it a response cut short by the token
+    // budget is indistinguishable from a complete one, and surfaces as an
+    // opaque JSON parse error instead of the thing that actually went wrong.
+    let mut stop_reason: Option<String> = None;
 
     while let Some(chunk) = resp
         .chunk()
@@ -197,6 +213,11 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
                 Some("content_block_stop") => {
                     current_block_type = None;
                 }
+                Some("message_delta") => {
+                    if let Some(r) = event.pointer("/delta/stop_reason").and_then(Value::as_str) {
+                        stop_reason = Some(r.to_string());
+                    }
+                }
                 Some("error") => {
                     let msg = event
                         .pointer("/error/message")
@@ -209,9 +230,20 @@ pub async fn review(cfg: &AnthropicConfig, yaml: &str) -> Result<Review> {
         }
     }
 
+    // Check the stop reason before parsing: a truncated response is still
+    // syntactically "some JSON", so serde would report an EOF deep in a string
+    // rather than the budget exhaustion that actually caused it.
+    if stop_reason.as_deref() == Some("max_tokens") {
+        return Err(anyhow!(
+            "Anthropic response was truncated at max_tokens ({MAX_TOKENS}); \
+             the CV is too long to review and rewrite in a single request"
+        ));
+    }
+
     if text_accum.is_empty() {
         return Err(anyhow!(
-            "Anthropic streaming response had no text content block"
+            "Anthropic streaming response had no text content block (stop_reason: {})",
+            stop_reason.as_deref().unwrap_or("none")
         ));
     }
 

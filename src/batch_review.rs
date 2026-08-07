@@ -210,7 +210,9 @@ pub async fn run(
                         Ok(())
                     }
                 }
-                Err(e) => Err(e.to_string()),
+                // `{:#}` keeps the source chain; plain `to_string()` would
+                // report only the outermost context.
+                Err(e) => Err(format!("{e:#}")),
             };
             finish_one(&state_for_task, &label, outcome).await;
         }));

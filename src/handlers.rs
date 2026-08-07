@@ -21,9 +21,14 @@ use uuid::Uuid;
 
 type ApiError = (StatusCode, String);
 
+// `{:#}` renders an anyhow error together with its source chain
+// ("outer context: inner context: root cause"). Plain `{}` prints only the
+// outermost context, which hides the actual failure — e.g. a Review parse
+// error arrives as "parsing Review JSON from Claude" with serde's message
+// (and the column it choked on) silently dropped.
 fn err500<E: std::fmt::Display>(e: E) -> ApiError {
-    tracing::error!("internal error: {}", e);
-    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    tracing::error!("internal error: {:#}", e);
+    (StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}"))
 }
 
 fn err400(msg: &str) -> ApiError {

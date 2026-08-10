@@ -305,12 +305,9 @@ impl Db {
     // verifying that the caller is the owner or an admin (see
     // `require_write_access` in handlers.rs).
 
-    /// Skips the write entirely (no row touched, `updated_at` untouched) when
-    /// `yaml`/`name`/`label` already match what's stored — a defensive
-    /// backstop for any caller that PUTs unchanged content (the frontend
-    /// already avoids this via `hasUnsavedChanges()`, but the API is public).
-    /// Returns `true` if the CV exists, whether or not anything changed;
-    /// `false` only if `id` doesn't match a row.
+    /// No-ops (row and `updated_at` untouched) when `yaml`/`name`/`label` already
+    /// match what's stored — a backstop for unchanged PUTs, since the API is public.
+    /// Returns `true` if the CV exists (changed or not), `false` only if `id` is unknown.
     pub async fn update_any(
         &self,
         id: Uuid,

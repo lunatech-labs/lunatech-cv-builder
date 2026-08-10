@@ -208,7 +208,11 @@ body {
   overflow: hidden;
   z-index: 2;
 }
-.editor-textarea::selection { background: var(--ui-accent-soft); color: transparent; }
+/* Translucent, not var(--ui-accent-soft): the textarea sits on top of the
+   syntax-highlighted .editor-highlight layer, and its own selected glyphs
+   are transparent, so an opaque selection background paints a solid box
+   that hides the highlighted text underneath instead of tinting over it. */
+.editor-textarea::selection { background: oklch(0.62 0.16 35 / 30%); color: transparent; }
 
 .error-bar {
   padding: 8px 18px;

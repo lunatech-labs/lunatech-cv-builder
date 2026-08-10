@@ -1755,11 +1755,8 @@ function refreshStatus() {
 
 async function saveCv() {
   var yaml = getYaml();
-  // Nothing changed since the last save — skip the PUT entirely. Callers
-  // like previewPDF()/exportPDF() call saveCv() on every click regardless
-  // of whether the user edited anything, and a no-op PUT still bumps the
-  // backend's updated_at, making an untouched CV look freshly modified.
-  if (currentCvId && !hasUnsavedChanges()) return true;
+  // Avoid a wasted PUT: several buttons call saveCv() on every click, not just Save.
+  if (currentCvId && yaml === savedYaml) return true;
   try {
     if (currentCvId) {
       var res = await fetch('/api/cvs/' + currentCvId, {

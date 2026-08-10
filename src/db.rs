@@ -305,6 +305,12 @@ impl Db {
     // verifying that the caller is the owner or an admin (see
     // `require_write_access` in handlers.rs).
 
+    /// Skips the write entirely (no row touched, `updated_at` untouched) when
+    /// `yaml`/`name`/`label` already match what's stored — a defensive
+    /// backstop for any caller that PUTs unchanged content (the frontend
+    /// already avoids this via `hasUnsavedChanges()`, but the API is public).
+    /// Returns `true` if the CV exists, whether or not anything changed;
+    /// `false` only if `id` doesn't match a row.
     pub async fn update_any(
         &self,
         id: Uuid,
@@ -319,7 +325,10 @@ impl Db {
              SET yaml = $1, name = $2, label = $3,
                  seniority = $4, seniority_score = $5, seniority_level = $6,
                  updated_at = NOW()
-             WHERE id = $7",
+             WHERE id = $7
+               AND (yaml IS DISTINCT FROM $1
+                    OR name IS DISTINCT FROM $2
+                    OR label IS DISTINCT FROM $3)",
         )
         .bind(yaml)
         .bind(name)
@@ -330,7 +339,14 @@ impl Db {
         .bind(id)
         .execute(&self.pool)
         .await?;
-        Ok(result.rows_affected() > 0)
+        if result.rows_affected() > 0 {
+            return Ok(true);
+        }
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM cvs WHERE id = $1)")
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(exists)
     }
 
     pub async fn delete_any(&self, id: Uuid) -> Result<bool> {

@@ -31,3 +31,6 @@ Thumbs.db
 
 # Local git worktrees
 .worktrees/
+
+# Brainstorming visual-companion scratch files
+.superpowers/

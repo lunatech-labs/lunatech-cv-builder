@@ -16,12 +16,15 @@ function createCoalescedSync(work) {
     return work().then(function (result) {
       running = false;
       thisRoundWaiters.forEach(function (w) { w.resolve(result); });
-      if (waiters.length) runRound();
+      // The next round settles its own waiters directly; this call is
+      // fire-and-forget from here, so a rejection in that later round must
+      // not become an unhandled rejection on this unreferenced chain.
+      if (waiters.length) runRound().catch(function () {});
       return result;
     }, function (err) {
       running = false;
       thisRoundWaiters.forEach(function (w) { w.reject(err); });
-      if (waiters.length) runRound();
+      if (waiters.length) runRound().catch(function () {});
       throw err;
     });
   }

@@ -1824,11 +1824,12 @@ async function deleteCv() {
     currentCvId = null;
     savedYaml = null;
     clearReviewState();
-    syncWorkspaceData();
     // Back to the overview: the deleted CV obviously doesn't make sense to
-    // keep editing, and routeView's overview branch re-fetches /api/overview
-    // too. skipGuard: already confirmed above, and the in-editor content no
-    // longer corresponds to anything worth keeping.
+    // keep editing. No explicit syncWorkspaceData() call here — routeView's
+    // overview branch (triggered by navigateTo below) already refreshes the
+    // sidebar and rankings; calling it here too would just queue a second,
+    // redundant round trip. skipGuard: already confirmed above, and the
+    // in-editor content no longer corresponds to anything worth keeping.
     navigateTo('/', { skipGuard: true });
   } catch (e) {
     alert('Delete failed: ' + e.message);
@@ -2033,17 +2034,20 @@ async function routeView() {
   var params = new URLSearchParams(location.search);
   var goingToOverview = !params.get('id') && params.get('new') !== '1';
 
-  // Full re-fetch on the very first navigation (meId isn't known yet, and we
-  // await this so meId / meIsAdmin are set before openCvInEditor runs;
-  // otherwise `currentOwnerId !== meId` triggers a false-positive Read-only
-  // state) and every time the overview page itself is the destination
-  // (it shows company-wide stats/rankings that can move independently of
-  // this tab's own actions). Navigating between CVs in the editor otherwise
-  // just re-renders from whatever's already cached, kept fresh by the
-  // mutation call sites in saveCv() / runReview() / deleteCv(), not by
-  // re-fetching on every click.
-  if (meId === null || goingToOverview) {
+  // Only the very first navigation blocks on the network: meId isn't known
+  // yet, and openCvInEditor below needs it (otherwise `currentOwnerId !==
+  // meId` triggers a false-positive Read-only state). Every other case fires
+  // the sync without holding the view swap hostage to a slow or hung
+  // backend. Landing on the overview page still refreshes (it shows
+  // company-wide stats/rankings that can move independently of this tab's
+  // own actions), it just doesn't block on it. Navigating between CVs in
+  // the editor just re-renders from whatever's already cached, kept fresh
+  // by the mutation call sites in saveCv() / runReview() / deleteCv(), not
+  // by re-fetching on every click.
+  if (meId === null) {
     await syncWorkspaceData();
+  } else if (goingToOverview) {
+    syncWorkspaceData();
   } else {
     renderSidebarList();
   }
@@ -2066,7 +2070,7 @@ async function routeView() {
 
 // Mirrors `data-owner-only`: hides every `[data-admin-only]` element when
 // the current user isn't an admin. Called after `meIsAdmin` is set in
-// loadOverview.
+// applyOverviewData().
 function applyAdminVisibility() {
   document.querySelectorAll('[data-admin-only]').forEach(function(el) {
     el.style.display = meIsAdmin ? '' : 'none';
@@ -2076,8 +2080,9 @@ function applyAdminVisibility() {
 // ══════════════════════════════════════════════════════════
 // SIDEBAR — persistent CV nav (phase 1 of the UI redesign)
 // ══════════════════════════════════════════════════════════
-// The sidebar fetches /api/overview once, caches it, and re-renders on
-// every navigation so the "currently editing" highlight tracks the URL.
+// The sidebar and the overview page share one fetch/apply engine
+// (syncWorkspaceData(), below), so both stay in sync with the server after
+// every save, review, delete, and batch-review, not just on navigation.
 // We don't paginate — the workspaces this app serves are in the dozens-
 // of-CVs range, never thousands.
 

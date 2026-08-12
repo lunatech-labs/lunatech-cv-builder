@@ -94,3 +94,38 @@ test('rejection settles only that round; waiters queued during it get a fresh ne
   ctrl.calls[2].resolve('back-to-normal');
   assert.equal(await pC, 'back-to-normal');
 });
+
+test('a rejecting trailing round (started only via the internal recursive call, never directly referenced by any caller) does not produce an unhandled rejection, and the scheduler stays usable', async function () {
+  var ctrl = makeControllableWork();
+  var trigger = createCoalescedSync(ctrl.work);
+
+  var unhandled = [];
+  function onUnhandled(err) { unhandled.push(err); }
+  process.on('unhandledRejection', onUnhandled);
+
+  try {
+    var pA = trigger(); // round 1
+    var pB = trigger(); // queued during round 1; promoted into round 2 on round 1's success
+    ctrl.calls[0].resolve('round-1');
+    await pA;
+    assert.equal(ctrl.calls.length, 2, 'round 1 succeeding must promote B into its own round 2');
+
+    // Round 2 itself now rejects. Nobody holds round 2's own outer promise
+    // directly (it only exists as the internal recursive runRound() call
+    // from round 1's success handler) — only pB, via the waiters mechanism.
+    ctrl.calls[1].reject(new Error('round-2 failed'));
+    await assert.rejects(pB, /round-2 failed/);
+
+    // Give any stray unhandledRejection event a chance to fire before asserting none did.
+    await new Promise(function (resolve) { setImmediate(resolve); });
+    assert.deepEqual(unhandled, [], 'round 2 rejecting must not surface as an unhandled rejection');
+
+    // Scheduler must still be usable afterward.
+    var pC = trigger();
+    assert.equal(ctrl.calls.length, 3);
+    ctrl.calls[2].resolve('back-to-normal');
+    assert.equal(await pC, 'back-to-normal');
+  } finally {
+    process.removeListener('unhandledRejection', onUnhandled);
+  }
+});

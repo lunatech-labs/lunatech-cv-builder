@@ -54,8 +54,15 @@ page load / navigation already is.
 | `routeView()` (page load / navigation) | Yes | Needs `meId` / `meIsAdmin` set before deciding whether the current CV is read-only. |
 | `saveCv()`, after a successful create or update | No (fire and forget) | Fixes the "new CV does not appear" and "renamed CV does not update" cases. Covers Save, Review's implicit save, and Preview/Export PDF's implicit save for free, since they all funnel through `saveCv()`. |
 | `runReview()`, after the review response is persisted | No | Fixes the "score does not update" case. |
-| `deleteCv()` | No | Makes the refresh explicit rather than incidental (it already worked by accident today via the subsequent `navigateTo('/')`). |
 | `applyBatchFrame()`, on batch completion (`snap.completed_at`) | No | Replaces the dead `loadOverview()` call. Fires once, when the whole batch finishes, not per CV. |
+
+`deleteCv()` has no explicit call site of its own: deleting a CV navigates to `/`, and
+`routeView()`'s overview branch (above) is what refreshes the sidebar and rankings. An
+earlier version of this design had `deleteCv()` also fire its own explicit call "to make
+the refresh explicit"; that turned out to guarantee two serialized round trips instead of
+one (the coalescer's own correctness guarantee means a queued caller always gets a fresh
+round, never the in-flight one), so it was dropped in favor of relying solely on the
+navigation's own refresh.
 
 No caller reads the resolved value of the returned promise for data. The only thing any
 caller "consumes" is the side effect (DOM already updated by the time the promise
@@ -64,8 +71,9 @@ settles). `routeView()` awaits purely for that sequencing, not to inspect a valu
 ### Concurrency: coalescing with a queue
 
 Several call sites can trigger a sync close together (for example `runReview()`'s
-internal `saveCv()` call, or `deleteCv()`'s explicit call landing near the
-navigation-triggered one). To avoid firing redundant concurrent requests, and to avoid a
+internal `saveCv()` call, or a "Save & leave" navigation to the overview page, where
+`saveCv()`'s own call lands near the one `routeView()` fires for the overview
+destination). To avoid firing redundant concurrent requests, and to avoid a
 subtle race where an older in-flight response could overwrite a newer one,
 `syncWorkspaceData()` uses single-flight coalescing with a queue of waiters, not a single
 shared promise.
@@ -226,8 +234,9 @@ Checked against the concrete case of 200 to 300 CVs in the database:
 - The response payload (`all_cvs` plus `my_cvs` plus `top_cvs`, capped at
   `TOP_CVS_LIMIT = 10`) serializes to roughly 60 to 120 KB of JSON at 300 rows, trivial to
   transfer and parse.
-- Rebuilding the sidebar's `innerHTML` for a few hundred list items is a few milliseconds
-  of DOM work, not a bottleneck at this scale.
+- Rebuilding the sidebar's `innerHTML`, plus the overview page's stats tiles and its
+  three lists (top, all, mine), for a few hundred CVs combined is still a few
+  milliseconds of DOM work, not a bottleneck at this scale.
 - The real (pre-existing, unrelated to this change) cost driver is that the
   `/api/overview` handler runs its four queries sequentially rather than concurrently
   (`handlers.rs`). This is already paid once per navigation today; this change makes it

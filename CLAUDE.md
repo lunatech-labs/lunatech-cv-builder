@@ -24,6 +24,7 @@ src/handlers.rs      HTTP handlers; PDF route reads ?theme= query param
 src/pdf.rs           YAML -> Typst dict literal -> compile -> PDF bytes
 assets/cv.typ        Typst template (mirrors the HTML preview visually)
 frontend/index.html  YAML editor + live HTML preview + Open/Save/PDF UI
+frontend/sync-coalescer.js  generic single-flight-with-queue coalescing primitive (no DOM/fetch); tested by frontend/sync-coalescer.test.js
 migrations/          schema (`cvs` and `users` tables)
 tests/api.rs         integration tests (use `#[sqlx::test]` for per-test DBs)
 .cargo/config.toml   sets DATABASE_URL for cargo run / test
@@ -206,5 +207,5 @@ The Typst template requests Poppins/Inter to match the HTML look. They are not b
 ## Things that should NOT regress
 
 - The `cv-reviewer` 8 criteria must remain expressible in the YAML schema (each `experiences[]` entry has fields for role, team size, client interaction, source of pride, added value, contributions, technologies, dates — though the skeleton schema is loose so users can add fields as they go).
-- The frontend remains a single static HTML page, no build tooling.
+- The frontend stays framework-free and build-tooling-free: plain scripts served as-is (`frontend/index.html` plus small standalone files like `frontend/sync-coalescer.js`), no bundler, no npm package for the runtime code.
 - PDF generation stays in-process (`typst` crate), not a CLI subprocess.

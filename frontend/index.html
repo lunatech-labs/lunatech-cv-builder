@@ -1794,6 +1794,7 @@ async function saveCv() {
     }
     savedYaml = yaml;
     refreshStatus();
+    syncWorkspaceData();
     return true;
   } catch (e) {
     alert('Save failed: ' + e.message);
@@ -1823,10 +1824,11 @@ async function deleteCv() {
     currentCvId = null;
     savedYaml = null;
     clearReviewState();
-    // Back to the overview — the deleted CV obviously doesn't make sense to
-    // keep editing, and routeView re-fetches /api/overview which carries
-    // the refreshed listings. skipGuard: already confirmed above, and the
-    // in-editor content no longer corresponds to anything worth keeping.
+    syncWorkspaceData();
+    // Back to the overview: the deleted CV obviously doesn't make sense to
+    // keep editing, and routeView's overview branch re-fetches /api/overview
+    // too. skipGuard: already confirmed above, and the in-editor content no
+    // longer corresponds to anything worth keeping.
     navigateTo('/', { skipGuard: true });
   } catch (e) {
     alert('Delete failed: ' + e.message);
@@ -2942,7 +2944,7 @@ function applyBatchFrame(frame) {
   if (snap.completed_at) {
     document.getElementById('batch-state-pill').textContent =
       snap.failed && snap.failed.length > 0 ? 'Done with errors' : 'Done';
-    if (typeof loadOverview === 'function') loadOverview();
+    syncWorkspaceData();
   }
 }
 
@@ -3007,6 +3009,7 @@ async function runReview() {
     cachedReview = payload;
     cachedReviewAt = new Date().toISOString();
     refreshReviewBadge();
+    syncWorkspaceData();
     openReviewModal(cachedReview, cachedReviewAt);
   } catch (e) {
     alert('Review failed: ' + e.message);

@@ -2084,19 +2084,18 @@ function applyAdminVisibility() {
 // We don't paginate — the workspaces this app serves are in the dozens-
 // of-CVs range, never thousands.
 
-var _sidebarOverviewCache = null;
-var _sidebarFilter = '';
+var _sidebarState = { overviewCache: null, filter: '', collapsedSections: new Set() };
 
 async function ensureSidebarRendered() {
-  if (!_sidebarOverviewCache) {
+  if (!_sidebarState.overviewCache) {
     try {
-      _sidebarOverviewCache = await fetch('/api/overview').then(function(r) { return r.json(); });
+      _sidebarState.overviewCache = await fetch('/api/overview').then(function(r) { return r.json(); });
     } catch (e) {
       console.warn('Sidebar: failed to load overview', e);
       return;
     }
     // First load also surfaces me / admin state for the rest of the app.
-    var data = _sidebarOverviewCache;
+    var data = _sidebarState.overviewCache;
     meId = data.me && data.me.id;
     meIsAdmin = !!(data.me && data.me.is_admin);
     renderSidebarUser(data.me);
@@ -2107,7 +2106,7 @@ async function ensureSidebarRendered() {
 
 // Called by renderOverview() so the cache stays fresh after a save / delete.
 function refreshSidebarFromOverview(data) {
-  _sidebarOverviewCache = data;
+  _sidebarState.overviewCache = data;
   renderSidebarUser(data.me);
   renderSidebarList();
 }
@@ -2125,7 +2124,7 @@ function renderSidebarUser(me) {
 }
 
 function renderSidebarList() {
-  var data = _sidebarOverviewCache || { my_cvs: [], all_cvs: [] };
+  var data = _sidebarState.overviewCache || { my_cvs: [], all_cvs: [] };
   var scroll = document.getElementById('sidebar-scroll');
   if (!scroll) return;
 
@@ -2135,7 +2134,7 @@ function renderSidebarList() {
     return cv.owner_id !== meId;
   });
 
-  var filter = (_sidebarFilter || '').toLowerCase();
+  var filter = (_sidebarState.filter || '').toLowerCase();
   function matches(cv) {
     if (!filter) return true;
     var hay = (cv.name || '') + ' ' + (cv.owner_name || '') + ' ' + (cv.label || '');
@@ -2157,7 +2156,14 @@ function renderSidebarList() {
   });
   Array.prototype.forEach.call(scroll.querySelectorAll('.sidebar-section-title'), function(el) {
     el.addEventListener('click', function() {
-      el.parentNode.classList.toggle('collapsed');
+      var section = el.parentNode;
+      var key = section.getAttribute('data-section');
+      if (_sidebarState.collapsedSections.has(key)) {
+        _sidebarState.collapsedSections.delete(key);
+      } else {
+        _sidebarState.collapsedSections.add(key);
+      }
+      section.classList.toggle('collapsed');
     });
   });
 
@@ -2182,7 +2188,8 @@ function sidebarSection(key, label, shownItems, totalCount) {
              '</li>';
     }).join('');
   }
-  return '<div class="sidebar-section" data-section="' + key + '">' +
+  var collapsedClass = _sidebarState.collapsedSections.has(key) ? ' collapsed' : '';
+  return '<div class="sidebar-section' + collapsedClass + '" data-section="' + key + '">' +
            '<div class="sidebar-section-title">' +
              '<span><span class="chev">▾</span> ' + escHtml(label) + '</span>' +
              '<span class="count">' + totalCount + '</span>' +
@@ -2207,7 +2214,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var input = document.getElementById('sidebar-search');
   if (input) {
     input.addEventListener('input', function(e) {
-      _sidebarFilter = e.target.value || '';
+      _sidebarState.filter = e.target.value || '';
       renderSidebarList();
     });
   }

@@ -21,9 +21,7 @@ function createCoalescedSync(work) {
     }, function (err) {
       running = false;
       thisRoundWaiters.forEach(function (w) { w.reject(err); });
-      // Reject any waiters that arrived after this round started too
-      waiters.forEach(function (w) { w.reject(err); });
-      waiters = [];
+      if (waiters.length) runRound();
       throw err;
     });
   }

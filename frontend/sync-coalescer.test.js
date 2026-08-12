@@ -71,20 +71,26 @@ test('a caller that arrives after a trailing round has already started waits for
   assert.equal(await pD, 'round-3');
 });
 
-test('rejection propagates to every waiter of that round, and the scheduler recovers for the next call', async function () {
+test('rejection settles only that round; waiters queued during it get a fresh next round, and the scheduler recovers', async function () {
   var ctrl = makeControllableWork();
   var trigger = createCoalescedSync(ctrl.work);
 
-  var pA = trigger();
-  var pB = trigger();
+  var pA = trigger(); // round 1
+  var pB = trigger(); // queued during round 1, must NOT share round 1's outcome
   ctrl.calls[0].reject(new Error('boom'));
 
   await assert.rejects(pA, /boom/);
-  await assert.rejects(pB, /boom/);
+
+  // B must not be rejected with round 1's stale error — it gets its own
+  // fresh round, started only after B's own registration.
+  assert.equal(ctrl.calls.length, 2, 'B must get a fresh round after round 1 fails, not share its error');
+
+  ctrl.calls[1].resolve('round-2');
+  assert.equal(await pB, 'round-2');
 
   // The scheduler must have recovered: a fresh call starts a fresh request.
   var pC = trigger();
-  assert.equal(ctrl.calls.length, 2);
-  ctrl.calls[1].resolve('back-to-normal');
+  assert.equal(ctrl.calls.length, 3);
+  ctrl.calls[2].resolve('back-to-normal');
   assert.equal(await pC, 'back-to-normal');
 });

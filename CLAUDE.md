@@ -194,6 +194,7 @@ docker-compose up -d
 cargo test                       # all 48 tests
 cargo test --test api            # integration tests only
 cargo test --lib pdf             # pdf unit tests only
+node --test frontend/sync-coalescer.test.js   # frontend sync-coalescing primitive (no build step, no deps)
 ```
 
 When adding a feature, expect to update three places: `handlers.rs` (the route), `tests/api.rs` (an integration test), and one of the unit test modules if there's testable logic in isolation. Don't merge a feature without test coverage — the existing matrix should not regress.

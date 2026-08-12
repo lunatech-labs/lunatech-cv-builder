@@ -5,7 +5,7 @@ help:
 	@echo "Targets:"
 	@echo "  make setup       — first-time bootstrap (Postgres up + cargo build)"
 	@echo "  make dev         — run the dev server (sources .env.local, then cargo run)"
-	@echo "  make test        — cargo test (Postgres must be up)"
+	@echo "  make test        — cargo test (Postgres must be up) + frontend coalescer test"
 	@echo "  make db-up       — bring up the Postgres container"
 	@echo "  make db-down     — stop the Postgres container (data is preserved)"
 	@echo "  make reset       — drop the cvbuilder DB and recreate it (re-seeds fixtures on next run)"
@@ -45,6 +45,7 @@ dev:
 
 test:
 	cargo test
+	node --test frontend/sync-coalescer.test.js
 
 # Capture the four README screenshots via the headless-Chrome script in
 # scripts/screenshots.mjs. Expects the dev server to be running on :3000

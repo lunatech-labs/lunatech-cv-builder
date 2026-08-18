@@ -103,18 +103,40 @@ async fn health_reports_ok_when_the_database_is_reachable(pool: PgPool) {
     assert_eq!(json["database"], "up");
 }
 
-/// Health must not sit behind the auth layer — a check that needs a JWT can't
-/// tell "app down" from "Keycloak down", which is the ambiguity it exists to
-/// resolve. `router_with` supplies no authorizer, so this pins the route's
-/// placement on the public router rather than re-testing the handler.
+/// Health must not sit behind the protected router (and therefore the user
+/// resolver / JWT layer). `router_with` supplies no authorizer, so we assert
+/// it doesn't even run the user resolver by ensuring it does not touch the
+/// `users` table (which `resolve_user` would update via `last_seen_at`).
 #[sqlx::test]
 async fn health_is_reachable_without_authentication(pool: PgPool) {
-    let app = router_with(pool);
+    let app = router_with(pool.clone());
+
+    let before: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+        "SELECT last_seen_at FROM users WHERE id = $1",
+    )
+    .bind(cv_builder::users::DEV_USER_ID)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
     let resp = app
         .oneshot(empty_request("GET", "/health"))
         .await
         .unwrap();
     assert_ne!(resp.status(), StatusCode::UNAUTHORIZED);
+
+    let after: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+        "SELECT last_seen_at FROM users WHERE id = $1",
+    )
+    .bind(cv_builder::users::DEV_USER_ID)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    assert_eq!(
+        before, after,
+        "/health should not run the user resolver (it must live on the public router)"
+    );
 }
 
 /// The regression this branch is about: an unreachable database must produce a

@@ -2,8 +2,13 @@ use anyhow::Result;
 use cv_builder::{AnthropicConfig, AppState, Db, KeycloakConfig, app, auth};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
+
+/// Ceiling on the migration retry backoff. Caps how long a recovered database
+/// can sit unnoticed while still keeping the log quiet during a long outage.
+const MAX_MIGRATE_BACKOFF: Duration = Duration::from_secs(30);
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,7 +20,10 @@ async fn main() -> Result<()> {
 
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://cvbuilder:cvbuilder@localhost:5433/cvbuilder".into());
-    let db = Db::connect(&db_url).await?;
+    // Lazy: builds the pool without dialling Postgres, so an unreachable
+    // database can't stop us reaching the `bind` below. Migrations run in the
+    // background once we're listening — see the spawn after binding.
+    let db = Db::lazy(&db_url)?;
 
     let anthropic = AnthropicConfig::from_env_and_skill()?;
     if anthropic.is_some() {
@@ -27,6 +35,11 @@ async fn main() -> Result<()> {
     }
 
     let keycloak = KeycloakConfig::from_env();
+    // Gate the dev fixture seed on the same two conditions as before — no
+    // Keycloak *and* an explicit `DEV_SEED_FIXTURES=1`. Decided here, applied
+    // in the background task below, because seeding needs a migrated schema.
+    let seed_fixtures =
+        keycloak.is_none() && std::env::var("DEV_SEED_FIXTURES").as_deref() == Ok("1");
     let authorizer = match &keycloak {
         Some(cfg) => {
             tracing::info!(
@@ -40,17 +53,7 @@ async fn main() -> Result<()> {
             tracing::warn!(
                 "KEYCLOAK_URL/REALM/CLIENT_ID not all set — running unauthenticated (dev mode)"
             );
-            // Dev fixtures gated on TWO conditions, in this order:
-            //   1. Keycloak isn't configured (we're already in this branch).
-            //   2. `DEV_SEED_FIXTURES=1` is explicitly set in the env.
-            // The Makefile sets the var; production deployments never do, so
-            // even if Keycloak got accidentally unset on prod the seeder
-            // still doesn't run. The seeder itself is also idempotent
-            // (no-op once the `cvs` table has any row), giving us a third
-            // line of defence.
-            if std::env::var("DEV_SEED_FIXTURES").as_deref() == Ok("1") {
-                db.seed_fixtures_if_empty("assets/fixtures").await?;
-            } else {
+            if !seed_fixtures {
                 tracing::info!(
                     "DEV_SEED_FIXTURES not set — skipping fixture seed (set =1 to enable)"
                 );
@@ -66,10 +69,47 @@ async fn main() -> Result<()> {
         batch_review: Arc::new(RwLock::new(None)),
     };
 
+    // Bind *before* touching the database. The listener existing is what
+    // stops the platform's proxy from 504-ing every route (including the
+    // static frontend and `/api/config`) while Postgres is unreachable.
     let bind = std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());
     let addr: SocketAddr = bind.parse()?;
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("listening on http://{}", addr);
+
+    // Migrations run behind the listener and retry indefinitely. A database
+    // that is slow to start, or briefly unreachable, now resolves itself
+    // instead of killing the process — and every attempt is logged, so the
+    // failure is visible from the logs and from `/api/health` rather than
+    // being a silent hang.
+    let migrate_db = state.db.clone();
+    tokio::spawn(async move {
+        let mut backoff = Duration::from_secs(1);
+        loop {
+            match migrate_db.migrate().await {
+                Ok(()) => {
+                    tracing::info!("database ready — migrations applied");
+                    if seed_fixtures && let Err(e) = migrate_db
+                        .seed_fixtures_if_empty("assets/fixtures")
+                        .await
+                    {
+                        tracing::error!("fixture seeding failed: {e:#}");
+                    }
+                    return;
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "database not ready ({e:#}) — retrying in {}s; \
+                         /api/health reports the current state",
+                        backoff.as_secs()
+                    );
+                    tokio::time::sleep(backoff).await;
+                    backoff = (backoff * 2).min(MAX_MIGRATE_BACKOFF);
+                }
+            }
+        }
+    });
+
     axum::serve(listener, app(state, authorizer, "frontend")).await?;
     Ok(())
 }

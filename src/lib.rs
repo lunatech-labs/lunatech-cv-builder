@@ -48,8 +48,12 @@ impl FromRef<AppState> for Db {
 /// user resolver (always-on) and, when an authorizer is supplied, the JWT
 /// layer in front of it.
 pub fn api_router(state: AppState, authorizer: Option<auth::Authorizer>) -> Router {
+    // `/health` sits with `/config` outside the auth layer: a health check
+    // that needs a valid JWT can't distinguish "app is down" from "Keycloak
+    // is down", which is exactly the ambiguity it exists to resolve.
     let public = Router::new()
         .route("/config", get(handlers::get_config))
+        .route("/health", get(handlers::get_health))
         .with_state(state.clone());
 
     let mut protected = Router::new()

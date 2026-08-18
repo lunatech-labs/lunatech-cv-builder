@@ -1,17 +1,31 @@
 use crate::cv_reviewer::Review;
 use crate::seniority;
 use crate::users::User;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::Value as Json;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 use uuid::Uuid;
+
+/// How long `Db::ping` waits before declaring the database unreachable. Kept
+/// short so `/api/health` always answers inside a gateway timeout.
+const PING_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Clone)]
 pub struct Db {
     pub pool: PgPool,
+    /// Whether migrations (and the seniority backfill) have finished.
+    ///
+    /// The pool is created lazily so the process can bind its port before
+    /// Postgres is reachable — see `Db::lazy`. Until this flips, the schema
+    /// may not exist yet and queries would fail confusingly, so `/api/health`
+    /// reports "starting" rather than the app looking ready.
+    ready: Arc<AtomicBool>,
 }
 
 #[derive(Serialize)]
@@ -37,13 +51,84 @@ impl Db {
             .max_connections(5)
             .connect(url)
             .await?;
-        sqlx::migrate!("./migrations").run(&pool).await?;
-        let db = Self { pool };
+        let db = Self {
+            pool,
+            ready: Arc::new(AtomicBool::new(false)),
+        };
+        db.migrate().await?;
+        Ok(db)
+    }
+
+    /// Builds the pool without opening a connection. Never fails on an
+    /// unreachable database — the first query does the connecting.
+    ///
+    /// This is what lets `main` bind its port immediately. Connecting eagerly
+    /// meant an unreachable Postgres stalled startup for the full acquire
+    /// timeout *before* the listener existed, so the platform's proxy saw a
+    /// dead port and returned 504 on every route, including the static page
+    /// and `/api/config`, with nothing in the logs until the process finally
+    /// gave up. Binding first turns that outage into a degraded app that can
+    /// still serve the frontend and report why it is unhealthy.
+    pub fn lazy(url: &str) -> Result<Self> {
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .connect_lazy(url)
+            .context("building the Postgres connection pool")?;
+        Ok(Self {
+            pool,
+            ready: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
+    /// Runs migrations and the one-shot seniority backfill, then marks the
+    /// pool ready. Safe to call once per boot; `main` drives it in the
+    /// background after binding.
+    pub async fn migrate(&self) -> Result<()> {
+        sqlx::migrate!("./migrations")
+            .run(&self.pool)
+            .await
+            .context("running database migrations")?;
         // One-shot backfill: any CV missing the seniority snapshot gets one
         // at boot. Idempotent — re-running is a no-op once the column is
         // populated. Cheap (< a few ms per CV) for our scale.
-        db.backfill_seniority().await?;
-        Ok(db)
+        self.backfill_seniority().await?;
+        self.ready.store(true, Ordering::SeqCst);
+        Ok(())
+    }
+
+    /// Wraps an already-connected pool, marked ready. For tests and any caller
+    /// that migrated the schema itself (`#[sqlx::test]` does).
+    pub fn from_pool(pool: PgPool) -> Self {
+        Self {
+            pool,
+            ready: Arc::new(AtomicBool::new(true)),
+        }
+    }
+
+    /// True once `migrate` has completed successfully.
+    pub fn is_ready(&self) -> bool {
+        self.ready.load(Ordering::SeqCst)
+    }
+
+    /// Round-trips a trivial query to check the database is actually
+    /// reachable *now*, rather than reporting a cached boot-time verdict.
+    ///
+    /// Capped well below a typical proxy's gateway timeout. The pool's own
+    /// acquire timeout is 30s, which would make an unreachable database hang
+    /// the health check past the point where the proxy gives up — turning the
+    /// one endpoint meant to *explain* an outage into another 504.
+    pub async fn ping(&self) -> Result<()> {
+        let query = sqlx::query("SELECT 1").execute(&self.pool);
+        match tokio::time::timeout(PING_TIMEOUT, query).await {
+            Ok(r) => {
+                r.context("pinging the database")?;
+                Ok(())
+            }
+            Err(_) => Err(anyhow!(
+                "database did not respond within {}s",
+                PING_TIMEOUT.as_secs()
+            )),
+        }
     }
 
     /// Loads every `*.yaml` under `dir` as a CV owned by the dev user.

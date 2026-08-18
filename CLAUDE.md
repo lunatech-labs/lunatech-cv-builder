@@ -55,6 +55,7 @@ Optional env vars:
 
 | Method | Path                       | Purpose                                                                | Scope    |
 | ------ | -------------------------- | ---------------------------------------------------------------------- | -------- |
+| GET    | `/api/health`              | `{status, database, detail?}` — 200 when ready, 503 otherwise           | public   |
 | GET    | `/api/overview`            | `{me, stats, my_cvs, top_cvs}` — landing-page payload                  | self     |
 | GET    | `/api/cvs`                 | list `[{id, name, updated_at}]` of the caller's CVs                    | self     |
 | POST   | `/api/cvs`                 | body `{yaml}` -> `{id}` (assigned to caller)                           | self     |
@@ -64,6 +65,22 @@ Optional env vars:
 | GET    | `/api/cvs/{id}/pdf?theme=` | PDF bytes; theme = lunatech/cosmic/luxe/opera                          | any user |
 | POST   | `/api/cvs/{id}/reviews`    | runs Claude on the saved YAML, persists, returns the review            | owner    |
 | POST   | `/api/review/pdf`          | body `{review, cv_name?}` -> PDF bytes (download); stateless           | any user |
+
+## Startup and health
+
+The process **binds its port before touching Postgres**. `Db::lazy` builds the pool without dialling, `main` binds, and migrations plus the seniority backfill then run in a background task that retries with exponential backoff (1s, capped at 30s) until they succeed.
+
+This ordering is load-bearing. Connecting eagerly meant an unreachable database stalled startup before the listener existed, so the platform proxy saw a dead port and returned 504 on *every* route — the static frontend and the public `/api/config` included — with nothing logged until the process finally gave up. Now an unreachable database is a degraded app, not an invisible outage: the frontend still serves, the failure is logged on every retry with the root cause, and a database that comes back is picked up without a restart.
+
+`GET /api/health` reports the current state. It sits on the public router, alongside `/api/config` and outside the JWT layer, because a check requiring a valid token cannot distinguish "app down" from "Keycloak down".
+
+| `status`   | Code | Meaning                                                  |
+| ---------- | ---- | -------------------------------------------------------- |
+| `ok`       | 200  | Migrations applied and the database answers a live ping. |
+| `starting` | 503  | Serving, migrations still running. Expected briefly on every boot. |
+| `degraded` | 503  | Database unreachable; `detail` carries the reason.       |
+
+The ping is a live round-trip, not a cached boot-time verdict, so a database that disappears after a healthy boot still reports honestly. It is capped at 3s (`PING_TIMEOUT` in [`src/db.rs`](src/db.rs)) — the pool's own acquire timeout is 30s, which would make health hang past a gateway timeout and 504 like everything else, defeating its purpose.
 
 **Scope semantics** — `self` means the response is filtered to the caller's CVs. `any user` means any authenticated user can read (Lunatech-internal trust model: every recruiter can browse every consultant's CV). `owner` means only the CV's creator can mutate. The `owner` field on `GET /api/cvs/{id}` lets the frontend detect non-owned CVs and switch the editor into a read-only banner mode.
 

@@ -1381,14 +1381,14 @@ function esc(s) {
 // ══════════════════════════════════════════════════════════
 //
 // Ace owns the editing surface (syntax highlighting, line numbers,
-// scrolling, paging, code folding). `ta` (display:none) is kept purely as
-// a compatibility shim: every other place in this file reads/writes
-// `document.getElementById('yaml-editor').value` directly, so its `value`
-// property is redefined to proxy to the live Ace instance instead of
-// updating every call site individually.
+// scrolling, paging, code folding). The rest of this file reads/writes
+// the editor's content only through getYaml()/setYaml() below, never
+// through the Ace instance or #yaml-editor directly, so a CDN load
+// failure (falling back to the plain #yaml-editor textarea) is
+// transparent to every caller.
 
-// Guarded: if the Ace CDN scripts failed (see the <script onerror> in
-// <head>), `ace` is undefined here. Registering the theme unconditionally
+// Guarded: if the Ace CDN scripts failed to load, `ace` is undefined
+// here. Registering the theme unconditionally
 // would throw at load time and abort the rest of this script — routing,
 // init, everything — not just the editor.
 if (typeof ace !== 'undefined') {
@@ -1416,6 +1416,27 @@ if (typeof ace !== 'undefined') {
   });
 }
 
+// getYaml()/setYaml() are the one choke point the rest of this file uses
+// to read/write the editor's content — they route to whichever surface is
+// actually live: the Ace instance normally, or the plain fallback
+// textarea if Ace failed to load (see attachEditor). Nothing outside this
+// section should touch #yaml-editor's `.value` or the Ace instance
+// directly, so a load failure can't silently break a call site that
+// assumed one or the other is always present.
+function getYaml() {
+  return yamlEditor ? yamlEditor.getValue() : document.getElementById('yaml-editor').value;
+}
+function setYaml(v) {
+  v = v == null ? '' : v;
+  if (yamlEditor) {
+    yamlEditor.setValue(v, -1);
+  } else {
+    var ta = document.getElementById('yaml-editor');
+    ta.value = v;
+    ta.dispatchEvent(new Event('input')); // programmatic set doesn't fire 'input' on its own
+  }
+}
+
 // If Ace failed to load, fall back to a plain, fully functional textarea
 // (no highlighting/folding) instead of leaving an unusable blank panel.
 function attachEditor(textareaId, aceContainerId, onChangeFn) {
@@ -1431,33 +1452,17 @@ function attachEditor(textareaId, aceContainerId, onChangeFn) {
     return;
   }
 
-  var editor = yamlEditor = ace.edit(aceContainerId);
-  editor.session.setMode('ace/mode/yaml');
-  editor.setTheme('ace/theme/ferrite');
-  editor.setOptions({
+  yamlEditor = ace.edit(aceContainerId);
+  yamlEditor.session.setMode('ace/mode/yaml');
+  yamlEditor.setTheme('ace/theme/ferrite');
+  yamlEditor.setOptions({
     fontSize: '13px',
     fontFamily: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace",
     showPrintMargin: false, wrap: true, tabSize: 2, useSoftTabs: true,
     highlightActiveLine: false, highlightGutterLine: false
   });
-
-  var syncingToAce = false;
-  Object.defineProperty(ta, 'value', {
-    get: function() { return editor.getValue(); },
-    set: function(v) {
-      syncingToAce = true;
-      editor.setValue(v == null ? '' : v, -1);
-      syncingToAce = false;
-    }
-  });
-
-  editor.session.on('change', function() {
-    if (syncingToAce) return;
-    ta.dispatchEvent(new Event('input'));
-  });
-
-  ta.value = YAML_DEFAULT;
-  ta.addEventListener('input', function() { if (onChangeFn) onChangeFn(); });
+  yamlEditor.session.on('change', function() { if (onChangeFn) onChangeFn(); });
+  yamlEditor.setValue(YAML_DEFAULT, -1);
   if (onChangeFn) onChangeFn();
 }
 
@@ -1699,7 +1704,7 @@ function setTheme(theme) {
 // UPDATE / TAB / EXPORT
 // ══════════════════════════════════════════════════════════
 function updateCV() {
-  var raw = document.getElementById('yaml-editor').value;
+  var raw = getYaml();
   var errBar = document.getElementById('yaml-error');
   try {
     var data = jsyaml.load(raw);
@@ -1728,7 +1733,7 @@ function setStatus(state, msg) {
 }
 
 function refreshStatus() {
-  var current = document.getElementById('yaml-editor').value;
+  var current = getYaml();
   if (!currentCvId) {
     setStatus('', 'Unsaved');
     return;
@@ -1741,7 +1746,7 @@ function refreshStatus() {
 }
 
 async function saveCv() {
-  var yaml = document.getElementById('yaml-editor').value;
+  var yaml = getYaml();
   try {
     if (currentCvId) {
       var res = await fetch('/api/cvs/' + currentCvId, {
@@ -1821,7 +1826,7 @@ async function exportPDF() {
   }
   var name = '';
   try {
-    var data = jsyaml.load(document.getElementById('yaml-editor').value) || {};
+    var data = jsyaml.load(getYaml()) || {};
     if (typeof data.name === 'string') name = data.name;
   } catch (_) {}
   await downloadCvPdf(currentCvId, name, null, currentTheme);
@@ -1900,7 +1905,7 @@ function closePdfPreview() {
 }
 
 function copyYaml() {
-  navigator.clipboard.writeText(document.getElementById('yaml-editor').value);
+  navigator.clipboard.writeText(getYaml());
   var btn = document.querySelector('.btn-ghost');
   var orig = btn.textContent;
   btn.textContent = 'Copied!';
@@ -1948,7 +1953,7 @@ var currentOwnerId = null;  // owner of the CV currently loaded in the editor
 // single source of truth for both the in-app nav guard and beforeunload.
 function hasUnsavedChanges() {
   if (!document.getElementById('view-editor').classList.contains('active')) return false;
-  var current = document.getElementById('yaml-editor').value;
+  var current = getYaml();
   var baseline = savedYaml !== null ? savedYaml : YAML_DEFAULT;
   return current !== baseline;
 }
@@ -2401,14 +2406,12 @@ function renderMyGrid(items) {
 function openBlankEditor() {
   currentOwnerId = meId;
   setReadonly(false);
-  var ta = document.getElementById('yaml-editor');
-  ta.value = YAML_DEFAULT;
+  setYaml(YAML_DEFAULT);
   currentCvId = null;
   savedYaml = null;
   clearReviewState();
   setEditorSeniority(null);
   setEditorTitle('New CV');
-  ta.dispatchEvent(new Event('input'));
   refreshStatus();
 }
 
@@ -2420,8 +2423,7 @@ function setEditorTitle(name) {
 async function openCvInEditor(id) {
   try {
     var cv = await fetch('/api/cvs/' + id).then(function(r) { return r.json(); });
-    var ta = document.getElementById('yaml-editor');
-    ta.value = cv.yaml;
+    setYaml(cv.yaml);
     currentCvId = cv.id;
     savedYaml = cv.yaml;
     currentOwnerId = (cv.owner && cv.owner.id) || null;
@@ -2437,7 +2439,6 @@ async function openCvInEditor(id) {
       clearReviewState();
     }
     setEditorSeniority(cv.seniority);
-    ta.dispatchEvent(new Event('input'));
     refreshStatus();
   } catch (e) {
     alert('Load failed: ' + e.message);
@@ -2959,7 +2960,7 @@ async function exportReviewPdf() {
   // get personalised — falls back to "review" if the field is missing.
   var cvName = '';
   try {
-    var data = jsyaml.load(document.getElementById('yaml-editor').value) || {};
+    var data = jsyaml.load(getYaml()) || {};
     if (typeof data.name === 'string') cvName = data.name;
   } catch (_) {}
 
@@ -2996,9 +2997,7 @@ async function applyImprovedYaml() {
   var review = window.__currentReview;
   if (!review || !review.improved_yaml) return;
   if (!confirm('Replace the editor with the improved YAML and save it? The previous version will be overwritten.')) return;
-  var ta = document.getElementById('yaml-editor');
-  ta.value = review.improved_yaml;
-  ta.dispatchEvent(new Event('input'));
+  setYaml(review.improved_yaml);
   // Persist immediately. Applying used to only fill the editor, leaving the
   // change unsaved — so the improved YAML never reached the DB and any later
   // review still ran against the original. Save it through so "apply" means

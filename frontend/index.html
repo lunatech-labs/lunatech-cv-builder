@@ -1339,6 +1339,10 @@ body {
 // Loaded from /assets/cv-empty.yaml at init.
 var YAML_DEFAULT = '';
 
+// Set by attachEditor(); read by setReadonly() to toggle Ace's own
+// read-only mode when a non-owned CV is opened.
+var yamlEditor = null;
+
 function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -1379,7 +1383,7 @@ ace.define('ace/theme/ferrite', ['require', 'exports', 'module', 'ace/lib/dom'],
 
 function attachEditor(textareaId, aceContainerId, onChangeFn) {
   var ta = document.getElementById(textareaId);
-  var editor = ace.edit(aceContainerId);
+  var editor = yamlEditor = ace.edit(aceContainerId);
   editor.session.setMode('ace/mode/yaml');
   editor.setTheme('ace/theme/ferrite');
   editor.setOptions({
@@ -1403,7 +1407,6 @@ function attachEditor(textareaId, aceContainerId, onChangeFn) {
     if (syncingToAce) return;
     ta.dispatchEvent(new Event('input'));
   });
-  editor.setReadOnly(ta.disabled);
 
   ta.value = YAML_DEFAULT;
   ta.addEventListener('input', function() { if (onChangeFn) onChangeFn(); });
@@ -2430,6 +2433,7 @@ function setReadonly(yes, owner) {
   document.querySelectorAll('[data-owner-only]').forEach(function(el) {
     el.style.display = yes ? 'none' : '';
   });
+  if (yamlEditor) yamlEditor.setReadOnly(yes);
 }
 
 // ══════════════════════════════════════════════════════════

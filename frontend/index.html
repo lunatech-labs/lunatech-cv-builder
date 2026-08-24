@@ -12,6 +12,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<!-- YAML editor: Ace (see attachEditor / ace/theme/ferrite in the main script). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ace.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/mode-yaml.js" crossorigin="anonymous"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -152,67 +155,15 @@ body {
   flex-shrink: 0;
 }
 
-/* The highlight + textarea stack. Both share font, padding, and wrap
-   behaviour so the (transparent) textarea caret stays glued to the
-   highlighted glyphs as the user types and the text wraps. */
+/* The YAML editor is an Ace instance (see attachEditor / ace/theme/ferrite);
+   .editor-wrap just hosts its container at full panel size. */
 .editor-wrap {
   flex: 1;
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
   background: var(--ui-surface-2);
 }
-.editor-highlight,
-.editor-textarea {
-  font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.7;
-  tab-size: 2;
-  -moz-tab-size: 2;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.editor-highlight {
-  position: absolute; top: 0; left: 0; right: 0;
-  padding: 16px 18px 16px 12px;
-  pointer-events: none;
-  color: var(--ui-text-2);
-  counter-reset: line;
-}
-.editor-highlight .line {
-  display: block;
-  position: relative;
-  padding-left: 46px;
-  min-height: 1.7em;
-}
-.editor-highlight .line::before {
-  counter-increment: line;
-  content: counter(line);
-  position: absolute;
-  left: 0; top: 0;
-  width: 36px;
-  padding-right: 8px;
-  text-align: right;
-  color: var(--ui-muted-2);
-  font-variant-numeric: tabular-nums;
-  user-select: none;
-}
-.editor-textarea {
-  position: absolute; top: 0; left: 0; right: 0;
-  padding: 16px 18px 16px 58px;
-  background: transparent;
-  color: transparent;
-  caret-color: var(--ui-accent-ink);
-  border: none; outline: none; resize: none;
-  overflow: hidden;
-  z-index: 2;
-}
-/* Translucent, not var(--ui-accent-soft): the textarea sits on top of the
-   syntax-highlighted .editor-highlight layer, and its own selected glyphs
-   are transparent, so an opaque selection background paints a solid box
-   that hides the highlighted text underneath instead of tinting over it. */
-.editor-textarea::selection { background: oklch(0.62 0.16 35 / 30%); color: transparent; }
 
 .error-bar {
   padding: 8px 18px;
@@ -223,18 +174,6 @@ body {
   font-family: 'Geist Mono', monospace;
 }
 .error-bar.visible { display: block; }
-
-/* YAML token colours — light theme, on-brand */
-.hl-key     { color: #1E5F9E; }                  /* cool navy */
-.hl-str     { color: #1E6A45; }                  /* forest green */
-.hl-num     { color: var(--ui-accent-ink); }     /* terracotta */
-.hl-bool    { color: oklch(0.42 0.16 320); font-style: italic; }
-.hl-comment { color: var(--ui-muted); font-style: italic; }
-.hl-dash    { color: var(--ui-accent); font-weight: 600; }
-.hl-anchor  { color: oklch(0.42 0.16 320); }
-.hl-brace   { color: var(--ui-muted); }
-.hl-at      { color: #cba6f7; font-style: italic; }
-.hl-brace   { color: #6c7086; }
 
 /* ── PREVIEW ── */
 .preview-area { flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 16px; background-image: linear-gradient(45deg,#777 25%,transparent 25%),linear-gradient(-45deg,#777 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#777 75%),linear-gradient(-45deg,transparent 75%,#777 75%); background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; background-color: #888; }
@@ -1378,8 +1317,10 @@ body {
   <div class="editor-panel">
     <div class="panel-header">YAML</div>
     <div class="editor-wrap" id="wrap-yaml">
-      <div class="editor-highlight" id="hl-yaml"></div>
-      <textarea class="editor-textarea" id="yaml-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+      <div id="ace-yaml" style="position:absolute; inset:0;"></div>
+      <!-- Compatibility shim for the rest of this file's `.value` access —
+           see the comment above attachEditor(). -->
+      <textarea id="yaml-editor" style="display:none" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
     </div>
     <div class="error-bar" id="yaml-error"></div>
   </div>
@@ -1398,99 +1339,75 @@ body {
 // Loaded from /assets/cv-empty.yaml at init.
 var YAML_DEFAULT = '';
 
-// ══════════════════════════════════════════════════════════
-// SYNTAX HIGHLIGHTING (textarea + div overlay)
-// ══════════════════════════════════════════════════════════
-//
-// The editor renders each YAML line as its own `<div class="line">` so we
-// can (a) get line numbers for free via a CSS counter, and (b) let each
-// line wrap independently — long descriptions no longer require a
-// horizontal scroll. The textarea sits transparent on top with the same
-// font, width, and `white-space: pre-wrap`, so the caret stays aligned
-// with the highlighted text as it wraps.
-
 function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function highlightYaml(code) {
-  return code.split('\n').map(function(line) {
-    var inner = highlightYamlLine(line);
-    // Blank lines need a zero-width-space so the line div still takes a
-    // line of height (otherwise it collapses and the line numbers shift).
-    if (inner === '') inner = '​';
-    return '<div class="line">' + inner + '</div>';
-  }).join('');
-}
+// ══════════════════════════════════════════════════════════
+// YAML EDITOR (Ace)
+// ══════════════════════════════════════════════════════════
+//
+// Ace owns the editing surface (syntax highlighting, line numbers,
+// scrolling, paging, code folding). `ta` (display:none) is kept purely as
+// a compatibility shim: every other place in this file reads/writes
+// `document.getElementById('yaml-editor').value` directly, so its `value`
+// property is redefined to proxy to the live Ace instance instead of
+// updating every call site individually.
 
-function highlightYamlLine(line) {
-  if (/^\s*#/.test(line)) return '<span class="hl-comment">' + esc(line) + '</span>';
-  var out = '';
-  var dashMatch = line.match(/^(\s*)(- )(.*)/);
-  if (dashMatch) {
-    out += esc(dashMatch[1]);
-    out += '<span class="hl-dash">- </span>';
-    line = dashMatch[3];
-  } else {
-    var kvMatch = line.match(/^(\s*)([^:]+?)(\s*:\s*)(.*)/);
-    if (kvMatch) {
-      out += esc(kvMatch[1]);
-      out += '<span class="hl-key">' + esc(kvMatch[2]) + '</span>';
-      out += '<span class="hl-brace">' + esc(kvMatch[3]) + '</span>';
-      line = kvMatch[4];
-    }
-  }
-  if (line !== undefined && line !== '') {
-    if (/^".*"$/.test(line.trim()) || /^'.*'$/.test(line.trim())) {
-      out += '<span class="hl-str">' + esc(line) + '</span>';
-    } else if (/^\[.*\]$/.test(line.trim())) {
-      out += '<span class="hl-brace">[</span>' +
-        line.trim().slice(1,-1).split(',').map(function(item) {
-          return '<span class="hl-str">' + esc(item) + '</span>';
-        }).join('<span class="hl-brace">,</span>') +
-        '<span class="hl-brace">]</span>';
-    } else if (/^(true|false|yes|no|null|~)$/i.test(line.trim())) {
-      out += '<span class="hl-bool">' + esc(line) + '</span>';
-    } else if (/^-?\d/.test(line.trim())) {
-      out += '<span class="hl-num">' + esc(line) + '</span>';
-    } else if (line.trim() === '>') {
-      out += '<span class="hl-anchor">' + esc(line) + '</span>';
-    } else {
-      out += esc(line);
-    }
-  }
-  return out;
-}
+ace.define('ace/theme/ferrite', ['require', 'exports', 'module', 'ace/lib/dom'], function(require, exports) {
+  exports.isDark = false;
+  exports.cssClass = 'ace-ferrite';
+  exports.cssText =
+    '.ace-ferrite { background: var(--ui-surface-2); color: var(--ui-text-2); }' +
+    '.ace-ferrite .ace_gutter { background: var(--ui-surface-2); color: var(--ui-muted-2); border-right: 1px solid var(--ui-border); font-variant-numeric: tabular-nums; }' +
+    '.ace-ferrite .ace_gutter-active-line, .ace-ferrite .ace_active-line { background: transparent; }' +
+    '.ace-ferrite .ace_print-margin { display: none; }' +
+    '.ace-ferrite .ace_cursor { border-left: 2px solid var(--ui-accent-ink); }' +
+    '.ace-ferrite .ace_selection { background: oklch(0.62 0.16 35 / 30%); }' +
+    '.ace-ferrite .ace_indent-guide { background: none; }' +
+    '.ace-ferrite .ace_meta.ace_tag, .ace-ferrite .ace_keyword { color: #1E5F9E; }' +
+    '.ace-ferrite .ace_string { color: #1E6A45; }' +
+    '.ace-ferrite .ace_constant.ace_numeric { color: var(--ui-accent-ink); }' +
+    '.ace-ferrite .ace_constant.ace_language { color: oklch(0.42 0.16 320); }' +
+    '.ace-ferrite .ace_constant.ace_language.ace_boolean { color: oklch(0.42 0.16 320); font-style: italic; }' +
+    '.ace-ferrite .ace_comment { color: var(--ui-muted); font-style: italic; }' +
+    '.ace-ferrite .ace_list.ace_markup { color: var(--ui-accent); font-weight: 600; }' +
+    '.ace-ferrite .ace_paren { color: var(--ui-muted); }';
+  var dom = require('ace/lib/dom');
+  dom.importCssString(exports.cssText, exports.cssClass, false);
+});
 
-function attachEditor(textareaId, highlightId, wrapId, highlightFn, onChangeFn) {
+function attachEditor(textareaId, aceContainerId, onChangeFn) {
   var ta = document.getElementById(textareaId);
-  var hl = document.getElementById(highlightId);
-  var wp = document.getElementById(wrapId);
+  var editor = ace.edit(aceContainerId);
+  editor.session.setMode('ace/mode/yaml');
+  editor.setTheme('ace/theme/ferrite');
+  editor.setOptions({
+    fontSize: '13px',
+    fontFamily: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace",
+    showPrintMargin: false, wrap: true, tabSize: 2, useSoftTabs: true,
+    highlightActiveLine: false, highlightGutterLine: false
+  });
 
-  function refresh() {
-    hl.innerHTML = highlightFn(ta.value);
-    // Resize the textarea to the highlight's wrapped height so the wrap
-    // container scrolls as one unit. `scrollHeight` reflects the wrapped
-    // height of the inner content; both elements have the same font /
-    // width / padding / white-space, so they wrap identically.
-    ta.style.height = 'auto';
-    ta.style.height = Math.max(wp.clientHeight, hl.offsetHeight) + 'px';
-    if (onChangeFn) onChangeFn();
-  }
-
-  ta.value = YAML_DEFAULT;
-  ta.addEventListener('input', refresh);
-  ta.addEventListener('keydown', function(e) {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      var s = ta.selectionStart, end = ta.selectionEnd;
-      ta.value = ta.value.substring(0,s) + '  ' + ta.value.substring(end);
-      ta.selectionStart = ta.selectionEnd = s + 2;
-      refresh();
+  var syncingToAce = false;
+  Object.defineProperty(ta, 'value', {
+    get: function() { return editor.getValue(); },
+    set: function(v) {
+      syncingToAce = true;
+      editor.setValue(v == null ? '' : v, -1);
+      syncingToAce = false;
     }
   });
 
-  refresh();
+  editor.session.on('change', function() {
+    if (syncingToAce) return;
+    ta.dispatchEvent(new Event('input'));
+  });
+  editor.setReadOnly(ta.disabled);
+
+  ta.value = YAML_DEFAULT;
+  ta.addEventListener('input', function() { if (onChangeFn) onChangeFn(); });
+  if (onChangeFn) onChangeFn();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2541,7 +2458,7 @@ function setReadonly(yes, owner) {
     var res = await fetch('/assets/cv-empty.yaml');
     if (res.ok) YAML_DEFAULT = await res.text();
   } catch (_) {}
-  attachEditor('yaml-editor', 'hl-yaml', 'wrap-yaml', highlightYaml, updateCV);
+  attachEditor('yaml-editor', 'ace-yaml', updateCV);
   setTheme('lunatech');
   refreshStatus();
   // Decide which view to show based on the URL — overview is the default

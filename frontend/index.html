@@ -13,8 +13,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <!-- YAML editor: Ace (see attachEditor / ace/theme/ferrite in the main script). -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ace.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/mode-yaml.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ace.js" integrity="sha512-+dWoJ4nMR1zflFH9wM1ZaI8waJi8iGlGuTnQrEZ7CrjVS3rpgE9b06SLIdLUjieiYodMEl8tUYtcVgXXL0/e8w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/mode-yaml.js" integrity="sha512-Xs06SkAlRDRCO++qf4K5jDD7D4v/boPM63dYtWpidSUa6z2lMdarSP6qziu27sLIjegIJNgbLRcRj1Fwd72/jg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -174,6 +174,31 @@ body {
   font-family: 'Geist Mono', monospace;
 }
 .error-bar.visible { display: block; }
+
+/* Shown only if the Ace CDN scripts fail to load (see attachEditor). */
+.editor-load-warning {
+  display: none;
+  padding: 8px 18px;
+  font-size: 12px; color: #8A5A1E;
+  background: oklch(0.92 0.06 75);
+  border-bottom: 1px solid oklch(0.8 0.1 75);
+  flex-shrink: 0;
+}
+.editor-load-warning.visible { display: block; }
+
+/* Plain-textarea fallback when Ace itself failed to load — no overlay,
+   no highlighting, just a usable text box so editing still works. */
+.editor-textarea-fallback {
+  display: block !important;
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  padding: 16px 18px;
+  border: none; outline: none; resize: none;
+  background: var(--ui-surface-2); color: var(--ui-text-2);
+  font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace;
+  font-size: 13px; line-height: 1.7; tab-size: 2;
+  white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;
+}
 
 /* ── PREVIEW ── */
 .preview-area { flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 16px; background-image: linear-gradient(45deg,#777 25%,transparent 25%),linear-gradient(-45deg,#777 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#777 75%),linear-gradient(-45deg,transparent 75%,#777 75%); background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; background-color: #888; }
@@ -1316,10 +1341,14 @@ body {
 <div class="app-body">
   <div class="editor-panel">
     <div class="panel-header">YAML</div>
+    <div class="editor-load-warning" id="editor-load-warning">
+      The code editor failed to load (likely a network or ad-blocker issue) — you can still edit the raw YAML text below, without syntax highlighting.
+    </div>
     <div class="editor-wrap" id="wrap-yaml">
       <div id="ace-yaml" style="position:absolute; inset:0;"></div>
       <!-- Compatibility shim for the rest of this file's `.value` access —
-           see the comment above attachEditor(). -->
+           see the comment above attachEditor(). Also the fallback editing
+           surface if Ace fails to load (see attachEditor). -->
       <textarea id="yaml-editor" style="display:none" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
     </div>
     <div class="error-bar" id="yaml-error"></div>
@@ -1358,31 +1387,50 @@ function esc(s) {
 // property is redefined to proxy to the live Ace instance instead of
 // updating every call site individually.
 
-ace.define('ace/theme/ferrite', ['require', 'exports', 'module', 'ace/lib/dom'], function(require, exports) {
-  exports.isDark = false;
-  exports.cssClass = 'ace-ferrite';
-  exports.cssText =
-    '.ace-ferrite { background: var(--ui-surface-2); color: var(--ui-text-2); }' +
-    '.ace-ferrite .ace_gutter { background: var(--ui-surface-2); color: var(--ui-muted-2); border-right: 1px solid var(--ui-border); font-variant-numeric: tabular-nums; }' +
-    '.ace-ferrite .ace_gutter-active-line, .ace-ferrite .ace_active-line { background: transparent; }' +
-    '.ace-ferrite .ace_print-margin { display: none; }' +
-    '.ace-ferrite .ace_cursor { border-left: 2px solid var(--ui-accent-ink); }' +
-    '.ace-ferrite .ace_selection { background: oklch(0.62 0.16 35 / 30%); }' +
-    '.ace-ferrite .ace_indent-guide { background: none; }' +
-    '.ace-ferrite .ace_meta.ace_tag, .ace-ferrite .ace_keyword { color: #1E5F9E; }' +
-    '.ace-ferrite .ace_string { color: #1E6A45; }' +
-    '.ace-ferrite .ace_constant.ace_numeric { color: var(--ui-accent-ink); }' +
-    '.ace-ferrite .ace_constant.ace_language { color: oklch(0.42 0.16 320); }' +
-    '.ace-ferrite .ace_constant.ace_language.ace_boolean { color: oklch(0.42 0.16 320); font-style: italic; }' +
-    '.ace-ferrite .ace_comment { color: var(--ui-muted); font-style: italic; }' +
-    '.ace-ferrite .ace_list.ace_markup { color: var(--ui-accent); font-weight: 600; }' +
-    '.ace-ferrite .ace_paren { color: var(--ui-muted); }';
-  var dom = require('ace/lib/dom');
-  dom.importCssString(exports.cssText, exports.cssClass, false);
-});
+// Guarded: if the Ace CDN scripts failed (see the <script onerror> in
+// <head>), `ace` is undefined here. Registering the theme unconditionally
+// would throw at load time and abort the rest of this script — routing,
+// init, everything — not just the editor.
+if (typeof ace !== 'undefined') {
+  ace.define('ace/theme/ferrite', ['require', 'exports', 'module', 'ace/lib/dom'], function(require, exports) {
+    exports.isDark = false;
+    exports.cssClass = 'ace-ferrite';
+    exports.cssText =
+      '.ace-ferrite { background: var(--ui-surface-2); color: var(--ui-text-2); }' +
+      '.ace-ferrite .ace_gutter { background: var(--ui-surface-2); color: var(--ui-muted-2); border-right: 1px solid var(--ui-border); font-variant-numeric: tabular-nums; }' +
+      '.ace-ferrite .ace_gutter-active-line, .ace-ferrite .ace_active-line { background: transparent; }' +
+      '.ace-ferrite .ace_print-margin { display: none; }' +
+      '.ace-ferrite .ace_cursor { border-left: 2px solid var(--ui-accent-ink); }' +
+      '.ace-ferrite .ace_selection { background: oklch(0.62 0.16 35 / 30%); }' +
+      '.ace-ferrite .ace_indent-guide { background: none; }' +
+      '.ace-ferrite .ace_meta.ace_tag, .ace-ferrite .ace_keyword { color: #1E5F9E; }' +
+      '.ace-ferrite .ace_string { color: #1E6A45; }' +
+      '.ace-ferrite .ace_constant.ace_numeric { color: var(--ui-accent-ink); }' +
+      '.ace-ferrite .ace_constant.ace_language { color: oklch(0.42 0.16 320); }' +
+      '.ace-ferrite .ace_constant.ace_language.ace_boolean { color: oklch(0.42 0.16 320); font-style: italic; }' +
+      '.ace-ferrite .ace_comment { color: var(--ui-muted); font-style: italic; }' +
+      '.ace-ferrite .ace_list.ace_markup { color: var(--ui-accent); font-weight: 600; }' +
+      '.ace-ferrite .ace_paren { color: var(--ui-muted); }';
+    var dom = require('ace/lib/dom');
+    dom.importCssString(exports.cssText, exports.cssClass, false);
+  });
+}
 
+// If Ace failed to load, fall back to a plain, fully functional textarea
+// (no highlighting/folding) instead of leaving an unusable blank panel.
 function attachEditor(textareaId, aceContainerId, onChangeFn) {
   var ta = document.getElementById(textareaId);
+
+  if (typeof ace === 'undefined') {
+    ta.classList.add('editor-textarea-fallback');
+    var warning = document.getElementById('editor-load-warning');
+    if (warning) warning.classList.add('visible');
+    ta.value = YAML_DEFAULT;
+    ta.addEventListener('input', function() { if (onChangeFn) onChangeFn(); });
+    if (onChangeFn) onChangeFn();
+    return;
+  }
+
   var editor = yamlEditor = ace.edit(aceContainerId);
   editor.session.setMode('ace/mode/yaml');
   editor.setTheme('ace/theme/ferrite');
@@ -2433,7 +2481,13 @@ function setReadonly(yes, owner) {
   document.querySelectorAll('[data-owner-only]').forEach(function(el) {
     el.style.display = yes ? 'none' : '';
   });
-  if (yamlEditor) yamlEditor.setReadOnly(yes);
+  if (yamlEditor) {
+    yamlEditor.setReadOnly(yes);
+  } else {
+    // Ace failed to load (see attachEditor's fallback) — enforce
+    // read-only on the plain textarea directly instead.
+    document.getElementById('yaml-editor').readOnly = yes;
+  }
 }
 
 // ══════════════════════════════════════════════════════════

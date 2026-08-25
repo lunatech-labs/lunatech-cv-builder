@@ -1459,7 +1459,9 @@ function attachEditor(textareaId, aceContainerId, onChangeFn) {
     fontSize: '13px',
     fontFamily: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace",
     showPrintMargin: false, wrap: true, tabSize: 2, useSoftTabs: true,
-    highlightActiveLine: false, highlightGutterLine: false
+    highlightActiveLine: false, highlightGutterLine: false,
+    // Disabled: Ace's YAML worker loads unpinned (no SRI) from the CDN at runtime.
+    useWorker: false
   });
   yamlEditor.session.on('change', function() { if (onChangeFn) onChangeFn(); });
   yamlEditor.setValue(YAML_DEFAULT, -1);

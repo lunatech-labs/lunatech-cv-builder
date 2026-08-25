@@ -317,7 +317,8 @@ impl Db {
     ) -> Result<bool> {
         let report = seniority::score_yaml(yaml);
         let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
-        // One query: UPDATE skips no-op writes; the EXISTS checks tell "unchanged" apart from "not found".
+        // One statement keeps the no-op check and the update atomic (no race with a concurrent delete).
+        // The EXISTS checks tell "unchanged" apart from "not found".
         let (_updated, exists): (bool, bool) = sqlx::query_as(
             "WITH upd AS (
                  UPDATE cvs

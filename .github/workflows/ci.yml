@@ -48,5 +48,13 @@ jobs:
       - name: Cache cargo registry and build artifacts
         uses: Swatinem/rust-cache@v2
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Run tests
         run: cargo test --all-targets --locked
+
+      - name: Run frontend tests
+        run: node --test frontend/sync-coalescer.test.js

@@ -28,7 +28,7 @@
   - New sidebar-brand failure badge (CSS + markup).
   - New `fetchAndApply()`, `applyOverviewData(data)`, `syncWorkspaceData` (replaces `ensureSidebarRendered()`, `refreshSidebarFromOverview()`, `renderOverview()`).
   - `routeView()` rewired to the new function.
-  - `saveCv()`, `runReview()`, `deleteCv()`, `applyBatchFrame()` each call `syncWorkspaceData()`.
+  - `saveCv()`, `runReview()`, `applyBatchFrame()` each call `syncWorkspaceData()`. `deleteCv()` doesn't need its own call: it navigates to `/`, and `routeView()`'s overview branch already refreshes the sidebar (see design doc's call-site table).
 - **Modify** `Makefile`: `test` target also runs the new Node test.
 - **Modify** `CLAUDE.md`: mention the new Node test alongside the existing `cargo test` commands.
 
@@ -857,34 +857,15 @@ Replace with:
     openReviewModal(cachedReview, cachedReviewAt);
 ```
 
-- [ ] **Step 3: `deleteCv()` (makes the refresh explicit)**
+- [ ] **Step 3: `deleteCv()` — superseded, no change needed**
 
-Find:
-
-```js
-    currentCvId = null;
-    savedYaml = null;
-    clearReviewState();
-    // Back to the overview — the deleted CV obviously doesn't make sense to
-    // keep editing, and routeView re-fetches /api/overview which carries
-    // the refreshed listings. skipGuard: already confirmed above, and the
-    // in-editor content no longer corresponds to anything worth keeping.
-    navigateTo('/', { skipGuard: true });
-```
-
-Replace with:
-
-```js
-    currentCvId = null;
-    savedYaml = null;
-    clearReviewState();
-    syncWorkspaceData();
-    // Back to the overview: the deleted CV obviously doesn't make sense to
-    // keep editing, and routeView's overview branch re-fetches /api/overview
-    // too. skipGuard: already confirmed above, and the in-editor content no
-    // longer corresponds to anything worth keeping.
-    navigateTo('/', { skipGuard: true });
-```
+`deleteCv()` already navigates to `/` after a delete, and `routeView()`'s overview branch
+refreshes the sidebar and rankings on its own — no explicit `syncWorkspaceData()` call is
+needed here. An earlier version of this plan had `deleteCv()` fire its own explicit call
+"to make the refresh explicit," but that just guarantees two serialized round trips instead
+of one (the coalescer's own correctness guarantee means a queued caller always gets a fresh
+round, never the in-flight one). See the design doc's call-site table for the final reasoning.
+Leave `deleteCv()` as-is and move on to Step 4.
 
 - [ ] **Step 4: `applyBatchFrame()` (fixes the dead `loadOverview()` call)**
 

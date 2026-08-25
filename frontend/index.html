@@ -1797,7 +1797,9 @@ async function saveCv() {
     try {
       var yamlData = jsyaml.load(yaml) || {};
       if (typeof yamlData.name === 'string') setEditorTitle(yamlData.name);
-    } catch (_) {}
+    } catch (e) {
+      console.warn('Could not refresh editor title', e);
+    }
     refreshStatus();
     syncWorkspaceData();
     return true;
@@ -2113,7 +2115,7 @@ function clearSyncWarning() {
 // since showView() only toggles a CSS class rather than removing the
 // overview page's DOM nodes.
 function applyOverviewData(data) {
-  meId = data.me && data.me.id;
+  meId = (data.me && data.me.id) || null;
   meIsAdmin = !!(data.me && data.me.is_admin);
   _sidebarState.overviewCache = data;
   renderSidebarUser(data.me);

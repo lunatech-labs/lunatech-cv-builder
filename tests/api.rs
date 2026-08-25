@@ -386,6 +386,44 @@ async fn update_bumps_updated_at(pool: PgPool) {
     assert_ne!(before, after, "updated_at should change after PUT");
 }
 
+#[sqlx::test]
+async fn update_with_unchanged_yaml_leaves_updated_at(pool: PgPool) {
+    let app = router_with(pool);
+    let id = create(&app, "name: Same").await;
+
+    let before = body_json(
+        app.clone()
+            .oneshot(empty_request("GET", &format!("/cvs/{id}")))
+            .await
+            .unwrap(),
+    )
+    .await["updated_at"]
+        .clone();
+
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "PUT",
+            &format!("/cvs/{id}"),
+            json!({"yaml": "name: Same"}),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    let after = body_json(
+        app.oneshot(empty_request("GET", &format!("/cvs/{id}")))
+            .await
+            .unwrap(),
+    )
+    .await["updated_at"]
+        .clone();
+
+    assert_eq!(before, after, "updated_at should not change when yaml is unchanged");
+}
+
 // ─────────────────────────── DELETE ───────────────────────────
 
 #[sqlx::test]

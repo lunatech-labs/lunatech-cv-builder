@@ -1755,6 +1755,8 @@ function refreshStatus() {
 
 async function saveCv() {
   var yaml = getYaml();
+  // Avoid a wasted PUT: several buttons call saveCv() on every click, not just Save.
+  if (currentCvId && yaml === savedYaml) return true;
   try {
     if (currentCvId) {
       var res = await fetch('/api/cvs/' + currentCvId, {

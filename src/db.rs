@@ -305,6 +305,9 @@ impl Db {
     // verifying that the caller is the owner or an admin (see
     // `require_write_access` in handlers.rs).
 
+    /// No-ops (row and `updated_at` untouched) when `yaml`/`name`/`label` already
+    /// match what's stored — a backstop for unchanged PUTs, since the API is public.
+    /// Returns `true` if the CV exists (changed or not), `false` only if `id` is unknown.
     pub async fn update_any(
         &self,
         id: Uuid,
@@ -314,12 +317,22 @@ impl Db {
     ) -> Result<bool> {
         let report = seniority::score_yaml(yaml);
         let payload = serde_json::to_value(&report).context("serialising Seniority report")?;
-        let result = sqlx::query(
-            "UPDATE cvs
-             SET yaml = $1, name = $2, label = $3,
-                 seniority = $4, seniority_score = $5, seniority_level = $6,
-                 updated_at = NOW()
-             WHERE id = $7",
+        // One statement keeps the no-op check and the update atomic (no race with a concurrent delete).
+        // The EXISTS checks tell "unchanged" apart from "not found".
+        let (_updated, exists): (bool, bool) = sqlx::query_as(
+            "WITH upd AS (
+                 UPDATE cvs
+                 SET yaml = $1, name = $2, label = $3,
+                     seniority = $4, seniority_score = $5, seniority_level = $6,
+                     updated_at = NOW()
+                 WHERE id = $7
+                   AND (yaml IS DISTINCT FROM $1
+                        OR name IS DISTINCT FROM $2
+                        OR label IS DISTINCT FROM $3)
+                 RETURNING id
+             )
+             SELECT EXISTS (SELECT 1 FROM upd) AS updated,
+                    EXISTS (SELECT 1 FROM cvs WHERE id = $7) AS row_exists",
         )
         .bind(yaml)
         .bind(name)
@@ -328,9 +341,9 @@ impl Db {
         .bind(report.score as i16)
         .bind(&report.level)
         .bind(id)
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
-        Ok(result.rows_affected() > 0)
+        Ok(exists)
     }
 
     pub async fn delete_any(&self, id: Uuid) -> Result<bool> {

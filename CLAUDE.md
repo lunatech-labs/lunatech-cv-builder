@@ -10,7 +10,7 @@ Web app that lets Lunatech recruiters edit consultant CVs as YAML, persists them
 
 - **Backend**: Rust (edition 2024), `axum` 0.8, `sqlx` 0.8 with Postgres, `tokio`, `tower-http`
 - **PDF**: `typst` 0.14 + `typst-pdf` + `typst-kit` (used as a library, not the CLI)
-- **Frontend**: single static HTML page (`frontend/index.html`) — no framework, no build step. Uses `js-yaml` from a CDN for client-side YAML parsing
+- **Frontend**: single static HTML page (`frontend/index.html`) — no framework, no build step. Uses `js-yaml` from a CDN for client-side YAML parsing, and [Ace](https://ace.c9.io/) (also CDN-loaded, SRI-pinned) for the YAML editor, see "YAML editor (Ace)" below
 - **DB**: Postgres 18 in Docker (`docker-compose.yml`), exposed on `localhost:5433`
 - **Migrations**: SQL files in `migrations/`, run by `sqlx::migrate!` at startup
 
@@ -117,6 +117,24 @@ Everyone in the realm can see everyone's reviewed CVs in the ranking — that's 
 The editor has a dedicated **Save** button (`onSaveClick()`, calling `saveCv()` directly), plus three actions that save implicitly as a side effect: **Review** (the server-side review endpoint reads the stored YAML with no request body, so a row has to exist first), and **Preview PDF** / **Export PDF** (so the rendered PDF matches what is on screen and the URL stays stable across a refresh). There is no autosave on typing.
 
 Leaving the editor while dirty (the back arrow, the sidebar brand/logo, or picking a different CV from the sidebar list) all funnel through `navigateTo()`, which checks `hasUnsavedChanges()` and, if there are unsaved edits, awaits a small custom modal (`#unsaved-modal-bg`, driven by `promptUnsavedChanges()` / `resolveUnsavedPrompt()`) offering **Save & leave**, **Discard**, or **Cancel**. `deleteCv()` opts out via `navigateTo(url, {skipGuard: true})` since it already ran its own delete confirmation and the in-editor content no longer corresponds to anything worth keeping. Tab close/refresh is covered separately by a `beforeunload` handler using the browser's native prompt, since custom buttons aren't allowed there.
+
+## YAML editor (Ace)
+
+The YAML panel is an [Ace](https://ace.c9.io/) instance (`attachEditor()` in `frontend/index.html`), not a plain `<textarea>`. Ace replaced a hand-rolled textarea+highlight-overlay editor that had regressed twice on scroll/paging behavior. The full comparison against the alternative (CodeMirror 6) and the reasoning behind every decision below is in [`docs/yaml-editor-ace-migration.md`](docs/yaml-editor-ace-migration.md); this section only covers the current shape.
+
+**Reading/writing the editor's content.** Every part of this file that needs the YAML (`updateCV`, `saveCv`, `copyYaml`, `hasUnsavedChanges`, the PDF-export name lookup, etc.) calls `getYaml()` / `setYaml(v)`, never the Ace instance or `#yaml-editor` directly. Those two functions are the only place that knows whether Ace is actually running or the load-failure fallback is active (see below), so a CDN outage can't silently break a call site that assumed one or the other.
+
+**Theming.** `ace/theme/ferrite`, defined inline right before `attachEditor`, maps Ace's YAML-mode token classes onto the existing Ferrite palette (`--ui-*` CSS variables): colors are the same hex values the rest of the UI uses, kept in sync by hand since Ace's theme mechanism is plain CSS, not a shared token file.
+
+**If Ace fails to load** (CDN outage, ad-blocker, CSP, a hash mismatch), `attachEditor` falls back to a plain, fully functional `<textarea>` (`.editor-textarea-fallback`) instead of leaving a blank panel, with a visible warning banner (`#editor-load-warning`). `yamlEditor` stays `null` in this mode, which is exactly the signal `getYaml()`/`setYaml()`/`setReadonly()` branch on. The theme registration is guarded with `typeof ace !== 'undefined'` for the same reason: Ace being absent must not throw and abort the rest of the script.
+
+**Security posture for the CDN load.** Ace is the app's first CDN dependency at UI-subsystem scale (bigger blast radius than `js-yaml`/`marked` if compromised or unavailable). Mitigations, all on the same two-script load:
+- SRI hashes (`integrity="sha512-..."`) on every Ace script tag, cross-checked against cdnjs's own published SRI manifest.
+- `useWorker: false`: Ace's YAML mode otherwise spins up a background worker fetched from the CDN at runtime with **no** SRI (a self-derived path wrapped in a `Blob`). `jsyaml.load()` in `updateCV()` already surfaces parse errors, so the worker added no functionality worth that gap.
+- `ext-searchbox.js` / `ext-settings_menu.js` (Ace's Find and Settings-menu commands) are pinned as static SRI-verified `<script>` tags for the same reason: they'd otherwise lazy-load unpinned via Ace's `loadModule()` the moment someone hits Ctrl-F or Ctrl-,.
+- `ace.config.set('packaged', false)` fails closed on anything not already pinned above: an unregistered module fails to load (that feature silently doesn't work) instead of falling back to an unpinned CDN fetch. A future Ace upgrade that adds new lazily-loaded submodules breaks visibly rather than reopening this gap.
+
+This hardening covers Ace only. `js-yaml` and `marked` (the other two CDN `<script>` tags in this file) are **not** SRI-pinned, and `marked.parse()` output is written to `innerHTML` unsanitized — a known, still-open gap, tracked in [`docs/yaml-editor-ace-migration.md`](docs/yaml-editor-ace-migration.md#known-gaps-not-introduced-by-this-migration-not-yet-closed).
 
 ## Seniority
 

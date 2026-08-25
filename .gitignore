@@ -28,3 +28,6 @@ Thumbs.db
 # Postgres backups / dumps
 *.dump
 *.sql.gz
+
+# Local git worktrees
+.worktrees/

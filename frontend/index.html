@@ -18,6 +18,7 @@
 <!-- Pinned so Find/Replace/Settings-menu resolve without hitting Ace's unpinned loadModule fallback (see packaged:false below). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ext-searchbox.js" integrity="sha512-wdO79jzTGu2UXQEsgKsFMQb8XJmLGOVs8NxFEZtd89u9pFqRqfTdHRCOvAQg1zPBdis7SSmu0AZq9FW0lCK6oQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ext-settings_menu.js" integrity="sha512-iDFep+5IMmL4FZPOI4/E4DqaoqYPsVm9NfCBuYUOAwtIMd15AA1CJnLzpB1JSZgzxJCd1Ej8aHHo3/aBXkmd8A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/sync-coalescer.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -971,6 +972,15 @@ body {
   font-size: 10px; font-weight: 400; letter-spacing: .04em;
   color: var(--ui-muted); margin-top: 3px;
 }
+.sidebar-sync-warn {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--ui-accent-soft); color: var(--ui-warn);
+  font-size: 9px; font-weight: 700; line-height: 1;
+  margin-left: 4px; cursor: default;
+}
+.sidebar-sync-warn.visible { display: inline-flex; }
 
 .sidebar-search {
   padding: 10px 14px;
@@ -1176,7 +1186,8 @@ body {
       <img src="/assets/lunatech-logo-alone.png" alt="Lunatech">
       <div class="sidebar-brand-text">
         <span class="sidebar-brand-mark">Lunatech</span>
-        <span class="sidebar-brand-sub">CV Builder</span>
+        <span class="sidebar-brand-sub">CV Builder<span class="sidebar-sync-warn" id="sidebar-sync-warn" title=""
+          >!</span></span>
       </div>
     </div>
 
@@ -1782,7 +1793,15 @@ async function saveCv() {
       }
     }
     savedYaml = yaml;
+    // Sidebar refreshes via syncWorkspaceData(); this title is a separate element.
+    try {
+      var yamlData = jsyaml.load(yaml) || {};
+      if (typeof yamlData.name === 'string') setEditorTitle(yamlData.name);
+    } catch (e) {
+      console.warn('Could not refresh editor title', e);
+    }
     refreshStatus();
+    syncWorkspaceData();
     return true;
   } catch (e) {
     alert('Save failed: ' + e.message);
@@ -1812,9 +1831,11 @@ async function deleteCv() {
     currentCvId = null;
     savedYaml = null;
     clearReviewState();
-    // Back to the overview — the deleted CV obviously doesn't make sense to
-    // keep editing, and routeView re-fetches /api/overview which carries
-    // the refreshed listings. skipGuard: already confirmed above, and the
+    // Back to the overview: the deleted CV obviously doesn't make sense to
+    // keep editing. No explicit syncWorkspaceData() call here — routeView's
+    // overview branch (triggered by navigateTo below) already refreshes the
+    // sidebar and rankings; calling it here too would just queue a second,
+    // redundant round trip. skipGuard: already confirmed above, and the
     // in-editor content no longer corresponds to anything worth keeping.
     navigateTo('/', { skipGuard: true });
   } catch (e) {
@@ -2017,13 +2038,27 @@ function showView(name) {
 }
 
 async function routeView() {
-  // Sidebar gets refreshed on every navigation so the active highlight
-  // tracks the current CV. We await this so meId / meIsAdmin are set
-  // before openCvInEditor runs — otherwise `currentOwnerId !== meId`
-  // triggers a false-positive Read-only state on the first navigation.
-  await ensureSidebarRendered();
-
   var params = new URLSearchParams(location.search);
+  var goingToOverview = !params.get('id') && params.get('new') !== '1';
+
+  // Only the very first navigation blocks on the network: meId isn't known
+  // yet, and openCvInEditor below needs it (otherwise `currentOwnerId !==
+  // meId` triggers a false-positive Read-only state). Every other case fires
+  // the sync without holding the view swap hostage to a slow or hung
+  // backend. Landing on the overview page still refreshes (it shows
+  // company-wide stats/rankings that can move independently of this tab's
+  // own actions), it just doesn't block on it. Navigating between CVs in
+  // the editor just re-renders from whatever's already cached, kept fresh
+  // by the mutation call sites in saveCv() / runReview() / deleteCv(), not
+  // by re-fetching on every click.
+  if (meId === null) {
+    await syncWorkspaceData();
+  } else if (goingToOverview) {
+    syncWorkspaceData();
+  } else {
+    renderSidebarList();
+  }
+
   if (params.get('id')) {
     showView('editor');
     await openCvInEditor(params.get('id'));
@@ -2036,40 +2071,13 @@ async function routeView() {
     highlightSidebarItem(null);
   } else {
     showView('overview');
-    await renderOverview();
     highlightSidebarItem(null);
   }
 }
 
-async function renderOverview() {
-  var data;
-  try {
-    data = await fetch('/api/overview').then(function(r) { return r.json(); });
-  } catch (e) {
-    alert('Could not load the overview: ' + e.message);
-    return;
-  }
-  meId = data.me && data.me.id;
-  meIsAdmin = !!(data.me && data.me.is_admin);
-  var displayName = (data.me && (data.me.name || data.me.email)) || 'there';
-  document.getElementById('ov-me-name').textContent = displayName;
-  document.getElementById('ov-user-name').textContent = displayName;
-  document.getElementById('ov-user-info').classList.add('visible');
-
-  fillStats('ov-mine', data.stats.mine);
-  fillStats('ov-co', data.stats.company);
-
-  renderTopList(data.top_cvs || []);
-  renderAllList(data.all_cvs || []);
-  renderMyGrid(data.my_cvs || []);
-  applyAdminVisibility();
-  // Keep the sidebar in sync with the overview's view of the world.
-  refreshSidebarFromOverview(data);
-}
-
 // Mirrors `data-owner-only`: hides every `[data-admin-only]` element when
 // the current user isn't an admin. Called after `meIsAdmin` is set in
-// loadOverview.
+// applyOverviewData().
 function applyAdminVisibility() {
   document.querySelectorAll('[data-admin-only]').forEach(function(el) {
     el.style.display = meIsAdmin ? '' : 'none';
@@ -2079,38 +2087,89 @@ function applyAdminVisibility() {
 // ══════════════════════════════════════════════════════════
 // SIDEBAR — persistent CV nav (phase 1 of the UI redesign)
 // ══════════════════════════════════════════════════════════
-// The sidebar fetches /api/overview once, caches it, and re-renders on
-// every navigation so the "currently editing" highlight tracks the URL.
+// The sidebar and the overview page share one fetch/apply engine
+// (syncWorkspaceData(), below), so both stay in sync with the server after
+// every save, review, delete, and batch-review, not just on navigation.
 // We don't paginate — the workspaces this app serves are in the dozens-
 // of-CVs range, never thousands.
 
-var _sidebarOverviewCache = null;
-var _sidebarFilter = '';
+var _sidebarState = { overviewCache: null, filter: '', collapsedSections: new Set() };
 
-async function ensureSidebarRendered() {
-  if (!_sidebarOverviewCache) {
-    try {
-      _sidebarOverviewCache = await fetch('/api/overview').then(function(r) { return r.json(); });
-    } catch (e) {
-      console.warn('Sidebar: failed to load overview', e);
-      return;
-    }
-    // First load also surfaces me / admin state for the rest of the app.
-    var data = _sidebarOverviewCache;
-    meId = data.me && data.me.id;
-    meIsAdmin = !!(data.me && data.me.is_admin);
-    renderSidebarUser(data.me);
-    applyAdminVisibility();
-  }
-  renderSidebarList();
+var SYNC_TIMEOUT_MS = 10000;
+
+function showSyncWarning(message) {
+  var el = document.getElementById('sidebar-sync-warn');
+  if (!el) return;
+  el.title = message;
+  el.classList.add('visible');
 }
 
-// Called by renderOverview() so the cache stays fresh after a save / delete.
-function refreshSidebarFromOverview(data) {
-  _sidebarOverviewCache = data;
+function clearSyncWarning() {
+  var el = document.getElementById('sidebar-sync-warn');
+  if (!el) return;
+  el.classList.remove('visible');
+}
+
+// Applies one /api/overview response to every consumer: the sidebar and the
+// overview page. Safe to call even while the editor is the visible view,
+// since showView() only toggles a CSS class rather than removing the
+// overview page's DOM nodes.
+function applyOverviewData(data) {
+  meId = (data.me && data.me.id) || null;
+  meIsAdmin = !!(data.me && data.me.is_admin);
+  _sidebarState.overviewCache = data;
   renderSidebarUser(data.me);
   renderSidebarList();
+  applyAdminVisibility();
+
+  var displayName = (data.me && (data.me.name || data.me.email)) || 'there';
+  document.getElementById('ov-me-name').textContent = displayName;
+  document.getElementById('ov-user-name').textContent = displayName;
+  document.getElementById('ov-user-info').classList.add('visible');
+  fillStats('ov-mine', data.stats.mine);
+  fillStats('ov-co', data.stats.company);
+  renderTopList(data.top_cvs || []);
+  renderAllList(data.all_cvs || []);
+  renderMyGrid(data.my_cvs || []);
 }
+
+// The one place that fetches /api/overview. Never rejects: on any failure
+// (including a timeout) it logs, shows the sidebar's failure badge, and
+// resolves with null, so fire-and-forget callers never produce an unhandled
+// promise rejection. See docs/superpowers/specs/2026-08-11-sidebar-refresh-design.md.
+async function fetchAndApply() {
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() { controller.abort(); }, SYNC_TIMEOUT_MS);
+  try {
+    var res = await fetch('/api/overview', { signal: controller.signal });
+    if (!res.ok) throw new Error('GET /api/overview failed: ' + res.status);
+    var data = await res.json();
+    applyOverviewData(data);
+    clearSyncWarning();
+    return data;
+  } catch (e) {
+    console.warn('Workspace sync failed', e);
+    showSyncWarning(
+      'Workspace data may be out of date (last refresh failed at ' +
+      new Date().toLocaleTimeString() +
+      '). Will retry automatically on your next save, review, or navigation.'
+    );
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// Single-flight-with-queue coalesced: any number of simultaneous/staggered
+// callers share a bounded number of underlying fetches, and each caller is
+// guaranteed to be resolved by a fetch that started at-or-after their own
+// call, never by one that predates it. This relies on every call site
+// awaiting its own mutation's response before calling syncWorkspaceData(),
+// so the mutation is already durably persisted by the time the sync call
+// happens. Do not simplify this to "share the in-flight promise" without
+// re-reading the design doc's Concurrency section, since that version can
+// hand a caller a stale response.
+var syncWorkspaceData = createCoalescedSync(fetchAndApply);
 
 function renderSidebarUser(me) {
   var el = document.getElementById('sidebar-user');
@@ -2125,7 +2184,7 @@ function renderSidebarUser(me) {
 }
 
 function renderSidebarList() {
-  var data = _sidebarOverviewCache || { my_cvs: [], all_cvs: [] };
+  var data = _sidebarState.overviewCache || { my_cvs: [], all_cvs: [] };
   var scroll = document.getElementById('sidebar-scroll');
   if (!scroll) return;
 
@@ -2135,7 +2194,7 @@ function renderSidebarList() {
     return cv.owner_id !== meId;
   });
 
-  var filter = (_sidebarFilter || '').toLowerCase();
+  var filter = (_sidebarState.filter || '').toLowerCase();
   function matches(cv) {
     if (!filter) return true;
     var hay = (cv.name || '') + ' ' + (cv.owner_name || '') + ' ' + (cv.label || '');
@@ -2157,7 +2216,14 @@ function renderSidebarList() {
   });
   Array.prototype.forEach.call(scroll.querySelectorAll('.sidebar-section-title'), function(el) {
     el.addEventListener('click', function() {
-      el.parentNode.classList.toggle('collapsed');
+      var section = el.parentNode;
+      var key = section.getAttribute('data-section');
+      if (_sidebarState.collapsedSections.has(key)) {
+        _sidebarState.collapsedSections.delete(key);
+      } else {
+        _sidebarState.collapsedSections.add(key);
+      }
+      section.classList.toggle('collapsed');
     });
   });
 
@@ -2182,7 +2248,8 @@ function sidebarSection(key, label, shownItems, totalCount) {
              '</li>';
     }).join('');
   }
-  return '<div class="sidebar-section" data-section="' + key + '">' +
+  var collapsedClass = _sidebarState.collapsedSections.has(key) ? ' collapsed' : '';
+  return '<div class="sidebar-section' + collapsedClass + '" data-section="' + key + '">' +
            '<div class="sidebar-section-title">' +
              '<span><span class="chev">▾</span> ' + escHtml(label) + '</span>' +
              '<span class="count">' + totalCount + '</span>' +
@@ -2207,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var input = document.getElementById('sidebar-search');
   if (input) {
     input.addEventListener('input', function(e) {
-      _sidebarFilter = e.target.value || '';
+      _sidebarState.filter = e.target.value || '';
       renderSidebarList();
     });
   }
@@ -2889,7 +2956,7 @@ function applyBatchFrame(frame) {
   if (snap.completed_at) {
     document.getElementById('batch-state-pill').textContent =
       snap.failed && snap.failed.length > 0 ? 'Done with errors' : 'Done';
-    if (typeof loadOverview === 'function') loadOverview();
+    syncWorkspaceData();
   }
 }
 
@@ -2954,6 +3021,7 @@ async function runReview() {
     cachedReview = payload;
     cachedReviewAt = new Date().toISOString();
     refreshReviewBadge();
+    syncWorkspaceData();
     openReviewModal(cachedReview, cachedReviewAt);
   } catch (e) {
     alert('Review failed: ' + e.message);

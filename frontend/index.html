@@ -15,6 +15,9 @@
 <!-- YAML editor: Ace (see attachEditor / ace/theme/ferrite in the main script). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ace.js" integrity="sha512-+dWoJ4nMR1zflFH9wM1ZaI8waJi8iGlGuTnQrEZ7CrjVS3rpgE9b06SLIdLUjieiYodMEl8tUYtcVgXXL0/e8w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/mode-yaml.js" integrity="sha512-Xs06SkAlRDRCO++qf4K5jDD7D4v/boPM63dYtWpidSUa6z2lMdarSP6qziu27sLIjegIJNgbLRcRj1Fwd72/jg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- Pinned so Find/Replace/Settings-menu resolve without hitting Ace's unpinned loadModule fallback (see packaged:false below). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ext-searchbox.js" integrity="sha512-wdO79jzTGu2UXQEsgKsFMQb8XJmLGOVs8NxFEZtd89u9pFqRqfTdHRCOvAQg1zPBdis7SSmu0AZq9FW0lCK6oQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ext-settings_menu.js" integrity="sha512-iDFep+5IMmL4FZPOI4/E4DqaoqYPsVm9NfCBuYUOAwtIMd15AA1CJnLzpB1JSZgzxJCd1Ej8aHHo3/aBXkmd8A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -1392,6 +1395,9 @@ function esc(s) {
 // would throw at load time and abort the rest of this script — routing,
 // init, everything — not just the editor.
 if (typeof ace !== 'undefined') {
+  // Fail closed: without this, loadModule() falls back to fetching any
+  // module we haven't pinned above from the CDN with no SRI.
+  ace.config.set('packaged', false);
   ace.define('ace/theme/ferrite', ['require', 'exports', 'module', 'ace/lib/dom'], function(require, exports) {
     exports.isDark = false;
     exports.cssClass = 'ace-ferrite';

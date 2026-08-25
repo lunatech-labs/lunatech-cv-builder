@@ -134,6 +134,8 @@ The YAML panel is an [Ace](https://ace.c9.io/) instance (`attachEditor()` in `fr
 - `ext-searchbox.js` / `ext-settings_menu.js` (Ace's Find and Settings-menu commands) are pinned as static SRI-verified `<script>` tags for the same reason: they'd otherwise lazy-load unpinned via Ace's `loadModule()` the moment someone hits Ctrl-F or Ctrl-,.
 - `ace.config.set('packaged', false)` fails closed on anything not already pinned above: an unregistered module fails to load (that feature silently doesn't work) instead of falling back to an unpinned CDN fetch. A future Ace upgrade that adds new lazily-loaded submodules breaks visibly rather than reopening this gap.
 
+This hardening covers Ace only. `js-yaml` and `marked` (the other two CDN `<script>` tags in this file) are **not** SRI-pinned, and `marked.parse()` output is written to `innerHTML` unsanitized — a known, still-open gap, tracked in [`docs/yaml-editor-ace-migration.md`](docs/yaml-editor-ace-migration.md#known-gaps-not-introduced-by-this-migration-not-yet-closed).
+
 ## Seniority
 
 [`src/seniority.rs`](src/seniority.rs) is a Rust port of `seniority_score.py` — a transparent 0-100 grade derived from the YAML CV. Five dimensions add up to 100: years of experience (30), leadership signals (25), scope of contributions (20), external signals (15), title bonus (10). Total is bucketed into Junior / Mid-level / Senior / Staff / Tech Lead / Principal. The grid lives in constants at the top of the module — tune them to match Lunatech's house calibration.

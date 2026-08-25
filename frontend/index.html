@@ -1349,9 +1349,9 @@ body {
     </div>
     <div class="editor-wrap" id="wrap-yaml">
       <div id="ace-yaml" style="position:absolute; inset:0;"></div>
-      <!-- Compatibility shim for the rest of this file's `.value` access —
-           see the comment above attachEditor(). Also the fallback editing
-           surface if Ace fails to load (see attachEditor). -->
+      <!-- Fallback editing surface if Ace fails to load (see attachEditor).
+           Read/written only via getYaml()/setYaml() — see the comment
+           above attachEditor(). -->
       <textarea id="yaml-editor" style="display:none" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
     </div>
     <div class="error-bar" id="yaml-error"></div>

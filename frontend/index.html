@@ -1793,6 +1793,11 @@ async function saveCv() {
       }
     }
     savedYaml = yaml;
+    // Sidebar refreshes via syncWorkspaceData(); this title is a separate element.
+    try {
+      var yamlData = jsyaml.load(yaml) || {};
+      if (typeof yamlData.name === 'string') setEditorTitle(yamlData.name);
+    } catch (_) {}
     refreshStatus();
     syncWorkspaceData();
     return true;
